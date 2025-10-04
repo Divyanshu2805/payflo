@@ -189,7 +189,7 @@ erDiagram
     }
 
     SETTLEMENT_PAYMENT {
-        UUID settlemnt_id PK, FK
+        UUID settlement_id PK, FK
         UUID payment_id PK, FK
     }
 
@@ -204,9 +204,6 @@ erDiagram
     WEBHOOK_EVENT ||--o{ DLQ_EVENT : "dead-lettered"
     SETTLEMENT ||--o{ SETTLEMENT_PAYMENT : includes
 ```
-
-> Note: `SETTLEMENT_PAYMENT.settlemnt_id` is transcribed as-drawn in the v1 diagram (likely a typo for
-> `settlement_id` — worth fixing before the migration is written).
 
 ## Entity summary
 
