@@ -1,6 +1,19 @@
 # PayFlo
 
-A payment processing backend built with Spring Boot. Currently in early development.
+A multi-tenant payment gateway backend built with Spring Boot. Currently in early development.
+
+## Features (planned)
+
+- Merchant onboarding, KYC, API key management
+- Order, payment, and refund lifecycles with idempotent writes and state machines
+- Card tokenization/vaulting with AES-256 encryption
+- Signed webhook delivery with retries, DLQ, and replay
+- Nightly batch settlement with fee/GST breakdown and audit trail
+- Multi-tenant auth (API key + JWT) and per-merchant rate limiting
+- Real-time and historical analytics dashboards
+
+Designed for 10k TPS, p99 < 1s, 99.99% availability, and PCI DSS compliance — see the full
+functional and non-functional requirements in [docs/requirements.md](docs/requirements.md).
 
 ## Tech Stack
 

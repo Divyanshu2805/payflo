@@ -9,9 +9,11 @@ This is still a freshly generated Spring Boot skeleton (Spring Initializr output
 datasource configuration exist beyond the default `application.yaml`. Treat any described "architecture"
 as what you find as you build it, not an established convention to preserve.
 
-The domain model (entities, relationships) has been designed but not implemented — see the v1 ER diagram
-in [docs/schema.md](docs/schema.md) for the target schema. It's a payments-processing domain:
-merchants, orders, payments, refunds, card tokenization/vaulting, webhooks with DLQ, and settlements.
+The domain model (entities, relationships) and full functional/non-functional requirements have been
+designed but not implemented — see [docs/requirements.md](docs/requirements.md) for the requirements
+and the v1 ER diagram. It's a multi-tenant payments-processing domain: merchant onboarding, order/payment/
+refund lifecycles with state machines, card tokenization/vaulting, HMAC-signed webhooks with retry/DLQ,
+and nightly settlement — targeting 10k TPS, p99 < 1s, 99.99% availability, and PCI DSS compliance.
 
 Git repo is initialized and pushed to `github.com/Divyanshu2805/payflo` (branch `main`).
 
