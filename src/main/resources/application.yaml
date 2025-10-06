@@ -1,3 +1,14 @@
 spring:
   application:
     name: payflo
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:9000/payfloDB}
+    username: ${DB_USER:testUser}
+    password: ${DB_PASS:password}
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
