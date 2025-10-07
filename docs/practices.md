@@ -3,5 +3,11 @@
 [← Back to docs index](README.md)
 
 - Maven wrapper (`mvnw` / `mvnw.cmd`) used for reproducible builds.
-- Lombok annotation processing wired into both compile and test-compile Maven executions.
+- Lombok annotation processing wired into both compile and test-compile Maven executions; entities
+  consistently use `@Getter @Setter @AllArgsConstructor @NoArgsConstructor @Builder`.
 - `pom.xml` overrides inherited `<name>`, `<description>`, `<license>`, `<developers>`, `<scm>` from the Spring Boot parent POM to avoid unwanted inheritance.
+- Domain-oriented package structure (`common`, `merchant`, `payment`) instead of technical-layer packages, anticipating a future microservices split.
+- Shared `BaseEntity` `@MappedSuperclass` for audit columns via Spring Data JPA auditing — the annotations are wired but auditing itself isn't yet enabled (`@EnableJpaAuditing` + an `AuditorAware` bean are still missing), so `created_by`/`updated_by` currently always come back null.
+- Cross-service references (`merchant_id` on `ORDER_RECORD`/`PAYMENT`/`REFUND`) are stored as plain UUIDs with no JPA relationship — deliberate, since each domain is expected to eventually own its own database.
+- Money represented via a shared `Money` embeddable value type (amount + currency, add/subtract with currency-mismatch checks) rather than a raw amount column.
+- Semantic, one-line commit messages (`feat:`, `fix:`, `docs:`, `chore:`, etc.).

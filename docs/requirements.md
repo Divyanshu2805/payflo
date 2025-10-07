@@ -2,9 +2,10 @@
 
 [← Back to docs index](README.md)
 
-Design target for the system, not yet implemented in code — and a plan, not a contract: items here may
-be dropped or deferred once actual implementation starts. When a feature is built, this section should
-be revisited and marked accordingly rather than assumed correct.
+Design target for the system — a plan, not a contract: items here may be dropped or deferred once actual
+implementation starts. Implementation has begun (see Entities below for what's actually built); this
+section describes intent and hasn't been individually checked off per item yet. See "Known gaps vs.
+requirements" under Entities for specific deviations found so far.
 
 ## Functional
 
