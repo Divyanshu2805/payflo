@@ -45,6 +45,7 @@ public class Merchant extends BaseEntity {
 
     @Column(length = 20, nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private MerchantStatus status = MerchantStatus.PENDING_KYC;
 
     @Column(length = 20)
