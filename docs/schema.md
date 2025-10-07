@@ -10,7 +10,9 @@ the persistence layer). The other 7 remain design-only, unchanged from the origi
 - **Planned, not yet built:** `MERCHANT_WEBHOOK_CONFIG`, `VAULT_CARD`, `CARD_TOKEN`, `WEBHOOK_EVENT`,
   `DLQ_EVENT`, `SETTLEMENT`, `SETTLEMENT_PAYMENT`
 
-## Entity Relationship Diagram (v2 — implemented entities reflect actual schema; planned entities unchanged from v1)
+## Entity Relationship Diagram (v2)
+
+Implemented entities reflect the actual JPA schema. Planned entities are unchanged from the v1 design.
 
 ```mermaid
 erDiagram
@@ -90,7 +92,7 @@ erDiagram
         UUID id PK
         UUID merchant_id "no FK - cross-service boundary"
         UUID customer_id
-        int amount_units
+        long amount_units
         string currency
         string receipt
         string order_status
@@ -107,7 +109,7 @@ erDiagram
         UUID id PK
         UUID order_id FK
         UUID merchant_id "no FK - cross-service boundary"
-        int amount_units
+        long amount_units
         string currency
         string idempotency_key
         string status
@@ -132,7 +134,7 @@ erDiagram
         UUID id PK
         UUID payment_id FK
         UUID merchant_id "no FK - cross-service boundary"
-        int amount_units
+        long amount_units
         string currency
         string status
         string bank_reference
@@ -180,7 +182,7 @@ erDiagram
         UUID customer_id FK
         UUID merchant_id FK
         datetime created_at
-        datetime udpated_at
+        datetime updated_at
     }
 
     WEBHOOK_EVENT {
@@ -210,11 +212,12 @@ erDiagram
     SETTLEMENT {
         UUID id PK
         UUID merchant_id FK
-        long gross_amount_paise
-        long refund_amount_paise
-        long fee_amount_paise
-        long gst_amount_paise
-        long net_amount_paise
+        long gross_amount_units
+        long refund_amount_units
+        long fee_amount_units
+        long gst_amount_units
+        long net_amount_units
+        string currency
         string status
         string bank_reference
         datetime processed_at
@@ -245,8 +248,9 @@ extend a shared `BaseEntity` base class, `created_at`/`updated_at`/`created_by`/
 `created_by`/`updated_by` won't actually populate until Spring Data JPA auditing is wired up
 (`@EnableJpaAuditing` + an `AuditorAware` bean — neither exists yet), so those two columns are always
 null today. Money fields use a shared `Money` embeddable value type (`amount_units` + `currency`) rather
-than a flat `_paise` long column, so an amount always carries its currency with it; still an integer
-smallest-unit value to avoid floating-point rounding errors. `ORDER_RECORD`, `PAYMENT`, and `REFUND`
+than a flat `_paise` column, so an amount always carries its currency with it; the amount is a `long`
+count of the smallest currency unit (paise for INR), never a floating-point value, so money arithmetic
+can't accumulate rounding error. `ORDER_RECORD`, `PAYMENT`, and `REFUND`
 store `merchant_id` as a plain UUID with **no foreign key** to `MERCHANT` — deliberate, anticipating a
 future microservices split where merchant-service and payment-service each own their own database, so no
 real cross-database FK would be possible anyway.
@@ -416,3 +420,108 @@ overwritten on the `PAYMENT` row itself.
 
 > **Gap vs. v1 design:** no `reason` field — the human-readable explanation (especially useful for
 > failures) that was in the original plan isn't present on the entity yet.
+
+### VAULT_CARD
+
+_Planned, not yet implemented._
+
+Encrypted card data at rest. Never exposed directly — always accessed indirectly via a `CARD_TOKEN`.
+
+| Field | Meaning |
+|---|---|
+| `id` | Primary key. |
+| `encrypted_pan` | The full card number, encrypted — never stored or read in plain text. |
+| `encrypted_dek` | The Data Encryption Key used to encrypt the PAN, itself encrypted (envelope encryption — each card gets its own key, and that key is protected by a master key, limiting the damage if one key is ever compromised). |
+| `last_four` | Last 4 digits of the card — safe to display without decrypting anything. |
+| `brand` | Card network (Visa, Mastercard, etc.). |
+| `bin` | Bank Identification Number (first 6–8 digits) — identifies the issuing bank/card type. |
+| `expiry_month` / `expiry_year` | Card expiry. |
+| `created_at` / `updated_at` | Record lifecycle timestamps. |
+
+### CARD_TOKEN
+
+_Planned, not yet implemented._
+
+The opaque, safe-to-reference token that stands in for a vaulted card.
+
+| Field | Meaning |
+|---|---|
+| `id` | Primary key. |
+| `token` | The opaque value merchants/customers actually reference instead of the real card. |
+| `vault_card_id` | Links back to the actual encrypted card data. |
+| `customer_id` | Which customer this token belongs to. |
+| `merchant_id` | Owning merchant — scoping so one merchant can't use another merchant's customer's token. |
+| `created_at` / `updated_at` | Record lifecycle timestamps. |
+
+### WEBHOOK_EVENT
+
+_Planned, not yet implemented._
+
+A single outbound webhook delivery attempt (and its retry bookkeeping).
+
+| Field | Meaning |
+|---|---|
+| `id` | Primary key. |
+| `merchant_id` | Owning merchant. |
+| `event_type` | What happened, e.g. `payment.captured`, `refund.processed`. |
+| `payload` | The actual event data sent to the merchant (JSON). |
+| `target_url` | Where it was sent — copied from the webhook config at send time, so later config changes don't rewrite history. |
+| `status` | Delivery status (pending, delivered, failed, dead-lettered). |
+| `attempts` | How many delivery attempts have been made so far. |
+| `last_response_code` | HTTP status code returned by the merchant's endpoint on the last attempt. |
+| `next_retry_at` | When the next retry is scheduled. |
+| `last_retry_at` | When the last retry happened. |
+| `created_at` | When the event was created. |
+| `delivered_at` | When it was successfully delivered, if it was. |
+
+### DLQ_EVENT
+
+_Planned, not yet implemented._
+
+A webhook event that exhausted its retries and was dead-lettered.
+
+| Field | Meaning |
+|---|---|
+| `id` | Primary key. |
+| `webhook_event_id` | The webhook event that exhausted its retries. |
+| `merchant_id` | Owning merchant. |
+| `final_error` | The error recorded on the last failed attempt, kept for debugging. |
+| `moved_at` | When it was moved into the DLQ. |
+| `replayed_at` | When (if) it was manually replayed. |
+
+### SETTLEMENT
+
+_Planned, not yet implemented._
+
+A payout batch to a merchant's bank account.
+
+| Field | Meaning |
+|---|---|
+| `id` | Primary key. |
+| `merchant_id` | Owning merchant. |
+| `gross_amount_units` | Total payment amount before any deductions. |
+| `refund_amount_units` | Refunds deducted in this settlement. |
+| `fee_amount_units` | Platform fee deducted. |
+| `gst_amount_units` | Tax deducted. |
+| `net_amount_units` | What's actually paid out: gross − refunds − fee − GST. |
+| `currency` | Currency for all five amounts above. |
+| `status` | Settlement batch status. |
+| `bank_reference` | Reference from the (mock) bank transfer. |
+| `processed_at` | When the payout was processed. |
+| `created_at` | When the settlement batch was created. |
+
+> Unlike other entities, this holds five amounts that always share one currency, so it carries a single
+> `currency` column alongside five `_units` values rather than five separate embedded `Money` values.
+
+### SETTLEMENT_PAYMENT
+
+_Planned, not yet implemented._
+
+Join table linking a settlement batch to the individual payments it includes — this is what makes a
+payout traceable back to the exact payments it covers (the audit trail mentioned under Settlement
+requirements).
+
+| Field | Meaning |
+|---|---|
+| `settlement_id` | Part of the composite primary key; the settlement batch. |
+| `payment_id` | Part of the composite primary key; a payment included in that batch. |
