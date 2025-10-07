@@ -43,8 +43,13 @@ Requires JDK 25 and a PostgreSQL instance.
 
 ## Project Status
 
+**Phase 1 of 2 — monolith.** The system is being built as a single Spring Boot application first, with
+the split into microservices planned as a deliberate second phase. Domain boundaries are cheap to move
+inside one codebase and expensive to move once they're network calls, so they're being settled first —
+the package layout and the no-cross-domain-foreign-key convention exist to keep that later split cheap.
+
 Domain model (see the Entity Relationship Diagram in [docs/schema.md](docs/schema.md)) is
-designed; implementation (entities, repositories, controllers, datasource config) is in progress.
+designed; the entity layer is partially built. Repositories, services, and APIs are not started yet.
 
 ## Documentation
 

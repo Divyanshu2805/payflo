@@ -4,8 +4,13 @@
 
 _Last updated: 2025-10-06._
 
+**Phase 1 of 2 — monolith.** The whole system is being built as a single Spring Boot application first;
+the microservices split is a deliberate later phase. See
+[Build strategy](architecture.md#build-strategy-monolith-first) for why.
+
 | Area | Status |
 |---|---|
+| Architecture | Monolith (phase 1) — single app, single database |
 | Domain entities | 8 of 15 built — persistence layer only |
 | Domain enums | Complete for the merchant and payment domains |
 | Repositories | Not started |
