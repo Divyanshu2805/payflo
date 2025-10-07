@@ -12,14 +12,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @EqualsAndHashCode
 public class Money {
-    private int amountUnits;
+    private long amountUnits;
     private String currency;
 
-    public static Money of(int amountUnits, String currency) {
+    public static Money of(long amountUnits, String currency) {
         return new Money(amountUnits, currency);
     }
 
-    public static Money inr(int amountUnits) {
+    public static Money inr(long amountUnits) {
         return new Money(amountUnits, "INR");
     }
 
