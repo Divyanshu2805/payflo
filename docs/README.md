@@ -9,5 +9,6 @@ Project documentation, kept up to date with each commit. Intended as a reference
 | [Tech Stack](tech-stack.md) | Languages, frameworks, and infrastructure |
 | [Architecture](architecture.md) | Current and target architecture |
 | [Schema](schema.md) | Entities, ER diagram, and field-level details |
+| [Known Gaps](gaps.md) | Known gaps vs. requirements and the v1 design |
 | [APIs](api.md) | REST endpoints: requests, responses, and errors |
 | [Practices](practices.md) | Engineering practices and patterns used |
