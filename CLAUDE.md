@@ -9,12 +9,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 compiles and can create its schema, but exposes no APIs yet. Treat any described "architecture" as what
 you find as you build it, not an established convention to preserve.
 
+**This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
+single Spring Boot application first, then split it into microservices as a separate later phase. The
+microservices architecture in [docs/architecture.md](docs/architecture.md#target) is the phase-two destination,
+not a description of where the code is heading next.
+
+Practically, that means: **do not add, scaffold, or propose service-splitting infrastructure** — no API
+gateway, service discovery/Eureka, config server, Kafka or other broker, per-service databases, or
+inter-service HTTP/Feign clients — until the user explicitly says it's time to split. Suggesting them
+now is premature. Where a design decision would go one way in a monolith and another in microservices,
+take the monolith answer and note the future-split implication in a line rather than building for it.
+
 Package layout is domain-oriented, not layered-by-technical-role — `common` (shared `BaseEntity`,
 `Money`, enums), `merchant` (Merchant, ApiKey, AppUser, Customer), `payment` (OrderRecord, Payment,
-Refund, PaymentTransitionLog) — each anticipating a future microservice boundary, though today it's one
-Spring Boot app. Follow this convention for new domains rather than the originally-sketched
-`controller`/`service`/`repository` split. `OrderRecord`/`Payment`/`Refund` deliberately store
-`merchantId` as a plain UUID with no JPA relationship to `Merchant`, for the same reason.
+Refund, PaymentTransitionLog). These are the conventions that keep the eventual split cheap, and they
+should keep being honoured: domain packages over layer packages, shared types in `common`, and
+`OrderRecord`/`Payment`/`Refund` storing `merchantId` as a plain UUID with no JPA relationship to
+`Merchant` (a real FK can't span two databases, so it would have to be removed at split time anyway).
+Follow this convention for new domains rather than the originally-sketched
+`controller`/`service`/`repository` split.
 
 Domain vocabulary lives in `common/enums` (10 enums) and is the source of truth for every status,
 role, and event value — `PaymentStatus`/`PaymentEvent` in particular define the payment state machine.

@@ -2,23 +2,48 @@
 
 [← Back to docs index](README.md)
 
+## Build strategy: monolith first
+
+PayFlo is being built as a **single monolithic application first**, and will be split into microservices
+only later, as a deliberate second phase. This is a decision, not an interim accident.
+
+The reasoning: domain boundaries are cheap to move inside one codebase and expensive to move once
+they're network calls between separately deployed services. Building the whole thing as a monolith lets
+those boundaries be found and corrected while a mistake costs a refactor instead of a migration. The
+distributed-systems machinery (service discovery, an API gateway, per-service databases, inter-service
+messaging) also carries real operational cost, and it buys nothing until there's something worth scaling
+independently.
+
+So the split is being *prepared for* without being *paid for* yet — through three conventions held from
+day one:
+
+- **Domain-oriented packages** (`common`, `merchant`, `payment`) rather than layer-oriented ones
+  (`controller`, `service`, `repository`), so each domain is a candidate service boundary already.
+- **No cross-domain foreign keys** — `ORDER_RECORD`/`PAYMENT`/`REFUND` reference `merchant_id` as a plain
+  UUID, because a real FK can't span two databases and would have to be torn out at split time anyway.
+- **Shared types isolated in `common`**, so what would become a shared library is already identifiable.
+
+Everything under **Target** below is the destination, not the current state, and not work in progress.
+
 ## Today
 
+- A **single Spring Boot application** — one deployable, one database, no service-to-service calls.
 - Base package `com.project.payflo`, organized by **domain**, not by technical layer — each domain owns
   its own `entity` (and eventually `service`/`repository`/`controller`) subpackages, anticipating the
-  microservices split below:
+  eventual microservices split below:
   - `common` — shared value types and enums used across domains (`BaseEntity`, `Money`, status/type enums).
   - `merchant` — merchant, API key, dashboard user, and customer entities.
   - `payment` — order, payment, refund, and payment-transition-log entities.
 - Only the JPA entity layer exists so far — no `repository`, `service`, or `controller` layers, no APIs.
   The app compiles and can create its schema, but there's nothing to call yet.
 - Standard Spring Boot layout otherwise (`src/main/java`, `src/main/resources`, `src/test/java`).
-- It is a **single Spring Boot application**, not yet multiple services.
 
 ## Target
 
-The intended end-state architecture. None of this is built yet — it's the shape the current package
-layout and no-cross-domain-FK convention are designed to make possible later.
+The **phase-two** architecture, to be built only after the monolith is complete. None of this exists
+yet — no gateway, no service discovery, no message broker, no per-service databases — and none of it is
+in progress. It's recorded here as the destination the conventions above are protecting the option to
+reach.
 
 ```mermaid
 flowchart LR
