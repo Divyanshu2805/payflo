@@ -16,6 +16,12 @@ Spring Boot app. Follow this convention for new domains rather than the original
 `controller`/`service`/`repository` split. `OrderRecord`/`Payment`/`Refund` deliberately store
 `merchantId` as a plain UUID with no JPA relationship to `Merchant`, for the same reason.
 
+Domain vocabulary lives in `common/enums` (10 enums) and is the source of truth for every status,
+role, and event value — `PaymentStatus`/`PaymentEvent` in particular define the payment state machine.
+Read those before inventing a new status string; they're documented with both state-machine diagrams
+under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.md). Note the
+transitions are not yet enforced anywhere in code — the enums exist, the validation logic doesn't.
+
 `BaseEntity` wires Spring Data JPA auditing annotations (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`/
 `@LastModifiedBy`) but `@EnableJpaAuditing` and an `AuditorAware` bean don't exist yet, so `createdBy`/
 `updatedBy` currently always come back null — needs wiring up before relying on them.
@@ -48,20 +54,29 @@ Windows shell in this environment is PowerShell; use `mvnw.cmd`.
 ./mvnw.cmd spring-boot:run
 ```
 
+Tests need a running PostgreSQL — `PayFloApplicationTests.contextLoads` is a `@SpringBootTest` that
+boots the full context including the datasource. There is no H2 or Testcontainers fallback.
+
 ```bash
-./mvnw.cmd test
+./mvnw.cmd test -Duser.timezone=Asia/Kolkata
 ```
+
+**The `-Duser.timezone` flag is currently required.** A plain `./mvnw.cmd test` fails with
+`FATAL: invalid value for parameter "TimeZone": "Asia/Calcutta"` — the JVM sends the legacy zone name
+and the Postgres server rejects it. Verified: fails without the flag, passes with it. A permanent fix
+would be to pin the timezone in `pom.xml` (surefire `argLine`) or `application.yaml` rather than relying
+on the flag.
 
 Run a single test class:
 
 ```bash
-./mvnw.cmd test -Dtest=PayFloApplicationTests
+./mvnw.cmd test -Duser.timezone=Asia/Kolkata -Dtest=PayFloApplicationTests
 ```
 
 Run a single test method:
 
 ```bash
-./mvnw.cmd test -Dtest=PayFloApplicationTests#contextLoads
+./mvnw.cmd test -Duser.timezone=Asia/Kolkata -Dtest=PayFloApplicationTests#contextLoads
 ```
 
 Package (produces the runnable jar under `target/`):
@@ -92,8 +107,25 @@ commit, not as an afterthought:
 - `README.md` — tracked, pushed. GitHub-facing overview; update alongside feature or documentation
   additions.
 
+`docs/status.md` holds the **Project Status** table (what's built vs. not) carrying a
+"Last updated" date. Refresh that table and its date on every commit that changes what's actually
+built — it's the first thing anyone reads to orient, so a stale one is worse than none.
+
 Commit messages for this repo are a single line in semantic-commit format (`type: description`, e.g.
 `feat:`, `fix:`, `docs:`, `chore:`), and never mention Claude/AI or add a Co-Authored-By trailer.
+
+## Entity conventions
+
+- Every entity extends `BaseEntity`, uses `@GeneratedValue(strategy = GenerationType.UUID)` for its id,
+  and carries `@Getter @Setter @AllArgsConstructor @NoArgsConstructor @Builder`.
+- **Any field with a default value needs `@Builder.Default`.** Without it Lombok silently discards the
+  initializer and the builder yields `null` — on a `nullable = false` column that surfaces only as a
+  constraint violation at insert. This bit three entities already; the compiler warns, so don't ignore
+  build warnings.
+- Enums are always `@Enumerated(EnumType.STRING)` with an explicit `length` on the column.
+- Money uses the `Money` embeddable (`long` smallest-unit amount + currency), not a bare numeric column.
+- Cross-domain references (`merchantId` on payment-domain entities) are plain UUIDs with no
+  `@ManyToOne` — see "Project state".
 
 ## Notes for future structure
 

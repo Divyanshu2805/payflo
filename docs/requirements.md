@@ -2,10 +2,9 @@
 
 [← Back to docs index](README.md)
 
-Design target for the system — a plan, not a contract: items here may be dropped or deferred once actual
-implementation starts. Implementation has begun (see Entities below for what's actually built); this
-section describes intent and hasn't been individually checked off per item yet. See "Known gaps vs.
-requirements" under Entities for specific deviations found so far.
+The design target — a plan, not a contract; items may be dropped or deferred as implementation proceeds.
+Nothing here has been individually checked off yet. See [Known gaps](gaps.md)
+for deviations found so far.
 
 ## Functional
 
