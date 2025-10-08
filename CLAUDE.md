@@ -128,6 +128,7 @@ Which file in `docs/` a change belongs in:
 - New pattern or cross-cutting convention → `docs/practices.md`
 - Structural or deployment change → `docs/architecture.md`
 - New dependency or infrastructure piece → `docs/tech-stack.md`
+- New or changed build/run/test command → `docs/getting-started.md`
 - A gap vs. requirements found or resolved → `docs/gaps.md`
 - Anything that changes what's built → `docs/status.md` (see below)
 
