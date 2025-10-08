@@ -37,7 +37,6 @@ public class Refund extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
     private RefundStatus status = RefundStatus.PENDING;
 
     @Column(length = 100)
