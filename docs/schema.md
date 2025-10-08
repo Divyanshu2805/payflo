@@ -2,13 +2,13 @@
 
 [← Back to docs index](README.md)
 
-8 of 15 entities are now implemented as JPA entities (no repositories/services/controllers yet — just
-the persistence layer). The other 7 remain design-only, unchanged from the original plan.
+9 of 15 entities are now implemented as JPA entities (no repositories/services/controllers yet — just
+the persistence layer). The other 6 remain design-only, unchanged from the original plan.
 
-- **Implemented:** `MERCHANT`, `API_KEY`, `APP_USER`, `CUSTOMER`, `ORDER_RECORD`, `PAYMENT`, `REFUND`,
-  `PAYMENT_TRANSITION_LOG`
-- **Planned, not yet built:** `MERCHANT_WEBHOOK_CONFIG`, `VAULT_CARD`, `CARD_TOKEN`, `WEBHOOK_EVENT`,
-  `DLQ_EVENT`, `SETTLEMENT`, `SETTLEMENT_PAYMENT`
+- **Implemented:** `MERCHANT`, `API_KEY`, `APP_USER`, `MERCHANT_WEBHOOK_CONFIG`, `CUSTOMER`,
+  `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`
+- **Planned, not yet built:** `VAULT_CARD`, `CARD_TOKEN`, `WEBHOOK_EVENT`, `DLQ_EVENT`, `SETTLEMENT`,
+  `SETTLEMENT_PAYMENT`
 
 ## Entity Relationship Diagram (v2)
 
@@ -69,10 +69,13 @@ erDiagram
         UUID id PK
         UUID merchant_id FK
         string target_url
-        string event_type_filter
-        boolean enabled
         string webhook_secret
+        boolean enabled
+        string event_types
         datetime created_at
+        datetime updated_at
+        string created_by
+        string updated_by
     }
 
     CUSTOMER {
@@ -311,8 +314,6 @@ A human user with dashboard login access, belonging to one merchant.
 
 ### MERCHANT_WEBHOOK_CONFIG
 
-_Planned, not yet implemented._
-
 Per-merchant configuration of where and what webhook events get sent.
 
 | Field | Meaning |
@@ -320,10 +321,10 @@ Per-merchant configuration of where and what webhook events get sent.
 | `id` | Primary key. |
 | `merchant_id` | Owning merchant. |
 | `target_url` | The merchant's endpoint that PayFlo calls on events. |
-| `event_type_filter` | Which event types this config should receive, so a merchant isn't sent events it doesn't care about. |
-| `enabled` | Whether delivery to this endpoint is currently active. |
 | `webhook_secret` | Secret used to HMAC-sign payloads sent to this URL, so the merchant can verify authenticity. |
-| `created_at` | When the config was created. |
+| `enabled` | Whether delivery to this endpoint is currently active. |
+| `event_types` | Comma-separated list of event types this config subscribes to. |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
 
 ### CUSTOMER
 
