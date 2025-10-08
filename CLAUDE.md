@@ -120,6 +120,17 @@ commit, not as an afterthought:
 - `README.md` — tracked, pushed. GitHub-facing overview; update alongside feature or documentation
   additions.
 
+Which file in `docs/` a change belongs in:
+
+- New or changed endpoint → `docs/api.md`
+- New or changed entity or field → `docs/schema.md`
+- New enum value or state transition → `docs/domain-vocabulary.md`
+- New pattern or cross-cutting convention → `docs/practices.md`
+- Structural or deployment change → `docs/architecture.md`
+- New dependency or infrastructure piece → `docs/tech-stack.md`
+- A gap vs. requirements found or resolved → `docs/gaps.md`
+- Anything that changes what's built → `docs/status.md` (see below)
+
 `docs/status.md` holds the **Project Status** table (what's built vs. not) carrying a
 "Last updated" date. Refresh that table and its date on every commit that changes what's actually
 built — it's the first thing anyone reads to orient, so a stale one is worse than none.
