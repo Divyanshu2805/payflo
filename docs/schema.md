@@ -2,13 +2,12 @@
 
 [← Back to docs index](README.md)
 
-9 of 15 entities are now implemented as JPA entities (no repositories/services/controllers yet — just
-the persistence layer). The other 6 remain design-only, unchanged from the original plan.
+11 of 15 entities are now implemented as JPA entities (no repositories/services/controllers yet — just
+the persistence layer). The other 4 remain design-only, unchanged from the original plan.
 
 - **Implemented:** `MERCHANT`, `API_KEY`, `APP_USER`, `MERCHANT_WEBHOOK_CONFIG`, `CUSTOMER`,
-  `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`
-- **Planned, not yet built:** `VAULT_CARD`, `CARD_TOKEN`, `WEBHOOK_EVENT`, `DLQ_EVENT`, `SETTLEMENT`,
-  `SETTLEMENT_PAYMENT`
+  `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`, `VAULT_CARD`, `CARD_TOKEN`
+- **Planned, not yet built:** `WEBHOOK_EVENT`, `DLQ_EVENT`, `SETTLEMENT`, `SETTLEMENT_PAYMENT`
 
 ## Entity Relationship Diagram (v2)
 
@@ -167,25 +166,32 @@ erDiagram
 
     VAULT_CARD {
         UUID id PK
+        string last_four
+        string bin
         bytes encrypted_pan
         bytes encrypted_dek
-        string last_four
         string brand
-        string bin
-        int expiry_month
-        int expiry_year
+        string expiry_month
+        string expiry_year
+        string card_holder_name
+        datetime deleted_at
         datetime created_at
         datetime updated_at
+        string created_by
+        string updated_by
     }
 
     CARD_TOKEN {
         UUID id PK
         string token UK
         UUID vault_card_id FK
-        UUID customer_id FK
-        UUID merchant_id FK
+        UUID customer "no FK - cross-service boundary"
+        UUID merchant "no FK - cross-service boundary"
+        datetime revoked_at
         datetime created_at
         datetime updated_at
+        string created_by
+        string updated_by
     }
 
     WEBHOOK_EVENT {
@@ -424,24 +430,22 @@ overwritten on the `PAYMENT` row itself.
 
 ### VAULT_CARD
 
-_Planned, not yet implemented._
-
 Encrypted card data at rest. Never exposed directly — always accessed indirectly via a `CARD_TOKEN`.
 
 | Field | Meaning |
 |---|---|
 | `id` | Primary key. |
+| `last_four` | Last 4 digits of the card — safe to display without decrypting anything. |
+| `bin` | Bank Identification Number (first 6 digits) — identifies the issuing bank/card type. |
 | `encrypted_pan` | The full card number, encrypted — never stored or read in plain text. |
 | `encrypted_dek` | The Data Encryption Key used to encrypt the PAN, itself encrypted (envelope encryption — each card gets its own key, and that key is protected by a master key, limiting the damage if one key is ever compromised). |
-| `last_four` | Last 4 digits of the card — safe to display without decrypting anything. |
-| `brand` | Card network (Visa, Mastercard, etc.). |
-| `bin` | Bank Identification Number (first 6–8 digits) — identifies the issuing bank/card type. |
-| `expiry_month` / `expiry_year` | Card expiry. |
-| `created_at` / `updated_at` | Record lifecycle timestamps. |
+| `brand` | Card network — one of `CardBrand` (`VISA`, `MASTERCARD`, `RUPAY`, `AMEX`). |
+| `expiry_month` / `expiry_year` | Card expiry, stored as strings. |
+| `card_holder_name` | Name on the card. |
+| `deleted_at` | Soft-delete timestamp. |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
 
 ### CARD_TOKEN
-
-_Planned, not yet implemented._
 
 The opaque, safe-to-reference token that stands in for a vaulted card.
 
@@ -449,10 +453,11 @@ The opaque, safe-to-reference token that stands in for a vaulted card.
 |---|---|
 | `id` | Primary key. |
 | `token` | The opaque value merchants/customers actually reference instead of the real card. |
-| `vault_card_id` | Links back to the actual encrypted card data. |
-| `customer_id` | Which customer this token belongs to. |
-| `merchant_id` | Owning merchant — scoping so one merchant can't use another merchant's customer's token. |
-| `created_at` / `updated_at` | Record lifecycle timestamps. |
+| `vault_card_id` | Links back to the actual encrypted card data (`@ManyToOne` to `VAULT_CARD`). |
+| `customer` | Which customer this token belongs to — plain UUID, no FK (cross-service boundary). |
+| `merchant` | Owning merchant — plain UUID, no FK (cross-service boundary). |
+| `revoked_at` | When this token was revoked, if it has been. |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
 
 ### WEBHOOK_EVENT
 

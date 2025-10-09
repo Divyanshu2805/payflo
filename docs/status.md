@@ -11,8 +11,8 @@ the microservices split is a deliberate later phase. See
 | Area | Status |
 |---|---|
 | Architecture | Monolith (phase 1) — single app, single database |
-| Domain entities | 9 of 15 built — persistence layer only |
-| Domain enums | Complete for the merchant and payment domains |
+| Domain entities | 11 of 15 built — persistence layer only |
+| Domain enums | Complete for the merchant, payment, and vault domains |
 | Repositories | Not started |
 | Services / business logic | Not started |
 | REST APIs | Not started |
