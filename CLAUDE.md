@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-9 of 15 planned entities are implemented (`common/entity`, `common/enums`, `merchant/entity`,
-`payment/entity`) — but there is still no `repository`, `service`, or `controller` layer. The app
+11 of 15 planned entities are implemented (`common/entity`, `common/enums`, `merchant/entity`,
+`payment/entity`, `vault/entity`) — but there is still no `repository`, `service`, or `controller`
+layer. The app
 compiles and can create its schema, but exposes no APIs yet. Treat any described "architecture" as what
 you find as you build it, not an established convention to preserve.
 
@@ -22,14 +23,15 @@ take the monolith answer and note the future-split implication in a line rather 
 
 Package layout is domain-oriented, not layered-by-technical-role — `common` (shared `BaseEntity`,
 `Money`, enums), `merchant` (Merchant, ApiKey, AppUser, Customer, MerchantWebhookConfig), `payment`
-(OrderRecord, Payment, Refund, PaymentTransitionLog). These are the conventions that keep the eventual
-split cheap, and they should keep being honoured: domain packages over layer packages, shared types in
-`common`, and `OrderRecord`/`Payment`/`Refund` storing `merchantId` as a plain UUID with no JPA
-relationship to `Merchant` (a real FK can't span two databases, so it would have to be removed at split
-time anyway). Follow this convention for new domains rather than the originally-sketched
+(OrderRecord, Payment, Refund, PaymentTransitionLog), `vault` (VaultCard, CardToken). These are the
+conventions that keep the eventual split cheap, and they should keep being honoured: domain packages
+over layer packages, shared types in `common`, and `OrderRecord`/`Payment`/`Refund`/`CardToken` storing
+cross-domain references (e.g. `merchantId`) as a plain UUID with no JPA relationship to the owning
+entity (a real FK can't span two databases, so it would have to be removed at split time anyway).
+Follow this convention for new domains rather than the originally-sketched
 `controller`/`service`/`repository` split.
 
-Domain vocabulary lives in `common/enums` (10 enums) and is the source of truth for every status,
+Domain vocabulary lives in `common/enums` (11 enums) and is the source of truth for every status,
 role, and event value — `PaymentStatus`/`PaymentEvent` in particular define the payment state machine.
 Read those before inventing a new status string; they're documented with both state-machine diagrams
 under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.md). Note the
@@ -149,8 +151,8 @@ Commit messages for this repo are a single line in semantic-commit format (`type
   build warnings.
 - Enums are always `@Enumerated(EnumType.STRING)` with an explicit `length` on the column.
 - Money uses the `Money` embeddable (`long` smallest-unit amount + currency), not a bare numeric column.
-- Cross-domain references (`merchantId` on payment-domain entities) are plain UUIDs with no
-  `@ManyToOne` — see "Project state".
+- Cross-domain references (`merchantId` on payment-domain entities, `customer`/`merchant` on
+  `CardToken`) are plain UUIDs with no `@ManyToOne` — see "Project state".
 
 ## Notes for future structure
 
