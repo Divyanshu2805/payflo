@@ -19,6 +19,7 @@ ordinals — so reordering an enum can't silently corrupt existing rows.
 | `RefundStatus` | `PENDING`, `PROCESSING`, `PROCESSED`, `FAILED` | `Refund.status` |
 | `CardBrand` | `VISA`, `MASTERCARD`, `RUPAY`, `AMEX` | `VaultCard.brand` |
 | `SettlementStatus` | `INITIATED`, `PROCESSED`, `FAILED` | `Settlement.status` |
+| `WebhookEventStatus` | `PENDING`, `DELIVERED`, `FAILED`, `DEAD` | `WebhookEvent.status` |
 
 ## Payment state machine
 

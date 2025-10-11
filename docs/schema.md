@@ -2,13 +2,12 @@
 
 [← Back to docs index](README.md)
 
-13 of 15 entities are now implemented as JPA entities (no repositories/services/controllers yet — just
-the persistence layer). The other 2 remain design-only, unchanged from the original plan.
+All 15 planned entities are now implemented as JPA entities (no repositories/services/controllers
+yet — just the persistence layer).
 
 - **Implemented:** `MERCHANT`, `API_KEY`, `APP_USER`, `MERCHANT_WEBHOOK_CONFIG`, `CUSTOMER`,
   `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`, `VAULT_CARD`, `CARD_TOKEN`,
-  `SETTLEMENT`, `SETTLEMENT_PAYMENT`
-- **Planned, not yet built:** `WEBHOOK_EVENT`, `DLQ_EVENT`
+  `SETTLEMENT`, `SETTLEMENT_PAYMENT`, `WEBHOOK_EVENT`, `DLQ_EVENT`
 
 ## Entity Relationship Diagram (v2)
 
@@ -197,26 +196,36 @@ erDiagram
 
     WEBHOOK_EVENT {
         UUID id PK
-        UUID merchant_id FK
+        UUID merchant_id "no FK - cross-service boundary"
         string event_type
         jsonb payload
         string target_url
+        string signature
         string status
         int attempts
-        int last_response_code
         datetime next_retry_at
-        datetime last_retry_at
-        datetime created_at
+        datetime last_attempt_at
+        int last_response_code
+        string last_response_body
         datetime delivered_at
+        datetime created_at
+        datetime updated_at
+        string created_by
+        string updated_by
     }
 
     DLQ_EVENT {
         UUID id PK
+        UUID merchant_id "no FK - cross-service boundary"
         UUID webhook_event_id FK
-        UUID merchant_id FK
         string final_error
+        jsonb payload
         datetime moved_at
         datetime replayed_at
+        datetime created_at
+        datetime updated_at
+        string created_by
+        string updated_by
     }
 
     SETTLEMENT {
@@ -473,39 +482,44 @@ The opaque, safe-to-reference token that stands in for a vaulted card.
 
 ### WEBHOOK_EVENT
 
-_Planned, not yet implemented._
-
 A single outbound webhook delivery attempt (and its retry bookkeeping).
 
 | Field | Meaning |
 |---|---|
 | `id` | Primary key. |
-| `merchant_id` | Owning merchant. |
+| `merchant_id` | Owning merchant — plain UUID, no FK (cross-service boundary). |
 | `event_type` | What happened, e.g. `payment.captured`, `refund.processed`. |
 | `payload` | The actual event data sent to the merchant (JSON). |
 | `target_url` | Where it was sent — copied from the webhook config at send time, so later config changes don't rewrite history. |
-| `status` | Delivery status (pending, delivered, failed, dead-lettered). |
+| `signature` | HMAC signature sent with the payload, so the merchant can verify authenticity. |
+| `status` | Delivery status — one of `WebhookEventStatus` (`PENDING`, `DELIVERED`, `FAILED`, `DEAD`). |
 | `attempts` | How many delivery attempts have been made so far. |
-| `last_response_code` | HTTP status code returned by the merchant's endpoint on the last attempt. |
 | `next_retry_at` | When the next retry is scheduled. |
-| `last_retry_at` | When the last retry happened. |
-| `created_at` | When the event was created. |
+| `last_attempt_at` | When the last delivery attempt happened. |
+| `last_response_code` | HTTP status code returned by the merchant's endpoint on the last attempt. |
+| `last_response_body` | Response body from the merchant's endpoint on the last attempt, kept for debugging. |
 | `delivered_at` | When it was successfully delivered, if it was. |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
+
+> Diverges from the v1 design: adds `signature` and `last_response_body`; `last_retry_at` renamed to
+> `last_attempt_at`.
 
 ### DLQ_EVENT
-
-_Planned, not yet implemented._
 
 A webhook event that exhausted its retries and was dead-lettered.
 
 | Field | Meaning |
 |---|---|
 | `id` | Primary key. |
-| `webhook_event_id` | The webhook event that exhausted its retries. |
-| `merchant_id` | Owning merchant. |
+| `merchant_id` | Owning merchant — plain UUID, no FK (cross-service boundary). |
+| `webhook_event_id` | The webhook event that exhausted its retries — `@OneToOne` to `WEBHOOK_EVENT`. |
 | `final_error` | The error recorded on the last failed attempt, kept for debugging. |
+| `payload` | The event payload preserved at the point it was dead-lettered. |
 | `moved_at` | When it was moved into the DLQ. |
 | `replayed_at` | When (if) it was manually replayed. |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
+
+> Diverges from the v1 design: adds `payload` (the preserved event data).
 
 ### SETTLEMENT
 
