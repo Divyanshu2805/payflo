@@ -17,8 +17,9 @@ independently.
 So the split is being *prepared for* without being *paid for* yet — through three conventions held from
 day one:
 
-- **Domain-oriented packages** (`common`, `merchant`, `payment`, `vault`) rather than layer-oriented
-  ones (`controller`, `service`, `repository`), so each domain is a candidate service boundary already.
+- **Domain-oriented packages** (`common`, `merchant`, `payment`, `vault`, `operations`) rather than
+  layer-oriented ones (`controller`, `service`, `repository`), so each domain is a candidate service
+  boundary already.
 - **No cross-domain foreign keys** — `ORDER_RECORD`/`PAYMENT`/`REFUND` reference `merchant_id` as a plain
   UUID, because a real FK can't span two databases and would have to be torn out at split time anyway.
 - **Shared types isolated in `common`**, so what would become a shared library is already identifiable.
