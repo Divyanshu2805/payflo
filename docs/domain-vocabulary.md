@@ -18,6 +18,7 @@ ordinals — so reordering an enum can't silently corrupt existing rows.
 | `PaymentActor` | `CUSTOMER`, `MERCHANT`, `SYSTEM` | `PaymentTransitionLog.actor` |
 | `RefundStatus` | `PENDING`, `PROCESSING`, `PROCESSED`, `FAILED` | `Refund.status` |
 | `CardBrand` | `VISA`, `MASTERCARD`, `RUPAY`, `AMEX` | `VaultCard.brand` |
+| `SettlementStatus` | `INITIATED`, `PROCESSED`, `FAILED` | `Settlement.status` |
 
 ## Payment state machine
 

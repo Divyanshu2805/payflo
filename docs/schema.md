@@ -2,12 +2,13 @@
 
 [← Back to docs index](README.md)
 
-11 of 15 entities are now implemented as JPA entities (no repositories/services/controllers yet — just
-the persistence layer). The other 4 remain design-only, unchanged from the original plan.
+13 of 15 entities are now implemented as JPA entities (no repositories/services/controllers yet — just
+the persistence layer). The other 2 remain design-only, unchanged from the original plan.
 
 - **Implemented:** `MERCHANT`, `API_KEY`, `APP_USER`, `MERCHANT_WEBHOOK_CONFIG`, `CUSTOMER`,
-  `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`, `VAULT_CARD`, `CARD_TOKEN`
-- **Planned, not yet built:** `WEBHOOK_EVENT`, `DLQ_EVENT`, `SETTLEMENT`, `SETTLEMENT_PAYMENT`
+  `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`, `VAULT_CARD`, `CARD_TOKEN`,
+  `SETTLEMENT`, `SETTLEMENT_PAYMENT`
+- **Planned, not yet built:** `WEBHOOK_EVENT`, `DLQ_EVENT`
 
 ## Entity Relationship Diagram (v2)
 
@@ -220,22 +221,33 @@ erDiagram
 
     SETTLEMENT {
         UUID id PK
-        UUID merchant_id FK
+        UUID merchant_id "no FK - cross-service boundary"
         long gross_amount_units
+        string gross_amount_currency
         long refund_amount_units
+        string refund_amount_currency
         long fee_amount_units
+        string fee_amount_currency
         long gst_amount_units
+        string gst_amount_currency
         long net_amount_units
-        string currency
+        string net_amount_currency
         string status
         string bank_reference
         datetime processed_at
         datetime created_at
+        datetime updated_at
+        string created_by
+        string updated_by
     }
 
     SETTLEMENT_PAYMENT {
         UUID settlement_id PK, FK
-        UUID payment_id PK, FK
+        UUID payment_id PK "no FK - cross-service boundary"
+        datetime created_at
+        datetime updated_at
+        string created_by
+        string updated_by
     }
 
     MERCHANT ||--o{ API_KEY : has
@@ -497,31 +509,26 @@ A webhook event that exhausted its retries and was dead-lettered.
 
 ### SETTLEMENT
 
-_Planned, not yet implemented._
-
 A payout batch to a merchant's bank account.
 
 | Field | Meaning |
 |---|---|
 | `id` | Primary key. |
-| `merchant_id` | Owning merchant. |
-| `gross_amount_units` | Total payment amount before any deductions. |
-| `refund_amount_units` | Refunds deducted in this settlement. |
-| `fee_amount_units` | Platform fee deducted. |
-| `gst_amount_units` | Tax deducted. |
-| `net_amount_units` | What's actually paid out: gross − refunds − fee − GST. |
-| `currency` | Currency for all five amounts above. |
-| `status` | Settlement batch status. |
+| `merchant_id` | Owning merchant — plain UUID, no FK (cross-service boundary). |
+| `gross_amount_units` / `gross_amount_currency` | Total payment amount before any deductions. |
+| `refund_amount_units` / `refund_amount_currency` | Refunds deducted in this settlement. |
+| `fee_amount_units` / `fee_amount_currency` | Platform fee deducted. |
+| `gst_amount_units` / `gst_amount_currency` | Tax deducted. |
+| `net_amount_units` / `net_amount_currency` | What's actually paid out: gross − refunds − fee − GST. |
+| `status` | Settlement batch status — one of `SettlementStatus` (`INITIATED`, `PROCESSED`, `FAILED`). |
 | `bank_reference` | Reference from the (mock) bank transfer. |
 | `processed_at` | When the payout was processed. |
-| `created_at` | When the settlement batch was created. |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
 
-> Unlike other entities, this holds five amounts that always share one currency, so it carries a single
-> `currency` column alongside five `_units` values rather than five separate embedded `Money` values.
+> Diverges from the v1 design: each of the five amounts is a separate embedded `Money` (its own
+> `_units` + `_currency` column pair) rather than one amount set sharing a single `currency` column.
 
 ### SETTLEMENT_PAYMENT
-
-_Planned, not yet implemented._
 
 Join table linking a settlement batch to the individual payments it includes — this is what makes a
 payout traceable back to the exact payments it covers (the audit trail mentioned under Settlement
@@ -529,5 +536,6 @@ requirements).
 
 | Field | Meaning |
 |---|---|
-| `settlement_id` | Part of the composite primary key; the settlement batch. |
-| `payment_id` | Part of the composite primary key; a payment included in that batch. |
+| `settlement_id` | Part of the composite primary key (`SettlementPaymentId`); the settlement batch, `@ManyToOne` to `SETTLEMENT`. |
+| `payment_id` | Part of the composite primary key; a payment included in that batch — plain UUID, no FK (cross-service boundary). |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
