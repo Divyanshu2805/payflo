@@ -5,9 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project state
 
 All 15 planned entities are now implemented (`common/entity`, `common/enums`, `merchant/entity`,
-`payment/entity`, `vault/entity`, `operations/entity`) — but there is still no `repository`, `service`,
-or `controller` layer. The app compiles and can create its schema, but exposes no APIs yet. Treat any
-described "architecture" as what you find as you build it, not an established convention to preserve.
+`payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now also has a first
+`repository`/`service`/`controller` slice (merchant signup — see "Service/controller layer
+conventions"); the other domains still have none of that layer yet. Treat any described
+"architecture" as what you find as you build it, not an established convention to preserve.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
@@ -109,6 +110,12 @@ Package (produces the runnable jar under `target/`):
   schema on every restart — fine for local dev, must not ship as-is
 - `lombok` — annotation processor is wired into both compile and test-compile executions of
   `maven-compiler-plugin` in `pom.xml`; new modules using Lombok don't need extra Maven config
+- `mapstruct` (+ `lombok-mapstruct-binding` so Lombok- and MapStruct-generated code compose
+  correctly) — entity↔DTO mapping; processor version is pinned via the shared
+  `${org.mapstruct.version}` property, wired into the same two `maven-compiler-plugin` executions
+  as Lombok
+- `spring-boot-starter-validation` — Jakarta Bean Validation (`@NotNull`, `@Email`, `@Size`, etc.)
+  on request DTOs, enforced via `@Valid` on controller method parameters
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
@@ -155,11 +162,33 @@ Commit messages for this repo are a single line in semantic-commit format (`type
   `CardToken`, `merchantId` on `Settlement`/`WebhookEvent`/`DlqEvent`, `paymentId` on
   `SettlementPaymentId`) are plain UUIDs with no `@ManyToOne` — see "Project state".
 
+## Service/controller layer conventions
+
+Established by the `merchant` domain's signup slice — follow this pattern for new endpoints rather
+than inventing a different shape per domain:
+
+- Request/response DTOs are Java `record`s in `<domain>/dto/request` / `<domain>/dto/response`;
+  Jakarta Validation annotations (`@NotNull`, `@Email`, `@Size`, with a `message`) live directly on
+  the request record's fields, enforced via `@Valid` on the controller's `@RequestBody` parameter.
+- Entity↔DTO mapping goes through a MapStruct interface in `<domain>/mapper`
+  (`@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)`), not hand-written mapping
+  code. **Read the compiler's "Unmapped target property" warnings** — a source/target field name
+  mismatch (e.g. entity `status` vs. DTO `merchantStatus`) is silently left `null` unless given an
+  explicit `@Mapping(source = ..., target = ...)`. This already bit the first mapper written.
+- Repositories are plain `JpaRepository<Entity, UUID>` interfaces in `<domain>/repository`, using
+  derived query methods (`existsByEmail`, `findByEmail`) rather than `@Query`.
+- Service layer is an interface in `<domain>/service` plus an implementation in
+  `<domain>/service/impl`, constructor-injected via Lombok `@RequiredArgsConstructor`, with
+  business methods wrapped in `@Transactional`.
+- Controllers live in `<domain>/controller`, routes versioned under `/v1/...`, constructor-injected
+  the same way as services.
+
 ## Notes for future structure
 
 - Package layout is domain-oriented (see "Project state" above) — new domains get their own top-level
-  package under `com.project.payflo`, with their own `entity` subpackage (and `service`/`repository`/
-  `controller` as those get introduced); shared types go in `common`.
+  package under `com.project.payflo`, with their own `entity` subpackage and, once endpoints are
+  needed, `repository`/`service`/`service.impl`/`controller`/`dto`/`mapper` subpackages matching the
+  `merchant` domain's pattern above; shared types go in `common`.
 - `pom.xml` deliberately blanks out `<name>`, `<description>`, `<url>`, `<licenses>`, `<developers>`,
   and `<scm>` to override inheritance from `spring-boot-starter-parent` (see `HELP.md`) — this is
   intentional, not an oversight.

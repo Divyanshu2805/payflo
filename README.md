@@ -22,7 +22,7 @@ functional and non-functional requirements in [docs/requirements.md](docs/requir
 - Java 25
 - Spring Boot 4.1.0 (Spring MVC, Spring Data JPA)
 - PostgreSQL
-- Lombok
+- Lombok, MapStruct, Jakarta Bean Validation
 - Maven
 
 ## Getting Started
@@ -49,7 +49,8 @@ inside one codebase and expensive to move once they're network calls, so they're
 the package layout and the no-cross-domain-foreign-key convention exist to keep that later split cheap.
 
 Domain model (see the Entity Relationship Diagram in [docs/schema.md](docs/schema.md)) is
-fully implemented as JPA entities. Repositories, services, and APIs are not started yet.
+fully implemented as JPA entities. A first API endpoint (merchant signup) now exists; the rest of the
+repository/service/API layer is still to come.
 
 ## Documentation
 
