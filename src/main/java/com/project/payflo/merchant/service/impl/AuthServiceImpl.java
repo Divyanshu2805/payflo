@@ -2,6 +2,7 @@ package com.project.payflo.merchant.service.impl;
 
 import com.project.payflo.common.enums.MerchantStatus;
 import com.project.payflo.common.enums.UserRole;
+import com.project.payflo.common.exception.DuplicateResourceException;
 import com.project.payflo.merchant.dto.request.MerchantSignupRequest;
 import com.project.payflo.merchant.dto.response.MerchantResponse;
 import com.project.payflo.merchant.entity.AppUser;
@@ -28,7 +29,8 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public MerchantResponse signup(MerchantSignupRequest request) {
         if (merchantRepository.existsByEmail(request.email())) {
-            throw new RuntimeException("Merchant with email already exists: " + request.email());
+            throw new DuplicateResourceException("DUPLICATE_MERCHANT_EMAIL",
+                    "Merchant with email already exists: " + request.email());
         }
 
         Merchant merchant = merchantMapper.toEntityFromSignUpRequest(request);
