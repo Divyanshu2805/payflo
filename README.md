@@ -2,7 +2,7 @@
 
 PayFlo is a payment gateway — the piece that sits behind a "Pay Now" button on a website, so a
 business can take payments online, keep track of what was ordered and refunded, and get the money
-into their bank account on a schedule. Currently in early development.
+into their bank account on a schedule. Currently under active development.
 
 ## Features (planned)
 
