@@ -14,3 +14,8 @@
 - Money represented via a shared `Money` embeddable value type (`long` smallest-unit amount + currency, add/subtract with currency-mismatch checks) rather than a raw amount column.
 - Enums always persisted as strings (`@Enumerated(EnumType.STRING)`), never ordinals, so reordering an enum can't silently remap existing rows.
 - Semantic, one-line commit messages (`feat:`, `fix:`, `docs:`, `chore:`, etc.).
+- Service/controller layer (established by the merchant signup slice): request/response DTOs as
+  `record`s in `dto/request`/`dto/response` with Jakarta Validation annotations; entity↔DTO mapping
+  via a MapStruct interface in `mapper`; repositories as plain `JpaRepository` interfaces; service
+  interface + impl (`service`/`service.impl`) constructor-injected and `@Transactional`; controllers
+  under `/v1/...`.
