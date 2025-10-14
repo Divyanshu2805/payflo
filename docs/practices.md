@@ -19,3 +19,10 @@
   via a MapStruct interface in `mapper`; repositories as plain `JpaRepository` interfaces; service
   interface + impl (`service`/`service.impl`) constructor-injected and `@Transactional`; controllers
   under `/v1/...`.
+- Error handling: custom exceptions (`DuplicateResourceException`, `ResourceNotFoundException`) live
+  in `common/exception`, extend `RuntimeException`, and carry an `errorCode`. A single
+  `@RestControllerAdvice` (`GlobalExceptionHandler`, also in `common/exception`) maps them to the
+  right HTTP status (`409`/`404`) and a shared `ErrorResponse` record (`errorCode`,
+  `errorDescription`, `timestamp`, optional `fieldErrors`). Not yet wired up: a handler for
+  `MethodArgumentNotValidException` (Bean Validation failures) — `ErrorResponse.FieldError` exists
+  for this but nothing populates it yet.
