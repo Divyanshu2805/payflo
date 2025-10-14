@@ -22,7 +22,8 @@ now is premature. Where a design decision would go one way in a monolith and ano
 take the monolith answer and note the future-split implication in a line rather than building for it.
 
 Package layout is domain-oriented, not layered-by-technical-role — `common` (shared `BaseEntity`,
-`Money`, enums), `merchant` (Merchant, ApiKey, AppUser, Customer, MerchantWebhookConfig), `payment`
+`Money`, enums, exceptions, `util` — e.g. `RandomizerUtil` for `SecureRandom`-backed key/secret
+generation), `merchant` (Merchant, ApiKey, AppUser, Customer, MerchantWebhookConfig), `payment`
 (OrderRecord, Payment, Refund, PaymentTransitionLog), `vault` (VaultCard, CardToken), `operations`
 (Settlement, SettlementPayment, WebhookEvent, DlqEvent). These are the conventions that keep the
 eventual split cheap, and they should keep being honoured: domain packages over layer packages, shared

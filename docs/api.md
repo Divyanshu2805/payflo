@@ -24,3 +24,21 @@ Registers a new merchant and its first (`OWNER`) user in one call.
 Creates the `Merchant` (status forced to `PENDING_KYC`, ignoring any status sent by the caller —
 there isn't one, since `MerchantSignupRequest` has no status field) then the `AppUser`
 (`role = OWNER`), both in one `@Transactional` method.
+
+## `POST /v1/merchants/{merchantId}/api-keys`
+
+Generates a new API key for a merchant, returning the secret in plaintext exactly once.
+
+**Path parameter:** `merchantId` — the owning merchant's UUID.
+
+**Request body** (`CreateApiKeyRequest`): `environment` — one of `Environment` (`TEST`, `LIVE`).
+
+**Response** — `201 Created` with `ApiKeyCreateResponse`: `id`, `keyId` (format
+`pfx_<environment>_<24-byte random>`, e.g. `pfx_test_ab12...`), `keySecret` (the raw, show-once
+secret — see [Known gaps](gaps.md), stored unhashed), `environment`.
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`, via
+`GlobalExceptionHandler`) if `merchantId` doesn't exist. `keyId` and the raw secret are generated
+via `RandomizerUtil.randomBase64` (`SecureRandom`-backed, URL-safe Base64, no padding); the raw
+secret is written directly to `ApiKey.keySecretHash` with no hashing applied. No authorization
+check yet — any caller can generate a key for any `merchantId`.
