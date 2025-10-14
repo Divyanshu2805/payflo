@@ -14,5 +14,3 @@ dropped vs. still planned:
    `request.password()` straight into `AppUser.passwordHash` with no hashing. Flagged, not fixed yet;
    commit and push proceeded as-is at the user's explicit call (2025-10-10), pending a password-hashing
    dependency decision (`spring-security-crypto` vs. full `spring-boot-starter-security`).
-7. `AuthServiceImpl` throws a bare `RuntimeException` on duplicate-email signup — no custom exception
-   type or global `@ControllerAdvice`, so the client currently gets a `500` instead of a `409`.

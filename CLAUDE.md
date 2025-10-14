@@ -106,8 +106,9 @@ Package (produces the runnable jar under `target/`):
 - `spring-boot-starter-data-jpa` — JPA/Hibernate persistence
 - `spring-boot-starter-webmvc` — Spring MVC (web layer)
 - `postgresql` (runtime) — datasource is configured in `application.yaml` (Postgres on `localhost:9000`,
-  overridable via `DB_URL`/`DB_USER`/`DB_PASS` env vars). `ddl-auto: create` drops and recreates the
-  schema on every restart — fine for local dev, must not ship as-is
+  overridable via `DB_URL`/`DB_USER`/`DB_PASS` env vars). `ddl-auto: update` incrementally alters the
+  schema on restart instead of dropping it — still not a real migration tool (no version history,
+  no rollback), so don't treat it as a substitute for one once that's needed
 - `lombok` — annotation processor is wired into both compile and test-compile executions of
   `maven-compiler-plugin` in `pom.xml`; new modules using Lombok don't need extra Maven config
 - `mapstruct` (+ `lombok-mapstruct-binding` so Lombok- and MapStruct-generated code compose
@@ -182,6 +183,11 @@ than inventing a different shape per domain:
   business methods wrapped in `@Transactional`.
 - Controllers live in `<domain>/controller`, routes versioned under `/v1/...`, constructor-injected
   the same way as services.
+- Errors go through custom exceptions in `common/exception` (extend `RuntimeException`, carry an
+  `errorCode`) caught by the single `GlobalExceptionHandler` (`@RestControllerAdvice`, also in
+  `common/exception`), which maps each type to the right HTTP status and a shared `ErrorResponse`
+  record. Add a new exception type + handler method there rather than throwing a bare
+  `RuntimeException` from a service — that surfaces as an unhandled `500`, not a proper status code.
 
 ## Notes for future structure
 

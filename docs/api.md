@@ -19,7 +19,8 @@ Registers a new merchant and its first (`OWNER`) user in one call.
 **Response** — `201 Created` with `MerchantResponse`: `id`, `name`, `email`, `businessName`,
 `businessType`, `merchantStatus` (always `PENDING_KYC` on signup).
 
-**Behavior:** rejects with a `RuntimeException` (currently surfaces as `500`, not a proper `409`) if
-`email` already exists on a `Merchant`. Creates the `Merchant` (status forced to `PENDING_KYC`,
-ignoring any status sent by the caller — there isn't one, since `MerchantSignupRequest` has no
-status field) then the `AppUser` (`role = OWNER`), both in one `@Transactional` method.
+**Behavior:** rejects with `409 Conflict` (`DuplicateResourceException`, code
+`DUPLICATE_MERCHANT_EMAIL`, via `GlobalExceptionHandler`) if `email` already exists on a `Merchant`.
+Creates the `Merchant` (status forced to `PENDING_KYC`, ignoring any status sent by the caller —
+there isn't one, since `MerchantSignupRequest` has no status field) then the `AppUser`
+(`role = OWNER`), both in one `@Transactional` method.
