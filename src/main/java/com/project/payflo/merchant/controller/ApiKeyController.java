@@ -22,7 +22,7 @@ public class ApiKeyController {
 
     @PostMapping
     public ResponseEntity<ApiKeyCreateResponse> create(@PathVariable UUID merchantId,
-            @Valid @RequestBody CreateApiKeyRequest request) {
+                                                       @Valid @RequestBody CreateApiKeyRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(apiKeyService.create(merchantId, request));
     }
@@ -30,5 +30,12 @@ public class ApiKeyController {
     @GetMapping
     public ResponseEntity<List<ApiKeyResponse>> listByMerchant(@PathVariable UUID merchantId) {
         return ResponseEntity.ok(apiKeyService.listByMerchant(merchantId));
+    }
+
+    @DeleteMapping("/{keyId}")
+    public ResponseEntity<Void> revoke(@PathVariable UUID merchantId,
+                                       @PathVariable UUID keyId) {
+        apiKeyService.revoke(merchantId, keyId);
+        return ResponseEntity.noContent().build();
     }
 }

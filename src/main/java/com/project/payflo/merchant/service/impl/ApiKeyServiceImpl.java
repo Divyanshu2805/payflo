@@ -55,6 +55,16 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         return apiKeyMapper.toResponseList(apiKeyRepository.findByMerchant_Id(merchantId));
     }
 
+    @Override
+    @Transactional
+    public void revoke(UUID merchantId, UUID keyId) {
+        ApiKey key = apiKeyRepository.findById(keyId)
+                .filter(k -> k.getMerchant().getId().equals(merchantId))
+                .orElseThrow(() -> new ResourceNotFoundException("ApiKey", keyId));
+
+        key.setEnabled(false);
+    }
+
 }
 
 

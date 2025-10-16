@@ -12,4 +12,6 @@ public interface ApiKeyService {
     ApiKeyCreateResponse create(UUID merchantId, CreateApiKeyRequest request);
 
     List<ApiKeyResponse> listByMerchant(UUID merchantId);
+
+    void revoke(UUID merchantId, UUID keyId);
 }
