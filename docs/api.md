@@ -42,3 +42,16 @@ secret — see [Known gaps](gaps.md), stored unhashed), `environment`.
 via `RandomizerUtil.randomBase64` (`SecureRandom`-backed, URL-safe Base64, no padding); the raw
 secret is written directly to `ApiKey.keySecretHash` with no hashing applied. No authorization
 check yet — any caller can generate a key for any `merchantId`.
+
+## `GET /v1/merchants/{merchantId}/api-keys`
+
+Lists all API keys belonging to a merchant. Never returns the secret.
+
+**Path parameter:** `merchantId` — the owning merchant's UUID.
+
+**Response** — `200 OK` with a list of `ApiKeyResponse`: `id`, `keyId`, `environment`, `enabled`,
+`lastUsedAt`, `createdAt`.
+
+**Behavior:** does **not** validate that `merchantId` exists — an unknown `merchantId` returns an
+empty list (`200 OK`) rather than `404`, unlike the create endpoint. No authorization check yet,
+same as create.
