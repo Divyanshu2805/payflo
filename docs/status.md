@@ -15,7 +15,7 @@ the microservices split is a deliberate later phase. See
 | Domain enums | Complete for the merchant, payment, vault, and operations domains |
 | Repositories | Started — `AppUserRepository`, `MerchantRepository` (merchant domain only) |
 | Services / business logic | Started — `AuthService` (merchant signup only) |
-| REST APIs | 2 endpoints — `POST /v1/auth/signup`, `POST /v1/merchants/{merchantId}/api-keys` (see [APIs](api.md)) |
+| REST APIs | 3 endpoints — `POST /v1/auth/signup`, `POST` + `GET /v1/merchants/{merchantId}/api-keys` (see [APIs](api.md)) |
 | Auth (API key, JWT), rate limiting | API key generation started — no auth/JWT enforcement yet, and both signup and API key generation store their secret unhashed, see [Known gaps](gaps.md) |
 | Webhooks | Entities built — delivery, retry, and DLQ logic not started |
 | Analytics | Not started — no dedicated entity in the design |
