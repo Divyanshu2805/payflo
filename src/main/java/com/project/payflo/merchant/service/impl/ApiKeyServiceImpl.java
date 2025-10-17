@@ -1,5 +1,6 @@
 package com.project.payflo.merchant.service.impl;
 
+import com.project.payflo.common.exception.ConflictException;
 import com.project.payflo.common.exception.ResourceNotFoundException;
 import com.project.payflo.common.util.RandomizerUtil;
 import com.project.payflo.merchant.dto.request.CreateApiKeyRequest;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,6 +65,26 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                 .orElseThrow(() -> new ResourceNotFoundException("ApiKey", keyId));
 
         key.setEnabled(false);
+    }
+
+    @Override
+    @Transactional
+    public ApiKeyCreateResponse rotate(UUID merchantId, UUID keyId) {
+        ApiKey apiKey = apiKeyRepository.findById(keyId)
+                .filter(k -> k.getMerchant().getId().equals(merchantId))
+                .orElseThrow(() -> new ResourceNotFoundException("ApiKey", keyId));
+
+        if(!apiKey.isEnabled()) throw new ConflictException("API_KEY_DISABLED", "Cannot rotate a disabled key");
+
+        String newRawSecret = RandomizerUtil.randomBase64(40);
+        apiKey.setPreviousKeySecretHash(apiKey.getKeySecretHash());
+        apiKey.setKeySecretHash(newRawSecret);
+        apiKey.setRotatedAt(LocalDateTime.now());
+        apiKey.setGracePeriodExpiresAt(LocalDateTime.now().plusHours(24));
+        apiKey = apiKeyRepository.save(apiKey);
+
+        return new ApiKeyCreateResponse(apiKey.getId(), apiKey.getKeyId(),
+                newRawSecret, apiKey.getEnvironment());
     }
 
 }
