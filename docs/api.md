@@ -55,3 +55,16 @@ Lists all API keys belonging to a merchant. Never returns the secret.
 **Behavior:** does **not** validate that `merchantId` exists — an unknown `merchantId` returns an
 empty list (`200 OK`) rather than `404`, unlike the create endpoint. No authorization check yet,
 same as create.
+
+## `DELETE /v1/merchants/{merchantId}/api-keys/{keyId}`
+
+Revokes an API key. A soft revoke — sets `ApiKey.enabled = false`, doesn't delete the row (there's
+no dedicated `revoked_at` timestamp on `API_KEY`, unlike `CARD_TOKEN.revoked_at`).
+
+**Path parameters:** `merchantId`, `keyId`.
+
+**Response** — `204 No Content`.
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `keyId` doesn't exist
+*or* belongs to a different merchant than `merchantId` — the merchant-ownership check is enforced
+here, unlike list. No authorization check on the caller themselves yet.
