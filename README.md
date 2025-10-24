@@ -38,7 +38,7 @@ Requires JDK 25 and a PostgreSQL instance.
 ```
 
 ```bash
-./mvnw.cmd test
+./mvnw.cmd test -Duser.timezone=Asia/Kolkata
 ```
 
 ## Project Status
