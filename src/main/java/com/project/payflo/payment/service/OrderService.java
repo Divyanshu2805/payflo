@@ -6,4 +6,6 @@ import java.util.UUID;
 
 public interface OrderService {
     OrderResponse create(UUID merchantId, CreateOrderRequest request);
+
+    OrderResponse getById(UUID merchantId, UUID orderId);
 }

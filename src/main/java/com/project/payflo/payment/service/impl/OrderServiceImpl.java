@@ -2,6 +2,7 @@ package com.project.payflo.payment.service.impl;
 
 import com.project.payflo.common.enums.OrderStatus;
 import com.project.payflo.common.exception.DuplicateResourceException;
+import com.project.payflo.common.exception.ResourceNotFoundException;
 import com.project.payflo.payment.dto.request.CreateOrderRequest;
 import com.project.payflo.payment.dto.response.OrderResponse;
 import com.project.payflo.payment.entity.OrderRecord;
@@ -50,4 +51,10 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toResponse(order);
     }
 
+    @Override
+    public OrderResponse getById(UUID merchantId, UUID orderId) {
+        OrderRecord order = orderRepository.findByIdAndMerchantId(orderId, merchantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
+        return orderMapper.toResponse(order);
+    }
 }
