@@ -68,3 +68,20 @@ no dedicated `revoked_at` timestamp on `API_KEY`, unlike `CARD_TOKEN.revoked_at`
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `keyId` doesn't exist
 *or* belongs to a different merchant than `merchantId` — the merchant-ownership check is enforced
 here, unlike list. No authorization check on the caller themselves yet.
+
+## `POST /v1/merchants/{merchantId}/api-keys/{keyId}/rotate`
+
+Rotates an API key: generates a new secret, keeps the old one valid for a 24-hour grace period.
+
+**Path parameters:** `merchantId`, `keyId`.
+
+**Response** — `200 OK` with `ApiKeyCreateResponse`: `id`, `keyId` (unchanged), `keySecret` (the
+new raw secret, shown once — same unhashed-storage gap as create, see
+[Known gaps](gaps.md)), `environment`.
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `keyId` doesn't exist
+or belongs to a different merchant, and with `409 Conflict` (`ConflictException`, code
+`API_KEY_DISABLED`) if the key is currently disabled (revoked). On success: moves the current
+`keySecretHash` into `previousKeySecretHash`, sets a new `keySecretHash`, stamps `rotatedAt`, and
+sets `gracePeriodExpiresAt` to 24 hours from now (`ApiKey.isInGracePeriod()` uses this to accept
+the previous secret during the window). `keyId` itself doesn't change.
