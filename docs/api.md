@@ -85,3 +85,21 @@ or belongs to a different merchant, and with `409 Conflict` (`ConflictException`
 `keySecretHash` into `previousKeySecretHash`, sets a new `keySecretHash`, stamps `rotatedAt`, and
 sets `gracePeriodExpiresAt` to 24 hours from now (`ApiKey.isInGracePeriod()` uses this to accept
 the previous secret during the window). `keyId` itself doesn't change.
+
+## `POST /v1/orders`
+
+Creates an order — the first payment-domain endpoint. **`merchantId` is currently hardcoded** to a
+fixed test UUID in `OrderController` (a `private final UUID` field, not derived from any caller
+identity) since there's no auth yet; every order created through this endpoint belongs to that same
+merchant regardless of who calls it. See [Known gaps](gaps.md).
+
+**Request body** (`CreateOrderRequest`): `amount` (required, `Money`), `receipt` (optional, max 100
+chars, merchant's own order identifier), `notes` (optional, freeform JSON object), `expiresAt`
+(optional, defaults to `payment.order.default-order-expiry-minutes` — 30 — minutes from now).
+
+**Response** — `201 Created` with `OrderResponse`: `id`, `merchantId`, `receipt`, `amount`,
+`status` (always `CREATED` on creation), `attempts` (always `0`), `notes`, `expiresAt`,
+`createdAt`.
+
+**Behavior:** rejects with `409 Conflict` (`DuplicateResourceException`, code
+`ORDER_RECEIPT_DUPLICATE`) if `receipt` is non-null and already used by this merchant.

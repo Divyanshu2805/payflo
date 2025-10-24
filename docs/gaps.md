@@ -17,3 +17,6 @@ dropped vs. still planned:
    commit and push proceeded as-is at the user's explicit call (2025-10-10 for the password,
    2025-10-14/26 for the API key secret), pending one shared hashing-dependency decision
    (`spring-security-crypto` vs. full `spring-boot-starter-security`) to fix all of it together.
+7. **`POST /v1/orders` uses a hardcoded `merchantId`** — `OrderController` has a fixed test UUID as
+   an instance field instead of deriving the merchant from any caller identity, since there's no
+   auth yet. Every order created through this endpoint currently belongs to the same merchant.
