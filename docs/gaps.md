@@ -10,9 +10,10 @@ dropped vs. still planned:
 3. `CUSTOMER` has no `gst_id`.
 4. `PAYMENT` has no running `refunded_amount` total (derivable from `REFUND` rows instead).
 5. `PAYMENT_TRANSITION_LOG` has no `reason` field.
-6. **Secrets are stored unhashed in two places** — `AuthServiceImpl.signup` writes
-   `request.password()` straight into `AppUser.passwordHash`, and `ApiKeyServiceImpl.create` writes
-   the raw generated secret straight into `ApiKey.keySecretHash`. Neither is hashed. Flagged, not
-   fixed yet; commit and push proceeded as-is at the user's explicit call (2025-10-10 for the
-   password, 2025-10-14 for the API key secret), pending one shared hashing-dependency decision
-   (`spring-security-crypto` vs. full `spring-boot-starter-security`) to fix both together.
+6. **Secrets are stored unhashed in three places** — `AuthServiceImpl.signup` writes
+   `request.password()` straight into `AppUser.passwordHash`, and both
+   `ApiKeyServiceImpl.create`/`.rotate` write the raw generated secret straight into
+   `ApiKey.keySecretHash`/`previousKeySecretHash`. None of it is hashed. Flagged, not fixed yet;
+   commit and push proceeded as-is at the user's explicit call (2025-10-10 for the password,
+   2025-10-14/26 for the API key secret), pending one shared hashing-dependency decision
+   (`spring-security-crypto` vs. full `spring-boot-starter-security`) to fix all of it together.
