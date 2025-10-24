@@ -49,8 +49,9 @@ inside one codebase and expensive to move once they're network calls, so they're
 the package layout and the no-cross-domain-foreign-key convention exist to keep that later split cheap.
 
 Domain model (see the Entity Relationship Diagram in [docs/schema.md](docs/schema.md)) is
-fully implemented as JPA entities. A first slice of the API now exists (merchant signup, API key
-generation and listing); the rest of the repository/service/API layer is still to come.
+fully implemented as JPA entities. A first slice of the API now exists across two domains (merchant
+signup and API key management, order creation); the rest of the repository/service/API layer is
+still to come.
 
 ## Documentation
 

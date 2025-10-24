@@ -5,9 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project state
 
 All 15 planned entities are now implemented (`common/entity`, `common/enums`, `merchant/entity`,
-`payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now also has a first
-`repository`/`service`/`controller` slice (merchant signup — see "Service/controller layer
-conventions"); the other domains still have none of that layer yet. Treat any described
+`payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now has a
+`repository`/`service`/`controller` slice (signup, API key generate/list/revoke/rotate) and
+`payment` has a first one too (order creation) — see "Service/controller layer conventions"; the
+`vault` and `operations` domains still have none of that layer yet. Treat any described
 "architecture" as what you find as you build it, not an established convention to preserve.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
@@ -118,6 +119,9 @@ Package (produces the runnable jar under `target/`):
   as Lombok
 - `spring-boot-starter-validation` — Jakarta Bean Validation (`@NotNull`, `@Email`, `@Size`, etc.)
   on request DTOs, enforced via `@Valid` on controller method parameters
+- `jackson-databind` — declared explicitly, though `spring-boot-starter-webmvc` already pulls it in
+  transitively; no direct Jackson API usage in the codebase yet that would require the explicit
+  declaration
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
