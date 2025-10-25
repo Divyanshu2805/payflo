@@ -8,4 +8,6 @@ public interface OrderService {
     OrderResponse create(UUID merchantId, CreateOrderRequest request);
 
     OrderResponse getById(UUID merchantId, UUID orderId);
+
+    OrderResponse cancel(UUID merchantId, UUID orderId);
 }

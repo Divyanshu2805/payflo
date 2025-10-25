@@ -34,4 +34,9 @@ public class OrderController {
     public ResponseEntity<OrderResponse> getById(@PathVariable UUID orderId) {
         return ResponseEntity.ok(orderService.getById(merchantId, orderId));
     }
+
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<OrderResponse> cancel(@PathVariable UUID orderId) {
+        return ResponseEntity.ok(orderService.cancel(merchantId, orderId));
+    }
 }
