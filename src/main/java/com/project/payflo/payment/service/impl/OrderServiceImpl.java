@@ -1,6 +1,7 @@
 package com.project.payflo.payment.service.impl;
 
 import com.project.payflo.common.enums.OrderStatus;
+import com.project.payflo.common.exception.ConflictException;
 import com.project.payflo.common.exception.DuplicateResourceException;
 import com.project.payflo.common.exception.ResourceNotFoundException;
 import com.project.payflo.payment.dto.request.CreateOrderRequest;
@@ -55,6 +56,22 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse getById(UUID merchantId, UUID orderId) {
         OrderRecord order = orderRepository.findByIdAndMerchantId(orderId, merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
+        return orderMapper.toResponse(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse cancel(UUID merchantId, UUID orderId) {
+        OrderRecord order = orderRepository.findByIdAndMerchantId(orderId, merchantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
+
+        if(order.getOrderStatus() == OrderStatus.CANCELLED || order.getOrderStatus() == OrderStatus.PAID) {
+            throw new ConflictException("ORDER_CANNOT_CANCEL",
+                    "Cannot cancel order with status: "+order.getOrderStatus().name());
+        }
+
+        order.setOrderStatus(OrderStatus.CANCELLED);
+        order = orderRepository.save(order);
         return orderMapper.toResponse(order);
     }
 }
