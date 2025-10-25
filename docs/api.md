@@ -103,3 +103,16 @@ chars, merchant's own order identifier), `notes` (optional, freeform JSON object
 
 **Behavior:** rejects with `409 Conflict` (`DuplicateResourceException`, code
 `ORDER_RECEIPT_DUPLICATE`) if `receipt` is non-null and already used by this merchant.
+
+## `GET /v1/orders/{orderId}`
+
+Fetches a single order by ID, scoped to the same hardcoded test merchant `POST /v1/orders` uses
+(see [Known gaps](gaps.md)) — an order belonging to a different
+merchant is treated as not found rather than a `403`.
+
+**Path parameters:** `orderId`.
+
+**Response** — `200 OK` with `OrderResponse`: same shape as the create response.
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
+exist or doesn't belong to the hardcoded merchant.
