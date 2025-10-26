@@ -19,5 +19,5 @@ dropped vs. still planned:
    (`spring-security-crypto` vs. full `spring-boot-starter-security`) to fix all of it together.
 7. **`OrderController` uses a hardcoded `merchantId`** — a fixed test UUID as an instance field
    instead of deriving the merchant from any caller identity, since there's no auth yet. Every
-   order created or fetched through `/v1/orders` currently belongs to/is scoped to that same
-   merchant regardless of caller.
+   order created, fetched, or cancelled through `/v1/orders` currently belongs to/is scoped to
+   that same merchant regardless of caller.
