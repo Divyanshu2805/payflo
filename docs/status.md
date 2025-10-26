@@ -13,9 +13,9 @@ the microservices split is a deliberate later phase. See
 | Architecture | Monolith (phase 1) — single app, single database |
 | Domain entities | 15 of 15 built — all entities implemented, persistence layer only |
 | Domain enums | Complete for the merchant, payment, vault, and operations domains |
-| Repositories | Started — `merchant` (`AppUserRepository`, `MerchantRepository`, `ApiKeyRepository`) and `payment` (`OrderRepository`) domains |
+| Repositories | Started — `merchant` (`AppUserRepository`, `MerchantRepository`, `ApiKeyRepository`) and `payment` (`OrderRepository`, `PaymentRepository`) domains |
 | Services / business logic | Started — `merchant` (`AuthService`, `ApiKeyService`) and `payment` (`OrderService`) domains |
-| REST APIs | 8 endpoints — `POST /v1/auth/signup`; `POST`/`GET`/`DELETE`/`POST .../rotate` under `/v1/merchants/{merchantId}/api-keys`; `POST`/`GET .../{orderId}`/`POST .../{orderId}/cancel` under `/v1/orders` (see [APIs](api.md)) |
+| REST APIs | 9 endpoints — `POST /v1/auth/signup`; `POST`/`GET`/`DELETE`/`POST .../rotate` under `/v1/merchants/{merchantId}/api-keys`; `POST`/`GET .../{orderId}`/`POST .../{orderId}/cancel`/`GET .../{orderId}/payments` under `/v1/orders` (see [APIs](api.md)) |
 | Auth (API key, JWT), rate limiting | API key generation started — no auth/JWT enforcement yet, and both signup and API key generation store their secret unhashed, see [Known gaps](gaps.md) |
 | Webhooks | Entities built — delivery, retry, and DLQ logic not started |
 | Analytics | Not started — no dedicated entity in the design |

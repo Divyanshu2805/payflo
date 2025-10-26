@@ -129,3 +129,17 @@ Cancels an order, scoped to the same hardcoded test merchant the other order end
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
 exist or doesn't belong to the hardcoded merchant, and with `409 Conflict` (`ConflictException`,
 code `ORDER_CANNOT_CANCEL`) if the order is already `CANCELLED` or `PAID`.
+
+## `GET /v1/orders/{orderId}/payments`
+
+Lists every payment attempt made against an order, scoped to the same hardcoded test merchant the
+other order endpoints use (see [Known gaps](gaps.md)).
+
+**Path parameters:** `orderId`.
+
+**Response** — `200 OK` with a `List<PaymentResponse>`: `id`, `orderId`, `merchantId`, `amount`,
+`status`, `method`, `methodDetails`, `errorCode`, `errorDescription`, `capturedAt`, `createdAt`
+per payment (empty list if the order has no payment attempts yet).
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
+exist or doesn't belong to the hardcoded merchant.
