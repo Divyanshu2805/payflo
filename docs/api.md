@@ -116,3 +116,16 @@ merchant is treated as not found rather than a `403`.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
 exist or doesn't belong to the hardcoded merchant.
+
+## `POST /v1/orders/{orderId}/cancel`
+
+Cancels an order, scoped to the same hardcoded test merchant the other order endpoints use (see
+[Known gaps](gaps.md)).
+
+**Path parameters:** `orderId`.
+
+**Response** — `200 OK` with `OrderResponse`: the order with `status` now `CANCELLED`.
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
+exist or doesn't belong to the hardcoded merchant, and with `409 Conflict` (`ConflictException`,
+code `ORDER_CANNOT_CANCEL`) if the order is already `CANCELLED` or `PAID`.

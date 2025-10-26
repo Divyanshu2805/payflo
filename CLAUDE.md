@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 All 15 planned entities are now implemented (`common/entity`, `common/enums`, `merchant/entity`,
 `payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now has a
 `repository`/`service`/`controller` slice (signup, API key generate/list/revoke/rotate) and
-`payment` has a first one too (order creation, get order by ID) — see "Service/controller layer
-conventions"; the
+`payment` has a first one too (order creation, get order by ID, cancel order) — see
+"Service/controller layer conventions"; the
 `vault` and `operations` domains still have none of that layer yet. Treat any described
 "architecture" as what you find as you build it, not an established convention to preserve.
 
