@@ -2,6 +2,7 @@ package com.project.payflo.payment.controller;
 
 import com.project.payflo.payment.dto.request.CreateOrderRequest;
 import com.project.payflo.payment.dto.response.OrderResponse;
+import com.project.payflo.payment.dto.response.PaymentResponse;
 import com.project.payflo.payment.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -38,5 +40,10 @@ public class OrderController {
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<OrderResponse> cancel(@PathVariable UUID orderId) {
         return ResponseEntity.ok(orderService.cancel(merchantId, orderId));
+    }
+
+    @GetMapping("/{orderId}/payments")
+    public ResponseEntity<List<PaymentResponse>> listPayments(@PathVariable UUID orderId) {
+        return ResponseEntity.ok(orderService.listPayments(merchantId, orderId));
     }
 }
