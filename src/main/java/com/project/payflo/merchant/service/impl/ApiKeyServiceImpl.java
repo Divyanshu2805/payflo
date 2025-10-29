@@ -49,7 +49,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
         apiKey = apiKeyRepository.save(apiKey);
 
-        return new ApiKeyCreateResponse(apiKey.getId(), keyId, rawSecret, request.environment());
+        return apiKeyMapper.toCreateResponse(apiKey);
     }
 
     @Override
@@ -83,8 +83,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         apiKey.setGracePeriodExpiresAt(LocalDateTime.now().plusHours(24));
         apiKey = apiKeyRepository.save(apiKey);
 
-        return new ApiKeyCreateResponse(apiKey.getId(), apiKey.getKeyId(),
-                newRawSecret, apiKey.getEnvironment());
+        return apiKeyMapper.toCreateResponse(apiKey);
     }
 
 }
