@@ -9,7 +9,7 @@
   builder produces `null`, which on a `nullable = false` column fails only at insert time.
 - `pom.xml` overrides inherited `<name>`, `<description>`, `<license>`, `<developers>`, `<scm>` from the Spring Boot parent POM to avoid unwanted inheritance.
 - Domain-oriented package structure (`common`, `merchant`, `payment`, `vault`, `operations`) instead of technical-layer packages, anticipating a future microservices split.
-- Shared `BaseEntity` `@MappedSuperclass` for audit columns via Spring Data JPA auditing — the annotations are wired but auditing itself isn't yet enabled (`@EnableJpaAuditing` + an `AuditorAware` bean are still missing), so `created_by`/`updated_by` currently always come back null.
+- Shared `BaseEntity` `@MappedSuperclass` for audit columns via Spring Data JPA auditing — `@EnableJpaAuditing` is on, so `created_at`/`updated_at` populate; `created_by`/`updated_by` still come back null pending an `AuditorAware` bean, which needs auth to exist first.
 - Cross-service references (`merchant_id` on `ORDER_RECORD`/`PAYMENT`/`REFUND`) are stored as plain UUIDs with no JPA relationship — deliberate, since each domain is expected to eventually own its own database.
 - Money represented via a shared `Money` embeddable value type (`long` smallest-unit amount + currency, add/subtract with currency-mismatch checks) rather than a raw amount column.
 - Enums always persisted as strings (`@Enumerated(EnumType.STRING)`), never ordinals, so reordering an enum can't silently remap existing rows.
