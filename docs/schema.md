@@ -275,9 +275,10 @@ erDiagram
 
 Common columns that recur across most entities: `id` (primary key) and, since all 8 implemented entities
 extend a shared `BaseEntity` base class, `created_at`/`updated_at`/`created_by`/`updated_by`. Note:
-`created_by`/`updated_by` won't actually populate until Spring Data JPA auditing is wired up
-(`@EnableJpaAuditing` + an `AuditorAware` bean — neither exists yet), so those two columns are always
-null today. Money fields use a shared `Money` embeddable value type (`amount_units` + `currency`) rather
+`@EnableJpaAuditing` is now on, so `created_at`/`updated_at` populate correctly — but `created_by`/
+`updated_by` still won't, since there's no `AuditorAware` bean yet (needs auth to exist first to have
+a current-user source), so those two columns are always null today. Money fields use a shared `Money`
+embeddable value type (`amount_units` + `currency`) rather
 than a flat `_paise` column, so an amount always carries its currency with it; the amount is a `long`
 count of the smallest currency unit (paise for INR), never a floating-point value, so money arithmetic
 can't accumulate rounding error. `ORDER_RECORD`, `PAYMENT`, and `REFUND`

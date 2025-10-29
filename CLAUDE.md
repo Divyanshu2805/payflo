@@ -42,8 +42,10 @@ under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.
 transitions are not yet enforced anywhere in code — the enums exist, the validation logic doesn't.
 
 `BaseEntity` wires Spring Data JPA auditing annotations (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`/
-`@LastModifiedBy`) but `@EnableJpaAuditing` and an `AuditorAware` bean don't exist yet, so `createdBy`/
-`updatedBy` currently always come back null — needs wiring up before relying on them.
+`@LastModifiedBy`). `@EnableJpaAuditing` is now on `PayFloApplication`, so `createdAt`/`updatedAt`
+populate correctly — but there's still no `AuditorAware` bean, so `createdBy`/`updatedBy` still
+always come back null. Wiring one up needs something to source the current user from, which needs
+auth to exist first.
 
 The domain model (entities, relationships) and full functional/non-functional requirements have been
 designed — see [docs/requirements.md](docs/requirements.md) for the requirements and the v2 ER
