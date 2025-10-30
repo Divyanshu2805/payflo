@@ -12,6 +12,12 @@ order) — see "Service/controller layer conventions"; the
 `vault` and `operations` domains still have none of that layer yet. Treat any described
 "architecture" as what you find as you build it, not an established convention to preserve.
 
+`payment` also has a `gateway`/`gateway/adapter`/`gateway/dto`/`config` set of subpackages
+implementing a strategy/adapter pattern for routing payment-method-specific processing
+(`PaymentAdapter` interface, one implementation per `PaymentMethod`, selected at runtime by
+`PaymentGatewayRouter`) — see "Practices" in [docs/practices.md](docs/practices.md). The
+adapters are stubs (`// TODO`, return `null`); no real or mock acquirer integration exists yet.
+
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
 microservices architecture in [docs/architecture.md](docs/architecture.md#target) is the phase-two destination,
