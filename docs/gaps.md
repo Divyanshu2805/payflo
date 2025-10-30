@@ -21,3 +21,7 @@ dropped vs. still planned:
    instead of deriving the merchant from any caller identity, since there's no auth yet. Every
    order created, fetched, cancelled, or listed for payments through `/v1/orders` currently
    belongs to/is scoped to that same merchant regardless of caller.
+8. **`PaymentAdapter` implementations are stubs** — `CardPaymentAdapter`, `NetBankingAdapter`, and
+   `UpiPaymentAdapter` implement the interface and are wired into `PaymentGatewayRouter` via
+   `PaymentAdapterConfig`, but each `initiate()` body is a `// TODO` returning `null` — no real
+   (or mock) acquirer integration exists yet. The "Mock acquirer" requirement is not satisfied.
