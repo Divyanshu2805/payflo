@@ -143,3 +143,30 @@ per payment (empty list if the order has no payment attempts yet).
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
 exist or doesn't belong to the hardcoded merchant.
+
+## `POST /v1/payments`
+
+Initiates a payment attempt against an order. **`merchantId` is hardcoded** in `PaymentController`
+the same way `OrderController`'s is — a separate fixed test UUID instance field, not derived from
+any caller identity (see [Known gaps](gaps.md)).
+
+**Request body** (`PaymentInitRequest`): `orderId` (required), `method` (required, `PaymentMethod`
+— `CARD`/`NETBANKING`/`UPI`/`WALLET`), `methodDetails` (optional, freeform JSON — card number, UPI
+ID, etc. depending on `method`).
+
+**Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
+(copied from the order), `status` (always `CREATED` — the gateway call's result isn't consumed
+yet, see below), `method`, `methodDetails`, `errorCode`, `errorDescription`, `capturedAt`,
+`createdAt`.
+
+**Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
+`OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
+the same order; rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
+exist or doesn't belong to the hardcoded merchant, and with `409 Conflict` (`ConflictException`,
+code `ORDER_NOT_PAYABLE`) unless the order is `CREATED` or `ATTEMPTED`. On success: sets the order
+to `ATTEMPTED` and increments its `attempts`, creates a `Payment` row (`status = CREATED`, a fresh
+random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
+and routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapter` — whose
+result is currently discarded (the adapters are stubs, see
+[Known gaps](gaps.md)), so the returned `Payment` always reports
+`status: CREATED` regardless of what the (stub) gateway call reports.
