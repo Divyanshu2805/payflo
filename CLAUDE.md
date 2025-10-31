@@ -8,7 +8,7 @@ All 15 planned entities are now implemented (`common/entity`, `common/enums`, `m
 `payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now has a
 `repository`/`service`/`controller` slice (signup, API key generate/list/revoke/rotate) and
 `payment` has a first one too (order creation, get order by ID, cancel order, list payments for an
-order) — see "Service/controller layer conventions"; the
+order, initiate payment) — see "Service/controller layer conventions"; the
 `vault` and `operations` domains still have none of that layer yet. Treat any described
 "architecture" as what you find as you build it, not an established convention to preserve.
 
