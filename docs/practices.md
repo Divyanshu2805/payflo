@@ -18,7 +18,10 @@
   — `CardPaymentAdapter`, `NetBankingAdapter`, `UpiPaymentAdapter`), selected at runtime by
   `PaymentGatewayRouter` from a `Map<PaymentMethod, PaymentAdapter>` bean assembled in
   `payment/config/PaymentAdapterConfig`. Keeps adding a payment method to a new adapter + one config
-  line rather than a growing `switch`.
+  line rather than a growing `switch`. Below that, `payment/processor` holds a `PaymentProcessor`
+  interface (`charge(PaymentProcessorRequest): PaymentProcessorResponse`, the latter a sealed
+  `Pending`/`Success`/`Failure`) meant as the actual acquirer-facing call an adapter delegates to —
+  not implemented or called yet.
 - Semantic, one-line commit messages (`feat:`, `fix:`, `docs:`, `chore:`, etc.).
 - Service/controller layer (established by the merchant signup slice): request/response DTOs as
   `record`s in `dto/request`/`dto/response` with Jakarta Validation annotations; entity↔DTO mapping
