@@ -25,6 +25,8 @@ dropped vs. still planned:
    `UpiPaymentAdapter` implement the interface and are wired into `PaymentGatewayRouter` via
    `PaymentAdapterConfig`, but each `initiate()` body is a `// TODO` returning `null` — no real
    (or mock) acquirer integration exists yet. The "Mock acquirer" requirement is not satisfied.
+   A `PaymentProcessor` interface (`payment/processor`) now exists as the intended shape of that
+   acquirer-facing call, but has no implementation and isn't called by any adapter yet.
 9. **`Payment.idempotencyKey` is a fresh random value every call, never checked** —
    `PaymentServiceImpl.initiate` generates `UUID.randomUUID().toString()` per request instead of
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying
