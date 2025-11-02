@@ -17,9 +17,12 @@ implementing a strategy/adapter pattern for routing payment-method-specific proc
 (`PaymentAdapter` interface, one implementation per `PaymentMethod`, selected at runtime by
 `PaymentGatewayRouter`) — see "Practices" in [docs/practices.md](docs/practices.md). The
 adapters are stubs (`// TODO`, return `null`); no real or mock acquirer integration exists yet. A
-`payment/processor` package now also holds a `PaymentProcessor` interface (`charge()`) with its own
-request/response DTOs, meant to sit below the adapters as the actual acquirer-facing call — no
-implementation exists and no adapter calls it yet.
+`payment/processor` mirrors the same adapter pattern one layer down — `PaymentProcessor` interface
+(`charge()`), one implementation per `PaymentMethod` in `payment/processor/strategy`
+(`CardPaymentProcessor` has real mock-acquirer logic with test PANs; `NetBankingPaymentProcessor`/
+`UpiPaymentProcessor` are stubs), routed by `PaymentProcessorRouter`/`PaymentProcessorConfig` —
+meant to sit below the adapters as the actual acquirer-facing call, but no `PaymentAdapter` calls
+it yet, so it's still unreachable from `POST /v1/payments`.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
