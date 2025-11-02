@@ -21,12 +21,16 @@ dropped vs. still planned:
    test UUID instance field instead of deriving the merchant from any caller identity, since
    there's no auth yet. Every order or payment created, fetched, cancelled, or listed currently
    belongs to/is scoped to that same merchant regardless of caller.
-8. **`PaymentAdapter` implementations are stubs** — `CardPaymentAdapter`, `NetBankingAdapter`, and
-   `UpiPaymentAdapter` implement the interface and are wired into `PaymentGatewayRouter` via
-   `PaymentAdapterConfig`, but each `initiate()` body is a `// TODO` returning `null` — no real
-   (or mock) acquirer integration exists yet. The "Mock acquirer" requirement is not satisfied.
-   A `PaymentProcessor` interface (`payment/processor`) now exists as the intended shape of that
-   acquirer-facing call, but has no implementation and isn't called by any adapter yet.
+8. **`PaymentAdapter` implementations are stubs, disconnected from the now-implemented processor
+   layer** — `CardPaymentAdapter`, `NetBankingAdapter`, and `UpiPaymentAdapter` implement the
+   interface and are wired into `PaymentGatewayRouter` via `PaymentAdapterConfig`, but each
+   `initiate()` body is still a `// TODO` returning `null` — none of them call
+   `PaymentProcessorRouter`/`PaymentProcessor` yet, even though that layer now has real
+   implementations one level down: `CardPaymentProcessor` simulates a mock acquirer (two test PANs
+   — `4000000000000002` declined, `4000000000000069` expired — anything else returns `Pending`
+   with a generated `processorRef`), while `NetBankingPaymentProcessor`/`UpiPaymentProcessor` are
+   still stubs returning `null`. The "Mock acquirer" requirement is partially satisfied (card path
+   only) but not reachable from `POST /v1/payments` until an adapter calls the processor router.
 9. **`Payment.idempotencyKey` is a fresh random value every call, never checked** —
    `PaymentServiceImpl.initiate` generates `UUID.randomUUID().toString()` per request instead of
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying
