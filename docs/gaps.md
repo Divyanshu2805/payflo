@@ -31,6 +31,10 @@ dropped vs. still planned:
    with a generated `processorRef`), while `NetBankingPaymentProcessor`/`UpiPaymentProcessor` are
    still stubs returning `null`. The "Mock acquirer" requirement is partially satisfied (card path
    only) but not reachable from `POST /v1/payments` until an adapter calls the processor router.
+   `PaymentServiceImpl.initiate` does now consume whatever `PaymentGatewayRouter` returns (a
+   `switch` over `PaymentResult` including a `case null`) — but since every adapter returns `null`
+   today, that logic always takes the `case null` branch and the `Payment` stays `status: CREATED`
+   in practice.
 9. **`Payment.idempotencyKey` is a fresh random value every call, never checked** —
    `PaymentServiceImpl.initiate` generates `UUID.randomUUID().toString()` per request instead of
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying

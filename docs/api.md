@@ -155,9 +155,9 @@ any caller identity (see [Known gaps](gaps.md)).
 ID, etc. depending on `method`).
 
 **Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
-(copied from the order), `status` (always `CREATED` — the gateway call's result isn't consumed
-yet, see below), `method`, `methodDetails`, `errorCode`, `errorDescription`, `capturedAt`,
-`createdAt`.
+(copied from the order), `status`, `method`, `methodDetails`, `errorCode`, `errorDescription`,
+`capturedAt`, `createdAt`. `status` is always `CREATED` today in practice — see the note on
+`PaymentAdapter` below.
 
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
@@ -166,7 +166,11 @@ exist or doesn't belong to the hardcoded merchant, and with `409 Conflict` (`Con
 code `ORDER_NOT_PAYABLE`) unless the order is `CREATED` or `ATTEMPTED`. On success: sets the order
 to `ATTEMPTED` and increments its `attempts`, creates a `Payment` row (`status = CREATED`, a fresh
 random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
-and routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapter` — whose
-result is currently discarded (the adapters are stubs, see
-[Known gaps](gaps.md)), so the returned `Payment` always reports
-`status: CREATED` regardless of what the (stub) gateway call reports.
+and routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapter`. The
+returned `PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference`;
+`Failure` sets `status = FAILED` plus `errorCode`/`errorDescription`; `Success` is treated as an
+invalid synchronous state for now (logged, returns `null`) since nothing produces it yet. In
+practice every call currently falls through a `case null` branch (leaving `status: CREATED`
+unchanged) because the `PaymentAdapter` implementations are still stubs that never call the
+processor layer that would produce a real result — see
+[Known gaps](gaps.md).
