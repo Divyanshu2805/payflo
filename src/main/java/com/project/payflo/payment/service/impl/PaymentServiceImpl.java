@@ -9,6 +9,7 @@ import com.project.payflo.payment.entity.OrderRecord;
 import com.project.payflo.payment.entity.Payment;
 import com.project.payflo.payment.gateway.PaymentGatewayRouter;
 import com.project.payflo.payment.gateway.dto.PaymentRequest;
+import com.project.payflo.payment.gateway.dto.PaymentResult;
 import com.project.payflo.payment.mapper.PaymentMapper;
 import com.project.payflo.payment.repository.OrderRepository;
 import com.project.payflo.payment.repository.PaymentRepository;
@@ -60,8 +61,24 @@ public class PaymentServiceImpl implements PaymentService {
                 order.getAmount(), request.method(),
                 request.methodDetails());
 
-        // TODO: use the PaymentResult to update payment/order status once adapters are implemented
-        paymentGatewayRouter.initiate(paymentRequest);
+        PaymentResult result = paymentGatewayRouter.initiate(paymentRequest);
+
+        switch (result) {
+            case null -> log.warn("Payment adapter for method {} returned no result (not yet implemented)", request.method());
+            case PaymentResult.Pending pending -> payment.setProcessorReference(pending.registrationRef());
+            case PaymentResult.Failure failure -> {
+                payment.setStatus(PaymentStatus.FAILED);
+                payment.setErrorCode(failure.errorCode());
+                payment.setErrorDescription(failure.errorDescription());
+            }
+            case PaymentResult.Success success -> {
+                log.warn("Invalid state");
+                return null;
+            }
+        }
+
+        payment = paymentRepository.save(payment);
+        orderRepository.save(order);
 
         return paymentMapper.toResponse(payment);
     }
