@@ -21,20 +21,19 @@ dropped vs. still planned:
    test UUID instance field instead of deriving the merchant from any caller identity, since
    there's no auth yet. Every order or payment created, fetched, cancelled, or listed currently
    belongs to/is scoped to that same merchant regardless of caller.
-8. **`PaymentAdapter` implementations are stubs, disconnected from the now-implemented processor
-   layer** — `CardPaymentAdapter`, `NetBankingAdapter`, and `UpiPaymentAdapter` implement the
-   interface and are wired into `PaymentGatewayRouter` via `PaymentAdapterConfig`, but each
-   `initiate()` body is still a `// TODO` returning `null` — none of them call
-   `PaymentProcessorRouter`/`PaymentProcessor` yet, even though that layer now has real
-   implementations one level down: `CardPaymentProcessor` simulates a mock acquirer (two test PANs
-   — `4000000000000002` declined, `4000000000000069` expired — anything else returns `Pending`
-   with a generated `processorRef`), while `NetBankingPaymentProcessor`/`UpiPaymentProcessor` are
-   still stubs returning `null`. The "Mock acquirer" requirement is partially satisfied (card path
-   only) but not reachable from `POST /v1/payments` until an adapter calls the processor router.
-   `PaymentServiceImpl.initiate` does now consume whatever `PaymentGatewayRouter` returns (a
-   `switch` over `PaymentResult` including a `case null`) — but since every adapter returns `null`
-   today, that logic always takes the `case null` branch and the `Payment` stays `status: CREATED`
-   in practice.
+8. **Card path still can't reach the (real) mock acquirer; netbanking/UPI reach it but the
+   processor end is still a stub** — `NetBankingAdapter` and `UpiPaymentAdapter` now call
+   `PaymentProcessorRouter.charge()` and map its `PaymentProcessorResponse` to a `PaymentResult`
+   via a `switch` expression (no `case null`, but wrapped in a `try/catch` that turns the resulting
+   `NullPointerException` into `PaymentResult.Failure("NBK_FAILED"/"UPI_FAILED", <NPE message>)`).
+   Since `NetBankingPaymentProcessor`/`UpiPaymentProcessor` are still stubs returning `null`, every
+   netbanking/UPI payment today comes back `status: FAILED` with that generated error. `Card
+   PaymentAdapter` is still the original `// TODO` stub returning `null` — unchanged — so card
+   payments still fall through `PaymentServiceImpl`'s `case null` and stay `status: CREATED`, even
+   though `CardPaymentProcessor` one layer down already has real mock-acquirer logic (two test PANs
+   — `4000000000000002` declined, `4000000000000069` expired — anything else `Pending`) that
+   nothing calls yet. The "Mock acquirer" requirement is implemented but not reachable for any
+   method through `POST /v1/payments` in a way that reports success.
 9. **`Payment.idempotencyKey` is a fresh random value every call, never checked** —
    `PaymentServiceImpl.initiate` generates `UUID.randomUUID().toString()` per request instead of
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying

@@ -21,8 +21,12 @@ adapters are stubs (`// TODO`, return `null`); no real or mock acquirer integrat
 (`charge()`), one implementation per `PaymentMethod` in `payment/processor/strategy`
 (`CardPaymentProcessor` has real mock-acquirer logic with test PANs; `NetBankingPaymentProcessor`/
 `UpiPaymentProcessor` are stubs), routed by `PaymentProcessorRouter`/`PaymentProcessorConfig` —
-meant to sit below the adapters as the actual acquirer-facing call, but no `PaymentAdapter` calls
-it yet, so it's still unreachable from `POST /v1/payments`.
+meant to sit below the adapters as the actual acquirer-facing call. `NetBankingAdapter`/
+`UpiPaymentAdapter` now call through to it (with a `try/catch` around the response-mapping
+`switch`), but since the processor strategies they hit are still stubs, both always resolve to
+`PaymentResult.Failure`. `CardPaymentAdapter` still doesn't call anything and stays a stub, even
+though `CardPaymentProcessor` one layer down already has real logic — so no payment method
+currently reaches a successful result through `POST /v1/payments`.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The

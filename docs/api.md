@@ -156,8 +156,8 @@ ID, etc. depending on `method`).
 
 **Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
 (copied from the order), `status`, `method`, `methodDetails`, `errorCode`, `errorDescription`,
-`capturedAt`, `createdAt`. `status` is always `CREATED` today in practice — see the note on
-`PaymentAdapter` below.
+`capturedAt`, `createdAt`. `status` today depends on `method`: `CARD` always comes back `CREATED`;
+`NETBANKING`/`UPI` always come back `FAILED` — see the note on `PaymentAdapter` below.
 
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
@@ -170,7 +170,9 @@ and routes the request through `PaymentGatewayRouter` to the method's `PaymentAd
 returned `PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference`;
 `Failure` sets `status = FAILED` plus `errorCode`/`errorDescription`; `Success` is treated as an
 invalid synchronous state for now (logged, returns `null`) since nothing produces it yet. In
-practice every call currently falls through a `case null` branch (leaving `status: CREATED`
-unchanged) because the `PaymentAdapter` implementations are still stubs that never call the
-processor layer that would produce a real result — see
+practice: `CARD` falls through a `case null` branch (leaving `status: CREATED` unchanged) because
+`CardPaymentAdapter` is still a stub; `NETBANKING`/`UPI` now call through to
+`PaymentProcessorRouter`, but since the processor-layer strategies for those methods are still
+stubs too, the adapters' own `try/catch` turns the resulting error into a `Failure` — so those two
+always come back `status: FAILED` with a generated `errorCode`/`errorDescription` today. See
 [Known gaps](gaps.md).
