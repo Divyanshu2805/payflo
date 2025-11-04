@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class UpiPaymentAdapter implements PaymentAdapter {
 
     private final PaymentProcessorRouter paymentProcessorRouter;
-    
+
     @Override
     public PaymentResult initiate(PaymentRequest request) {
         log.info("Initiate Payment with UPI, paymentId: {}", request.paymentId());
