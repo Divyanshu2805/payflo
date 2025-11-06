@@ -19,14 +19,19 @@ implementing a strategy/adapter pattern for routing payment-method-specific proc
 adapters are stubs (`// TODO`, return `null`); no real or mock acquirer integration exists yet. A
 `payment/processor` mirrors the same adapter pattern one layer down — `PaymentProcessor` interface
 (`charge()`), one implementation per `PaymentMethod` in `payment/processor/strategy`
-(`CardPaymentProcessor` has real mock-acquirer logic with test PANs; `NetBankingPaymentProcessor`/
-`UpiPaymentProcessor` are stubs), routed by `PaymentProcessorRouter`/`PaymentProcessorConfig` —
-meant to sit below the adapters as the actual acquirer-facing call. `NetBankingAdapter`/
-`UpiPaymentAdapter` now call through to it (with a `try/catch` around the response-mapping
-`switch`), but since the processor strategies they hit are still stubs, both always resolve to
-`PaymentResult.Failure`. `CardPaymentAdapter` still doesn't call anything and stays a stub, even
-though `CardPaymentProcessor` one layer down already has real logic — so no payment method
-currently reaches a successful result through `POST /v1/payments`.
+(`CardPaymentProcessor` and `NetBankingPaymentProcessor` now have real mock-acquirer logic —
+test PANs for card, a `methodDetails.bank == "BANK_CODE_FAIL"` check for netbanking;
+`UpiPaymentProcessor` is still a stub), routed by `PaymentProcessorRouter`/`PaymentProcessorConfig`
+— meant to sit below the adapters as the actual acquirer-facing call. `NetBankingAdapter`/
+`UpiPaymentAdapter` call through to it (with a `try/catch` around the response-mapping `switch`);
+`CardPaymentAdapter` still doesn't call anything and stays a stub. **No payment method currently
+reaches a successful response through `POST /v1/payments`**: UPI's processor is still a stub so it
+resolves to `Failure`; card falls through untouched at `CREATED`; netbanking's non-failure path now
+reaches `PaymentServiceImpl`'s `case PaymentResult.Success` branch, which treats `Success` as an
+invalid state and does `return null` — so a normal netbanking payment gets a `201 Created` with an
+empty body. Flagged in [docs/gaps.md](docs/gaps.md)
+as a state-machine design decision, not fixed — deciding what `Success` should map to in
+`PaymentStatus` needs a call on how the netbanking redirect flow should actually work.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The

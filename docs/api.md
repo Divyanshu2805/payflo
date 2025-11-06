@@ -156,8 +156,9 @@ ID, etc. depending on `method`).
 
 **Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
 (copied from the order), `status`, `method`, `methodDetails`, `errorCode`, `errorDescription`,
-`capturedAt`, `createdAt`. `status` today depends on `method`: `CARD` always comes back `CREATED`;
-`NETBANKING`/`UPI` always come back `FAILED` — see the note on `PaymentAdapter` below.
+`capturedAt`, `createdAt`. **`status`/response body today depends heavily on `method`** — see the
+note on `PaymentAdapter` below; `NETBANKING` in particular can come back with an empty body on its
+happy path, a currently-open bug (see [Known gaps](gaps.md)).
 
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
@@ -169,10 +170,15 @@ random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
 and routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapter`. The
 returned `PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference`;
 `Failure` sets `status = FAILED` plus `errorCode`/`errorDescription`; `Success` is treated as an
-invalid synchronous state for now (logged, returns `null`) since nothing produces it yet. In
-practice: `CARD` falls through a `case null` branch (leaving `status: CREATED` unchanged) because
-`CardPaymentAdapter` is still a stub; `NETBANKING`/`UPI` now call through to
-`PaymentProcessorRouter`, but since the processor-layer strategies for those methods are still
-stubs too, the adapters' own `try/catch` turns the resulting error into a `Failure` — so those two
-always come back `status: FAILED` with a generated `errorCode`/`errorDescription` today. See
-[Known gaps](gaps.md).
+invalid synchronous state and discarded (`return null` — the whole response body). In practice,
+per `method`:
+- `CARD` — `CardPaymentAdapter` is still a stub, so this falls through `case null` and comes back
+  `status: CREATED` unchanged.
+- `UPI` — `UpiPaymentProcessor` is still a stub; the adapter's `try/catch` turns the resulting
+  error into a `Failure`, so this comes back `status: FAILED` with a generated `errorCode`.
+- `NETBANKING` — `NetBankingPaymentProcessor` has real mock logic now (`methodDetails.bank ==
+  "BANK_CODE_FAIL"` returns `Failure`; anything else returns `Success`). A `BANK_CODE_FAIL` request
+  behaves like `UPI` above (`status: FAILED`). Any other request hits the `Success` branch above
+  and **the endpoint returns `201 Created` with an empty body** — the `Payment` row is still
+  correctly persisted, it's just never reported back. See
+  [Known gaps](gaps.md).
