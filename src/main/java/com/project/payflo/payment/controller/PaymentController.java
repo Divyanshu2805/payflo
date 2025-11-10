@@ -25,4 +25,8 @@ public class PaymentController {
                 .body(paymentService.initiate(merchantId, request));
     }
 
+    @PostMapping("/{paymentId}/capture")
+    public ResponseEntity<PaymentResponse> capture(@PathVariable UUID paymentId) {
+        return ResponseEntity.ok(paymentService.capture(merchantId, paymentId));
+    }
 }

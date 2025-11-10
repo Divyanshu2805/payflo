@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -79,6 +80,49 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment = paymentRepository.save(payment);
         orderRepository.save(order);
+
+        return paymentMapper.toResponse(payment);
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse capture(UUID merchantId, UUID paymentId) {
+
+        Payment payment = paymentRepository.findByIdAndMerchantIdForUpdate(paymentId, merchantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
+
+        payment.setStatus(PaymentStatus.CAPTURING);
+//        paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_REQUEST);
+
+        PaymentResult paymentResult = paymentGatewayRouter.capture(payment.getMethod(), paymentId);
+
+        switch (paymentResult) {
+            case PaymentResult.Success success -> {
+//                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
+                payment.setStatus(PaymentStatus.CAPTURED);
+                payment.setCapturedAt(LocalDateTime.now());
+                log.info("Payment captured, paymentID: {}", paymentId);
+            }
+            case PaymentResult.Failure failure -> {
+//                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
+                payment.setStatus(PaymentStatus.AUTHORIZED);
+                payment.setErrorCode(failure.errorCode());
+                payment.setErrorDescription(failure.errorDescription());
+                log.warn("Payment capture failed, paymentID: {}", paymentId);
+            }
+            case PaymentResult.Pending pending -> {
+                payment.setStatus(PaymentStatus.AUTHORIZED);
+                payment.setProcessorReference(pending.registrationRef());
+                log.warn("Payment capture still pending, paymentID: {}", paymentId);
+            }
+            case null -> {
+                payment.setStatus(PaymentStatus.AUTHORIZED);
+                log.warn("Payment adapter for method {} returned no capture result (not yet implemented), paymentID: {}",
+                        payment.getMethod(), paymentId);
+            }
+        }
+
+        payment = paymentRepository.save(payment);
 
         return paymentMapper.toResponse(payment);
     }
