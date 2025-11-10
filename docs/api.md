@@ -174,11 +174,10 @@ invalid synchronous state and discarded (`return null` — the whole response bo
 per `method`:
 - `CARD` — `CardPaymentAdapter` is still a stub, so this falls through `case null` and comes back
   `status: CREATED` unchanged.
-- `UPI` — `UpiPaymentProcessor` is still a stub; the adapter's `try/catch` turns the resulting
-  error into a `Failure`, so this comes back `status: FAILED` with a generated `errorCode`.
-- `NETBANKING` — `NetBankingPaymentProcessor` has real mock logic now (`methodDetails.bank ==
-  "BANK_CODE_FAIL"` returns `Failure`; anything else returns `Success`). A `BANK_CODE_FAIL` request
-  behaves like `UPI` above (`status: FAILED`). Any other request hits the `Success` branch above
-  and **the endpoint returns `201 Created` with an empty body** — the `Payment` row is still
-  correctly persisted, it's just never reported back. See
+- `NETBANKING`/`UPI` — both processors now have real mock logic (`methodDetails.bank ==
+  "BANK_CODE_FAIL"` for netbanking, `methodDetails.vpa == "fail@okaxis"` for UPI → `Failure`;
+  anything else → `Success`). A request with that failure sentinel comes back `status: FAILED`
+  with a generated `errorCode`. Any other request hits the `Success` branch above and **the
+  endpoint returns `201 Created` with an empty body** — the `Payment` row is still correctly
+  persisted, it's just never reported back. See
   [Known gaps](gaps.md).

@@ -21,27 +21,27 @@ dropped vs. still planned:
    test UUID instance field instead of deriving the merchant from any caller identity, since
    there's no auth yet. Every order or payment created, fetched, cancelled, or listed currently
    belongs to/is scoped to that same merchant regardless of caller.
-8. **Card is still fully unwired; UPI's processor is still a stub; netbanking's happy path now
-   returns a broken empty response** — `NetBankingAdapter`/`UpiPaymentAdapter` call
-   `PaymentProcessorRouter.charge()` and map the result to a `PaymentResult` via a `switch`
-   expression (no `case null`, but wrapped in a `try/catch` that turns a `NullPointerException`
-   into `PaymentResult.Failure("NBK_FAILED"/"UPI_FAILED", <NPE message>)`). `UpiPaymentProcessor`
-   is still a stub returning `null`, so every UPI payment comes back `status: FAILED` with that
-   generated error. `CardPaymentAdapter` is still the original `// TODO` stub — unchanged — so card
-   payments fall through `PaymentServiceImpl`'s `case null` and stay `status: CREATED`, even though
-   `CardPaymentProcessor` has real mock-acquirer logic (two test PANs — `4000000000000002`
-   declined, `4000000000000069` expired — anything else `Pending`) nothing calls yet.
-   `NetBankingPaymentProcessor` now has real mock logic too (`methodDetails.bank ==
-   "BANK_CODE_FAIL"` → `Failure`; otherwise generates a `processorRef` and a fake redirect URL,
-   returned as `Success`) — but **`PaymentServiceImpl`'s `case PaymentResult.Success` branch treats
-   any `Success` as an invalid state and does `return null`**, a placeholder written when nothing
-   produced `Success` yet. Now something does: a normal netbanking payment (no `BANK_CODE_FAIL`)
-   hits that branch and `POST /v1/payments` returns `201 Created` with an empty body — the `Payment`
-   row is still persisted correctly (dirty-checked within the `@Transactional` method even though
-   the early `return` skips the explicit `.save()` calls), just never reported back to the caller.
-   Flagged, not fixed — deciding what a synchronous `Success` (really a "redirect to bank" state
-   for netbanking) should map to in `PaymentStatus` is a state-machine design call, not a
-   mechanical bug fix.
+8. **Card is still fully unwired; netbanking and UPI both now hit a broken-empty-response bug on
+   their happy path** — `NetBankingAdapter`/`UpiPaymentAdapter` call `PaymentProcessorRouter.charge()`
+   and map the result to a `PaymentResult` via a `switch` expression (no `case null`, but wrapped in
+   a `try/catch` that turns a `NullPointerException` into
+   `PaymentResult.Failure("NBK_FAILED"/"UPI_FAILED", <NPE message>)`). `CardPaymentAdapter` is
+   still the original `// TODO` stub — unchanged — so card payments fall through
+   `PaymentServiceImpl`'s `case null` and stay `status: CREATED`, even though `CardPaymentProcessor`
+   has real mock-acquirer logic (two test PANs — `4000000000000002` declined, `4000000000000069`
+   expired — anything else `Pending`) nothing calls yet.
+   `NetBankingPaymentProcessor` and `UpiPaymentProcessor` both now have real mock logic
+   (`methodDetails.bank == "BANK_CODE_FAIL"` / `methodDetails.vpa == "fail@okaxis"` → `Failure`;
+   anything else → `Success` with a generated `processorRef`) — but **`PaymentServiceImpl`'s
+   `case PaymentResult.Success` branch treats any `Success` as an invalid state and does
+   `return null`**, a placeholder written when nothing produced `Success` yet. Now both methods'
+   happy paths do: a normal netbanking or UPI payment (no failure sentinel in `methodDetails`) hits
+   that branch and `POST /v1/payments` returns `201 Created` with an empty body — the `Payment` row
+   is still persisted correctly (dirty-checked within the `@Transactional` method even though the
+   early `return` skips the explicit `.save()` calls), just never reported back to the caller.
+   Flagged, not fixed — deciding what a synchronous `Success` (really a "redirect to bank"/"push
+   notification sent" state, not a terminal one) should map to in `PaymentStatus` is a
+   state-machine design call, not a mechanical bug fix.
 9. **`Payment.idempotencyKey` is a fresh random value every call, never checked** —
    `PaymentServiceImpl.initiate` generates `UUID.randomUUID().toString()` per request instead of
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying
