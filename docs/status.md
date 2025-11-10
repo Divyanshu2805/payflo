@@ -15,7 +15,7 @@ the microservices split is a deliberate later phase. See
 | Domain enums | Complete for the merchant, payment, vault, and operations domains |
 | Repositories | Started — `merchant` (`AppUserRepository`, `MerchantRepository`, `ApiKeyRepository`) and `payment` (`OrderRepository`, `PaymentRepository`) domains |
 | Services / business logic | Started — `merchant` (`AuthService`, `ApiKeyService`) and `payment` (`OrderService`, `PaymentService`) domains |
-| REST APIs | 10 endpoints — `POST /v1/auth/signup`; `POST`/`GET`/`DELETE`/`POST .../rotate` under `/v1/merchants/{merchantId}/api-keys`; `POST`/`GET .../{orderId}`/`POST .../{orderId}/cancel`/`GET .../{orderId}/payments` under `/v1/orders`; `POST /v1/payments` (see [APIs](api.md)) |
+| REST APIs | 11 endpoints — `POST /v1/auth/signup`; `POST`/`GET`/`DELETE`/`POST .../rotate` under `/v1/merchants/{merchantId}/api-keys`; `POST`/`GET .../{orderId}`/`POST .../{orderId}/cancel`/`GET .../{orderId}/payments` under `/v1/orders`; `POST /v1/payments`/`POST .../{paymentId}/capture` (see [APIs](api.md)) |
 | Auth (API key, JWT), rate limiting | API key generation started — no auth/JWT enforcement yet, and both signup and API key generation store their secret unhashed, see [Known gaps](gaps.md) |
 | Webhooks | Entities built — delivery, retry, and DLQ logic not started |
 | Analytics | Not started — no dedicated entity in the design |

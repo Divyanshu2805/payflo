@@ -8,7 +8,7 @@ All 15 planned entities are now implemented (`common/entity`, `common/enums`, `m
 `payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now has a
 `repository`/`service`/`controller` slice (signup, API key generate/list/revoke/rotate) and
 `payment` has a first one too (order creation, get order by ID, cancel order, list payments for an
-order, initiate payment) — see "Service/controller layer conventions"; the
+order, initiate payment, capture payment) — see "Service/controller layer conventions"; the
 `vault` and `operations` domains still have none of that layer yet. Treat any described
 "architecture" as what you find as you build it, not an established convention to preserve.
 
@@ -32,6 +32,13 @@ state and does `return null` — so a normal netbanking or UPI payment gets a `2
 empty body. Flagged in [docs/gaps.md](docs/gaps.md)
 as a state-machine design decision, not fixed — deciding what `Success` should map to in
 `PaymentStatus` needs a call on how the netbanking/UPI redirect-or-push flows should actually work.
+
+`PaymentAdapter` also has a `capture(UUID paymentId)` method (routed via
+`PaymentGatewayRouter.capture`, exposed as `POST /v1/payments/{paymentId}/capture`) for the
+auth-then-capture step. Same story as `initiate`: `CardPaymentAdapter.capture()` is a stub
+(`null`); `NetBankingAdapter`/`UpiPaymentAdapter`'s `capture()` return a hardcoded
+`PaymentResult.Success` unconditionally, not a real (or properly simulated) capture call. The
+endpoint also has no guard on the payment's current status before attempting a capture.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The

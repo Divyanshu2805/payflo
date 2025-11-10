@@ -47,3 +47,13 @@ dropped vs. still planned:
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying
    a payment-initiation request creates a duplicate `Payment` row rather than returning the
    original.
+10. **`POST /v1/payments/{paymentId}/capture` has no pre-condition check on the payment's current
+    status** — it can be called on a `Payment` in any status (already `CAPTURED`, still `CREATED`,
+    `FAILED`, etc.) and will set `status = CAPTURING` and attempt the capture regardless, unlike
+    `initiate`'s explicit `ORDER_NOT_PAYABLE` guard on the order. Consistent with the broader
+    documented gap that state-machine transitions aren't enforced anywhere yet. Also: none of the
+    three `PaymentAdapter.capture()` implementations talk to a real (or even properly simulated)
+    acquirer — `CardPaymentAdapter.capture()` is a stub returning `null` (capture always reverts to
+    `AUTHORIZED`), while `NetBankingAdapter.capture()`/`UpiPaymentAdapter.capture()` return a
+    hardcoded `PaymentResult.Success` unconditionally, regardless of the payment's actual state or
+    history — so calling capture on either always reports `CAPTURED`.
