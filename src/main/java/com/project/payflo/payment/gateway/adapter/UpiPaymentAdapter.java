@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -47,6 +49,11 @@ public class UpiPaymentAdapter implements PaymentAdapter {
             log.warn("UPI failed, paymentId: {}", request.paymentId());
             return new PaymentResult.Failure("UPI_FAILED", e.getMessage());
         }
+    }
+
+    @Override
+    public PaymentResult capture(UUID paymentId) {
+        return new PaymentResult.Success("UPI_REF");
     }
 
 }

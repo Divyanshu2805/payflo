@@ -22,4 +22,12 @@ public class PaymentGatewayRouter {
         }
         return adapter.initiate(request);
     }
+
+    public PaymentResult capture(PaymentMethod method, UUID paymentId) {
+        PaymentAdapter adapter = paymentAdapters.get(method);
+        if (adapter == null) {
+            throw new IllegalArgumentException("No payment adapter registered for method: "+method);
+        }
+        return adapter.capture(paymentId);
+    }
 }
