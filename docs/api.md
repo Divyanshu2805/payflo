@@ -181,3 +181,28 @@ per `method`:
   endpoint returns `201 Created` with an empty body** — the `Payment` row is still correctly
   persisted, it's just never reported back. See
   [Known gaps](gaps.md).
+
+## `POST /v1/payments/{paymentId}/capture`
+
+Captures a previously-authorized payment — the second step of the auth-then-capture flow (see
+`PaymentAdapter.capture(UUID)` below). **`merchantId` is hardcoded** the same way the other
+payment/order endpoints are.
+
+**Path parameters:** `paymentId`.
+
+**Response** — `200 OK` with `PaymentResponse`.
+
+**Behavior:** locks the payment row (`SELECT ... FOR UPDATE` via
+`PaymentRepository.findByIdAndMerchantIdForUpdate`); rejects with `404 Not Found`
+(`ResourceNotFoundException`) if `paymentId` doesn't exist or doesn't belong to the hardcoded
+merchant. **No check that the payment is actually in a capturable state** (e.g. `AUTHORIZED`) —
+capture can currently be called on a payment in any status, including one that's already
+`CAPTURED`; see [Known gaps](gaps.md). Sets `status = CAPTURING`,
+then calls `PaymentGatewayRouter.capture(method, paymentId)` and applies the result: `Success`
+sets `status = CAPTURED` and `capturedAt`; `Failure` reverts to `status = AUTHORIZED` with
+`errorCode`/`errorDescription`; `Pending` and a `null` result (adapter not implemented) both also
+revert to `status = AUTHORIZED` without an error, so the caller can retry. In practice: `CARD`'s
+adapter is still a stub (`capture` returns `null`), so card captures always revert to
+`AUTHORIZED` and never succeed; `NETBANKING`/`UPI`'s adapters return a hardcoded
+`PaymentResult.Success` regardless of the payment's actual history, so calling capture on either
+always reports `CAPTURED` — there's no real acquirer-side capture call yet for any method.

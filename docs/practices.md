@@ -14,7 +14,8 @@
 - Money represented via a shared `Money` embeddable value type (`long` smallest-unit amount + currency, add/subtract with currency-mismatch checks) rather than a raw amount column.
 - Enums always persisted as strings (`@Enumerated(EnumType.STRING)`), never ordinals, so reordering an enum can't silently remap existing rows.
 - Method-specific payment processing routed through a **strategy/adapter pattern**: a `PaymentAdapter`
-  interface (`payment/gateway`) with one implementation per `PaymentMethod` (`payment/gateway/adapter`
+  interface (`initiate(PaymentRequest)`/`capture(UUID)`, `payment/gateway`) with one implementation
+  per `PaymentMethod` (`payment/gateway/adapter`
   — `CardPaymentAdapter`, `NetBankingAdapter`, `UpiPaymentAdapter`), selected at runtime by
   `PaymentGatewayRouter` from a `Map<PaymentMethod, PaymentAdapter>` bean assembled in
   `payment/config/PaymentAdapterConfig`. Keeps adding a payment method to a new adapter + one config
