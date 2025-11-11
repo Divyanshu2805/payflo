@@ -14,6 +14,7 @@ import com.project.payflo.payment.mapper.PaymentMapper;
 import com.project.payflo.payment.repository.OrderRepository;
 import com.project.payflo.payment.repository.PaymentRepository;
 import com.project.payflo.payment.service.PaymentService;
+import com.project.payflo.payment.statemachine.PaymentTransitionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentGatewayRouter paymentGatewayRouter;
     private final PaymentMapper paymentMapper;
+    private final PaymentTransitionService paymentTransitionService;
 
     @Override
     @Transactional
@@ -62,13 +64,15 @@ public class PaymentServiceImpl implements PaymentService {
                 order.getAmount(), request.method(),
                 request.methodDetails());
 
+        paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_ATTEMPT);
+
         PaymentResult result = paymentGatewayRouter.initiate(paymentRequest);
 
         switch (result) {
             case null -> log.warn("Payment adapter for method {} returned no result (not yet implemented)", request.method());
             case PaymentResult.Pending pending -> payment.setProcessorReference(pending.registrationRef());
             case PaymentResult.Failure failure -> {
-                payment.setStatus(PaymentStatus.FAILED);
+                paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL);
                 payment.setErrorCode(failure.errorCode());
                 payment.setErrorDescription(failure.errorDescription());
             }
@@ -91,21 +95,18 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findByIdAndMerchantIdForUpdate(paymentId, merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
-        payment.setStatus(PaymentStatus.CAPTURING);
-//        paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_REQUEST);
+        paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_REQUEST);
 
         PaymentResult paymentResult = paymentGatewayRouter.capture(payment.getMethod(), paymentId);
 
         switch (paymentResult) {
             case PaymentResult.Success success -> {
-//                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
-                payment.setStatus(PaymentStatus.CAPTURED);
+                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
                 payment.setCapturedAt(LocalDateTime.now());
                 log.info("Payment captured, paymentID: {}", paymentId);
             }
             case PaymentResult.Failure failure -> {
-//                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
-                payment.setStatus(PaymentStatus.AUTHORIZED);
+                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
                 payment.setErrorCode(failure.errorCode());
                 payment.setErrorDescription(failure.errorDescription());
                 log.warn("Payment capture failed, paymentID: {}", paymentId);
