@@ -66,8 +66,14 @@ originally-sketched `controller`/`service`/`repository` split.
 Domain vocabulary lives in `common/enums` (13 enums) and is the source of truth for every status,
 role, and event value — `PaymentStatus`/`PaymentEvent` in particular define the payment state machine.
 Read those before inventing a new status string; they're documented with both state-machine diagrams
-under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.md). Note the
-transitions are not yet enforced anywhere in code — the enums exist, the validation logic doesn't.
+under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.md).
+`payment/statemachine/PaymentStateMachine` now encodes a validated transition table for
+`PaymentStatus`/`PaymentEvent` (throws `InvalidStateTransitionException` for an undefined pair),
+but it's not called by anything yet — `PaymentServiceImpl` still mutates `Payment.status` directly.
+Its transition table also revised two things from the diagram's earlier version (both now
+reflected in `docs/domain-vocabulary.md`): a failed capture reverts to `AUTHORIZED` rather than terminal
+`FAILED`, and `REFUND_INIT` now moves the payment to `PARTIALLY_REFUNDED` itself rather than only
+touching `RefundStatus`.
 
 `BaseEntity` wires Spring Data JPA auditing annotations (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`/
 `@LastModifiedBy`). `@EnableJpaAuditing` is now on `PayFloApplication`, so `createdAt`/`updatedAt`

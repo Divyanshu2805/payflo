@@ -27,8 +27,22 @@ ordinals — so reordering an enum can't silently corrupt existing rows.
 `PAYMENT_TRANSITION_LOG` so the full history survives even though `PAYMENT.status` is overwritten in
 place.
 
-> **Not yet enforced in code.** The states and events exist as enums, but no transition-validation logic
-> has been written — this diagram is the intended machine, not a description of running behaviour.
+`payment/statemachine/PaymentStateMachine` now encodes this table (`transition(PaymentStatus,
+PaymentEvent): PaymentStatus`, throwing `InvalidStateTransitionException` for an undefined pair) —
+but **nothing calls it yet**: `PaymentServiceImpl.initiate`/`capture` still mutate `Payment.status`
+directly rather than going through it, so it exists as a validated rulebook without being wired
+into the actual request flow. The diagram below reflects the component's actual transition table,
+which has revised two things from the previously-documented version:
+
+- A failed capture now reverts to `AUTHORIZED` (retryable) instead of going straight to a terminal
+  `FAILED` — this already matches what the shipped `POST /v1/payments/{paymentId}/capture` does
+  (see [APIs](api.md)), so this brings the diagram in line with already-running behavior.
+- **The refund lifecycle changed shape.** `REFUND_INIT` now moves the payment itself to
+  `PARTIALLY_REFUNDED` (used as a general "refund in progress" marker, from either `CAPTURED` or
+  `SETTLED`), and `REFUND_COMPLETE` finishes it by moving to `REFUNDED` — every refund goes through
+  an in-progress step before completing, rather than the previous model of two separate direct
+  edges (`REFUND_COMPLETE partial` vs. `REFUND_COMPLETE full`) with `REFUND_INIT` only touching
+  `RefundStatus`, never `PaymentStatus`.
 
 ```mermaid
 stateDiagram-v2
@@ -37,17 +51,16 @@ stateDiagram-v2
     CREATED --> CANCELLED: CANCEL
     AUTHORIZING --> AUTHORIZED: AUTHORIZE_SUCCESS
     AUTHORIZING --> FAILED: AUTHORIZE_FAIL
+    AUTHORIZING --> CANCELLED: CANCEL
     AUTHORIZED --> CAPTURING: CAPTURE_REQUEST
     AUTHORIZED --> AUTH_EXPIRED: CAPTURE_TIMEOUT
-    AUTHORIZED --> CANCELLED: CANCEL
     CAPTURING --> CAPTURED: CAPTURE_SUCCESS
-    CAPTURING --> FAILED: CAPTURE_FAIL
+    CAPTURING --> AUTHORIZED: CAPTURE_FAIL
     CAPTURED --> SETTLED: SETTLE
-    CAPTURED --> PARTIALLY_REFUNDED: REFUND_COMPLETE partial
-    CAPTURED --> REFUNDED: REFUND_COMPLETE full
-    SETTLED --> PARTIALLY_REFUNDED: REFUND_COMPLETE partial
-    SETTLED --> REFUNDED: REFUND_COMPLETE full
-    PARTIALLY_REFUNDED --> REFUNDED: REFUND_COMPLETE remainder
+    CAPTURED --> PARTIALLY_REFUNDED: REFUND_INIT
+    CAPTURED --> REFUNDED: REFUND_COMPLETE
+    SETTLED --> PARTIALLY_REFUNDED: REFUND_INIT
+    PARTIALLY_REFUNDED --> REFUNDED: REFUND_COMPLETE
     FAILED --> [*]
     CANCELLED --> [*]
     AUTH_EXPIRED --> [*]
@@ -59,8 +72,12 @@ Notes:
 - **`AUTHORIZING` and `CAPTURING` are in-flight states** — they exist so a request already sent to the
   acquirer is distinguishable from one not yet attempted, which is what makes a crash mid-call
   recoverable rather than ambiguous.
-- **`REFUND_INIT` doesn't move the payment** — it moves `RefundStatus` from `PENDING` to `PROCESSING`.
-  Only `REFUND_COMPLETE` changes the payment's own status.
+- **A failed capture is retryable, not terminal** — `CAPTURING --CAPTURE_FAIL--> AUTHORIZED`, not
+  `FAILED`, so a transient acquirer error doesn't kill the payment; it can be captured again.
+- **`REFUND_INIT` now moves the payment to `PARTIALLY_REFUNDED`** as an in-progress marker (from
+  `CAPTURED` or `SETTLED`); `REFUND_COMPLETE` is what actually finishes it, moving to `REFUNDED`.
+  There's no direct `SETTLED --> REFUNDED` edge — a full refund on a settled payment still passes
+  through `PARTIALLY_REFUNDED` first.
 - **`AUTH_EXPIRED`** covers an authorization that was never captured in time; the hold lapses at the bank
   and the money is never taken.
 

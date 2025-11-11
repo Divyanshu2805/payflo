@@ -57,3 +57,9 @@ dropped vs. still planned:
     `AUTHORIZED`), while `NetBankingAdapter.capture()`/`UpiPaymentAdapter.capture()` return a
     hardcoded `PaymentResult.Success` unconditionally, regardless of the payment's actual state or
     history — so calling capture on either always reports `CAPTURED`.
+11. **`PaymentStateMachine` exists but is unused** — `payment/statemachine/PaymentStateMachine`
+    encodes a validated transition table (`transition(PaymentStatus, PaymentEvent)`, throwing
+    `InvalidStateTransitionException` for an undefined pair — see [Payment state
+    machine](domain-vocabulary.md#payment-state-machine)), but nothing calls it. `PaymentServiceImpl.initiate`/`capture`
+    both still mutate `Payment.status` directly without going through it, so entry 10's "no
+    pre-condition check" gap remains live in practice even though the rulebook to fix it now exists.
