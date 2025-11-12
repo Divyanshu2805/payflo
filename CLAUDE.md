@@ -68,12 +68,17 @@ role, and event value — `PaymentStatus`/`PaymentEvent` in particular define th
 Read those before inventing a new status string; they're documented with both state-machine diagrams
 under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.md).
 `payment/statemachine/PaymentStateMachine` now encodes a validated transition table for
-`PaymentStatus`/`PaymentEvent` (throws `InvalidStateTransitionException` for an undefined pair),
-but it's not called by anything yet — `PaymentServiceImpl` still mutates `Payment.status` directly.
-Its transition table also revised two things from the diagram's earlier version (both now
-reflected in `docs/domain-vocabulary.md`): a failed capture reverts to `AUTHORIZED` rather than terminal
-`FAILED`, and `REFUND_INIT` now moves the payment to `PARTIALLY_REFUNDED` itself rather than only
-touching `RefundStatus`.
+`PaymentStatus`/`PaymentEvent` (throws `InvalidStateTransitionException` for an undefined pair,
+mapped to `409 Conflict` by `GlobalExceptionHandler`). `payment/statemachine/PaymentTransitionService`
+wraps it — applies a transition, writes a `PaymentTransitionLog` row, sets `Payment.status` — and
+`PaymentServiceImpl.initiate`/`capture` now go through it for their status changes (though a
+`Pending`/`null` capture result still sets `status` directly, since there's no `PaymentEvent` for
+those). One practical consequence: since no payment ever reaches `AUTHORIZED` through any live path
+yet (see the `PaymentResult.Success`-discarded gap above), every `capture` call currently gets
+rejected with `409 INVALID_STATE_TRANSITION` before it can do anything. Its transition table also
+revised two things from the diagram's earlier version (both now reflected in `docs/domain-vocabulary.md`): a
+failed capture reverts to `AUTHORIZED` rather than terminal `FAILED`, and `REFUND_INIT` now moves
+the payment to `PARTIALLY_REFUNDED` itself rather than only touching `RefundStatus`.
 
 `BaseEntity` wires Spring Data JPA auditing annotations (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`/
 `@LastModifiedBy`). `@EnableJpaAuditing` is now on `PayFloApplication`, so `createdAt`/`updatedAt`

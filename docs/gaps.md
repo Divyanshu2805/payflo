@@ -47,19 +47,23 @@ dropped vs. still planned:
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying
    a payment-initiation request creates a duplicate `Payment` row rather than returning the
    original.
-10. **`POST /v1/payments/{paymentId}/capture` has no pre-condition check on the payment's current
-    status** — it can be called on a `Payment` in any status (already `CAPTURED`, still `CREATED`,
-    `FAILED`, etc.) and will set `status = CAPTURING` and attempt the capture regardless, unlike
-    `initiate`'s explicit `ORDER_NOT_PAYABLE` guard on the order. Consistent with the broader
-    documented gap that state-machine transitions aren't enforced anywhere yet. Also: none of the
+10. **`POST /v1/payments/{paymentId}/capture` can currently never succeed** — `PaymentServiceImpl`
+    now goes through `PaymentTransitionService.apply` (backed by `PaymentStateMachine`) for both
+    `initiate` and `capture`, so the pre-condition check that was previously missing now exists:
+    `capture` requires the payment to be `AUTHORIZED` (`CAPTURE_REQUEST` is only a valid transition
+    from that state), rejecting with `409 Conflict` (`INVALID_STATE_TRANSITION`) otherwise. But
+    because of entry 8/9's `Success`-discarded-as-`null` gap in `initiate`, **no payment currently
+    ever reaches `AUTHORIZED` through any live code path** — so every `capture` call today hits
+    that same `409`, regardless of method. This is the same root cause as entry 8/9, just
+    surfacing as a clean rejection now instead of a silent no-op. Also still true: none of the
     three `PaymentAdapter.capture()` implementations talk to a real (or even properly simulated)
     acquirer — `CardPaymentAdapter.capture()` is a stub returning `null` (capture always reverts to
     `AUTHORIZED`), while `NetBankingAdapter.capture()`/`UpiPaymentAdapter.capture()` return a
-    hardcoded `PaymentResult.Success` unconditionally, regardless of the payment's actual state or
-    history — so calling capture on either always reports `CAPTURED`.
-11. **`PaymentStateMachine` exists but is unused** — `payment/statemachine/PaymentStateMachine`
-    encodes a validated transition table (`transition(PaymentStatus, PaymentEvent)`, throwing
-    `InvalidStateTransitionException` for an undefined pair — see [Payment state
-    machine](domain-vocabulary.md#payment-state-machine)), but nothing calls it. `PaymentServiceImpl.initiate`/`capture`
-    both still mutate `Payment.status` directly without going through it, so entry 10's "no
-    pre-condition check" gap remains live in practice even though the rulebook to fix it now exists.
+    hardcoded `PaymentResult.Success` unconditionally — moot in practice today since the state
+    check above blocks the call before it would matter.
+11. **`PaymentTransitionService`'s `actor` is hardcoded to `SYSTEM`** — every `PaymentTransitionLog`
+    row is written with `actor = PaymentActor.SYSTEM` (`//TODO: fetch merchant context to identify
+    actor`), since there's no auth context yet to attribute a transition to a specific merchant,
+    customer, or admin. `PaymentTransitionLogRepository` is also currently a bare
+    `JpaRepository` — no custom finder methods yet (nothing reads the log back out through the API
+    today).
