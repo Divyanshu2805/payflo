@@ -27,12 +27,20 @@ ordinals — so reordering an enum can't silently corrupt existing rows.
 `PAYMENT_TRANSITION_LOG` so the full history survives even though `PAYMENT.status` is overwritten in
 place.
 
-`payment/statemachine/PaymentStateMachine` now encodes this table (`transition(PaymentStatus,
-PaymentEvent): PaymentStatus`, throwing `InvalidStateTransitionException` for an undefined pair) —
-but **nothing calls it yet**: `PaymentServiceImpl.initiate`/`capture` still mutate `Payment.status`
-directly rather than going through it, so it exists as a validated rulebook without being wired
-into the actual request flow. The diagram below reflects the component's actual transition table,
-which has revised two things from the previously-documented version:
+`payment/statemachine/PaymentStateMachine` encodes this table (`transition(PaymentStatus,
+PaymentEvent): PaymentStatus`, throwing `InvalidStateTransitionException` — mapped to `409
+Conflict` with code `INVALID_STATE_TRANSITION` by `GlobalExceptionHandler` — for an undefined
+pair). `payment/statemachine/PaymentTransitionService.apply(Payment, PaymentEvent)` wraps it: looks
+up the next status, writes a `PaymentTransitionLog` row (`fromStatus`/`event`/`toStatus`/`actor` —
+`actor` is currently always hardcoded to `PaymentActor.SYSTEM`, see [Known
+gaps](gaps.md)), and sets `Payment.status`. `PaymentServiceImpl`
+now goes through this for every transition it makes: `initiate` fires `AUTHORIZE_ATTEMPT` before
+dispatching to the gateway and `AUTHORIZE_FAIL` on a `Failure` result; `capture` fires
+`CAPTURE_REQUEST` before dispatching to the processor and `CAPTURE_SUCCESS`/`CAPTURE_FAIL` on the
+result (a `Pending` or `null` capture result still sets `status` directly rather than through the
+service, since there's no `PaymentEvent` modeling "still pending"/"adapter not implemented"). The
+diagram below reflects the component's actual transition table, which has revised two things from
+the previously-documented version:
 
 - A failed capture now reverts to `AUTHORIZED` (retryable) instead of going straight to a terminal
   `FAILED` — this already matches what the shipped `POST /v1/payments/{paymentId}/capture` does
