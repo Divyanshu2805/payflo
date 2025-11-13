@@ -112,7 +112,7 @@ public class PaymentServiceImpl implements PaymentService {
                 log.warn("Payment capture failed, paymentID: {}", paymentId);
             }
             case PaymentResult.Pending pending -> {
-                payment.setStatus(PaymentStatus.AUTHORIZED);
+                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_PENDING);
                 payment.setProcessorReference(pending.registrationRef());
                 log.warn("Payment capture still pending, paymentID: {}", paymentId);
             }
