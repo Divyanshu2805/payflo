@@ -71,9 +71,12 @@ under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.
 `PaymentStatus`/`PaymentEvent` (throws `InvalidStateTransitionException` for an undefined pair,
 mapped to `409 Conflict` by `GlobalExceptionHandler`). `payment/statemachine/PaymentTransitionService`
 wraps it — applies a transition, writes a `PaymentTransitionLog` row, sets `Payment.status` — and
-`PaymentServiceImpl.initiate`/`capture` now go through it for their status changes (though a
-`Pending`/`null` capture result still sets `status` directly, since there's no `PaymentEvent` for
-those). One practical consequence: since no payment ever reaches `AUTHORIZED` through any live path
+`PaymentServiceImpl.initiate`/`capture` now go through it for their status changes, including a
+`CAPTURE_PENDING` self-transition (`CAPTURING` → `CAPTURING`) for a `Pending` capture result — kept
+in `CAPTURING` rather than reverting to `AUTHORIZED`, since a genuinely in-flight capture being
+retried risks a double capture. A `null` capture result (adapter not implemented) still sets
+`status` directly to `AUTHORIZED`, since that's not a real domain event. One practical consequence:
+since no payment ever reaches `AUTHORIZED` through any live path
 yet (see the `PaymentResult.Success`-discarded gap above), every `capture` call currently gets
 rejected with `409 INVALID_STATE_TRANSITION` before it can do anything. Its transition table also
 revised two things from the diagram's earlier version (both now reflected in `docs/domain-vocabulary.md`): a

@@ -14,7 +14,7 @@ ordinals — so reordering an enum can't silently corrupt existing rows.
 | `OrderStatus` | `CREATED`, `ATTEMPTED`, `PAID`, `CANCELLED` | `OrderRecord.orderStatus` |
 | `PaymentStatus` | `CREATED`, `AUTHORIZING`, `AUTHORIZED`, `CAPTURING`, `CAPTURED`, `FAILED`, `CANCELLED`, `REFUNDED`, `PARTIALLY_REFUNDED`, `SETTLED`, `AUTH_EXPIRED` | `Payment.status`, `PaymentTransitionLog.fromStatus`/`toStatus` |
 | `PaymentMethod` | `CARD`, `NETBANKING`, `UPI`, `WALLET` | `Payment.method` |
-| `PaymentEvent` | `AUTHORIZE_ATTEMPT`, `AUTHORIZE_SUCCESS`, `AUTHORIZE_FAIL`, `CAPTURE_REQUEST`, `CAPTURE_SUCCESS`, `CAPTURE_FAIL`, `CAPTURE_TIMEOUT`, `REFUND_INIT`, `REFUND_COMPLETE`, `SETTLE`, `CANCEL` | `PaymentTransitionLog.event` |
+| `PaymentEvent` | `AUTHORIZE_ATTEMPT`, `AUTHORIZE_SUCCESS`, `AUTHORIZE_FAIL`, `CAPTURE_REQUEST`, `CAPTURE_SUCCESS`, `CAPTURE_FAIL`, `CAPTURE_PENDING`, `CAPTURE_TIMEOUT`, `REFUND_INIT`, `REFUND_COMPLETE`, `SETTLE`, `CANCEL` | `PaymentTransitionLog.event` |
 | `PaymentActor` | `CUSTOMER`, `MERCHANT`, `SYSTEM` | `PaymentTransitionLog.actor` |
 | `RefundStatus` | `PENDING`, `PROCESSING`, `PROCESSED`, `FAILED` | `Refund.status` |
 | `CardBrand` | `VISA`, `MASTERCARD`, `RUPAY`, `AMEX` | `VaultCard.brand` |
@@ -36,11 +36,11 @@ up the next status, writes a `PaymentTransitionLog` row (`fromStatus`/`event`/`t
 gaps](gaps.md)), and sets `Payment.status`. `PaymentServiceImpl`
 now goes through this for every transition it makes: `initiate` fires `AUTHORIZE_ATTEMPT` before
 dispatching to the gateway and `AUTHORIZE_FAIL` on a `Failure` result; `capture` fires
-`CAPTURE_REQUEST` before dispatching to the processor and `CAPTURE_SUCCESS`/`CAPTURE_FAIL` on the
-result (a `Pending` or `null` capture result still sets `status` directly rather than through the
-service, since there's no `PaymentEvent` modeling "still pending"/"adapter not implemented"). The
-diagram below reflects the component's actual transition table, which has revised two things from
-the previously-documented version:
+`CAPTURE_REQUEST` before dispatching to the processor and `CAPTURE_SUCCESS`/`CAPTURE_FAIL`/
+`CAPTURE_PENDING` on the result (a `null` capture result — the adapter isn't implemented — still
+sets `status` directly to `AUTHORIZED` rather than through the service, since that's not a real
+domain event, just an infrastructure gap). The diagram below reflects the component's actual
+transition table, which has revised two things from the previously-documented version:
 
 - A failed capture now reverts to `AUTHORIZED` (retryable) instead of going straight to a terminal
   `FAILED` — this already matches what the shipped `POST /v1/payments/{paymentId}/capture` does
@@ -64,6 +64,7 @@ stateDiagram-v2
     AUTHORIZED --> AUTH_EXPIRED: CAPTURE_TIMEOUT
     CAPTURING --> CAPTURED: CAPTURE_SUCCESS
     CAPTURING --> AUTHORIZED: CAPTURE_FAIL
+    CAPTURING --> CAPTURING: CAPTURE_PENDING
     CAPTURED --> SETTLED: SETTLE
     CAPTURED --> PARTIALLY_REFUNDED: REFUND_INIT
     CAPTURED --> REFUNDED: REFUND_COMPLETE
@@ -82,6 +83,12 @@ Notes:
   recoverable rather than ambiguous.
 - **A failed capture is retryable, not terminal** — `CAPTURING --CAPTURE_FAIL--> AUTHORIZED`, not
   `FAILED`, so a transient acquirer error doesn't kill the payment; it can be captured again.
+- **A still-pending capture stays `CAPTURING`, it doesn't revert to `AUTHORIZED`** —
+  `CAPTURE_PENDING` is a self-transition (`CAPTURING --CAPTURE_PENDING--> CAPTURING`). This matters:
+  reverting to `AUTHORIZED` would tell the caller "safe to retry," but if the original capture
+  attempt is genuinely still in flight at the bank, a retry risks a **double capture**. Staying in
+  `CAPTURING` correctly signals "still waiting," at the cost of needing a future callback/poll
+  mechanism (not built yet) to eventually resolve it to `CAPTURED` or back to `AUTHORIZED`.
 - **`REFUND_INIT` now moves the payment to `PARTIALLY_REFUNDED`** as an in-progress marker (from
   `CAPTURED` or `SETTLED`); `REFUND_COMPLETE` is what actually finishes it, moving to `REFUNDED`.
   There's no direct `SETTLED --> REFUNDED` edge — a full refund on a settled payment still passes
