@@ -12,3 +12,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+vault:
+  encryption:
+    master-key: ${VAULT_MASTER_KEY:arXfSlAXS4TRCw5tlKCFSwjG+D4C4ESUV47We3pw2eI=}
