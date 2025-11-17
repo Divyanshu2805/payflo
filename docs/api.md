@@ -151,14 +151,14 @@ the same way `OrderController`'s is — a separate fixed test UUID instance fiel
 any caller identity (see [Known gaps](gaps.md)).
 
 **Request body** (`PaymentInitRequest`): `orderId` (required), `method` (required, `PaymentMethod`
-— `CARD`/`NETBANKING`/`UPI`/`WALLET`), `methodDetails` (optional, freeform JSON — card number, UPI
-ID, etc. depending on `method`).
+— `CARD`/`NETBANKING`/`UPI`/`WALLET`), `methodDetails` (optional, freeform JSON — for `CARD`, a
+`token` from `POST /v1/vault/tokenize`; for `NETBANKING`, a `bank` code; for `UPI`, a `vpa`).
 
 **Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
 (copied from the order), `status`, `method`, `methodDetails`, `errorCode`, `errorDescription`,
 `capturedAt`, `createdAt`. **`status`/response body today depends heavily on `method`** — see the
-note on `PaymentAdapter` below; `NETBANKING` in particular can come back with an empty body on its
-happy path, a currently-open bug (see [Known gaps](gaps.md)).
+note on `PaymentAdapter` below; `NETBANKING`/`UPI` in particular can come back with an empty body
+on their happy path, a currently-open bug (see [Known gaps](gaps.md)).
 
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
@@ -167,14 +167,20 @@ exist or doesn't belong to the hardcoded merchant, and with `409 Conflict` (`Con
 code `ORDER_NOT_PAYABLE`) unless the order is `CREATED` or `ATTEMPTED`. On success: sets the order
 to `ATTEMPTED` and increments its `attempts`, creates a `Payment` row (`status = CREATED`, a fresh
 random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
-and routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapter`. The
-returned `PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference`;
-`Failure` sets `status = FAILED` plus `errorCode`/`errorDescription`; `Success` is treated as an
-invalid synchronous state and discarded (`return null` — the whole response body). In practice,
-per `method`:
-- `CARD` — `CardPaymentAdapter` is still a stub, so this falls through `case null` and comes back
-  `status: CREATED` unchanged.
-- `NETBANKING`/`UPI` — both processors now have real mock logic (`methodDetails.bank ==
+fires `AUTHORIZE_ATTEMPT` through `PaymentTransitionService` (`CREATED` → `AUTHORIZING`), and
+routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapter`. The returned
+`PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference` (status stays
+`AUTHORIZING`); `Failure` fires `AUTHORIZE_FAIL` (`status = FAILED`, plus
+`errorCode`/`errorDescription`); `Success` is treated as an invalid synchronous state and discarded
+(`return null` — the whole response body). In practice, per `method`:
+- `CARD` — `CardPaymentAdapter` decrypts the vaulted card behind `methodDetails.token` (via
+  `VaultService.charge`) and routes it through the same processor layer. `CardPaymentProcessor`
+  never returns `Success`, so card is the one method that gets a fully correct response today: a
+  test-declined/expired PAN (`4000000000000002`/`4000000000000069`) comes back `status: FAILED`;
+  anything else comes back `status: AUTHORIZING` with `processorReference` set. A missing/unknown
+  `token` (or missing `methodDetails` entirely) is caught and reported as `status: FAILED` with
+  code `CARD_FAILED` rather than crashing.
+- `NETBANKING`/`UPI` — both processors have real mock logic (`methodDetails.bank ==
   "BANK_CODE_FAIL"` for netbanking, `methodDetails.vpa == "fail@okaxis"` for UPI → `Failure`;
   anything else → `Success`). A request with that failure sentinel comes back `status: FAILED`
   with a generated `errorCode`. Any other request hits the `Success` branch above and **the
@@ -205,8 +211,10 @@ merchant. Fires `CAPTURE_REQUEST` through `PaymentTransitionService` (`AUTHORIZE
 original attempt is still genuinely in flight risks a double capture); a `null` result (adapter
 not implemented) sets `status = AUTHORIZED` directly, without going through the transition
 service, since that's not a real domain event. In practice: no payment currently ever reaches
-`AUTHORIZED` through any live path (see the `PaymentResult.Success`-discarded gap under `POST
-/v1/payments` above), so every capture call today is rejected with `409
+`AUTHORIZED` through any live path — nothing fires `AUTHORIZE_SUCCESS` anywhere yet (a `Pending`
+result from `initiate` just sets `processorReference` and leaves the payment in `AUTHORIZING`; see
+the `PaymentResult.Success`-discarded gap under `POST /v1/payments` above for netbanking/UPI) — so
+every capture call today is rejected with `409
 INVALID_STATE_TRANSITION` before any adapter is even invoked — see
 [Known gaps](gaps.md).
 

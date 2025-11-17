@@ -25,8 +25,9 @@
   per method in `payment/processor/strategy`, selected by `PaymentProcessorRouter` from a
   `Map<PaymentMethod, PaymentProcessor>` bean in `payment/config/PaymentProcessorConfig` —
   the acquirer-facing call an adapter delegates to. `NetBankingAdapter`/`UpiPaymentAdapter` call
-  through to it; `CardPaymentAdapter` still doesn't call anything (see
-  [Known gaps](gaps.md)).
+  through to it directly; `CardPaymentAdapter` calls through too, via
+  `vault/service/VaultService.charge` (decrypts the vaulted card first — see the KEK/DEK bullet
+  below).
 - Card data encrypted with a **KEK/DEK pattern**: each `POST /v1/vault/tokenize` call generates a
   random per-card AES-256 data key (DEK), uses it to encrypt the PAN (`AesBytesEncryptor`, GCM),
   then wraps that DEK itself with a separate master key-encryption-key (KEK) —
