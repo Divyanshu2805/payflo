@@ -67,3 +67,11 @@ dropped vs. still planned:
     customer, or admin. `PaymentTransitionLogRepository` is also currently a bare
     `JpaRepository` — no custom finder methods yet (nothing reads the log back out through the API
     today).
+12. **`vault.encryption.master-key` has a hardcoded dev-only default** in `application.yaml`
+    (overridable via `VAULT_MASTER_KEY`) — fine for local development, but a real deployment must
+    set a real secret via that env var and keep it in a proper secret store, not source control. If
+    this key is ever lost or rotated without a re-encryption migration, every previously-vaulted
+    card's DEK becomes permanently unwrappable. `POST /v1/vault/tokenize` also uses the same
+    hardcoded `merchantId` pattern as the other endpoints, and nothing in the `payment` domain
+    consumes a `CardToken` yet — `CardPaymentAdapter`/`CardPaymentProcessor` don't look up vaulted
+    cards, so tokenizing a card and paying with one are still two disconnected flows.

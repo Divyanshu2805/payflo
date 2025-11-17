@@ -9,8 +9,9 @@ All 15 planned entities are now implemented (`common/entity`, `common/enums`, `m
 `repository`/`service`/`controller` slice (signup, API key generate/list/revoke/rotate) and
 `payment` has a first one too (order creation, get order by ID, cancel order, list payments for an
 order, initiate payment, capture payment) — see "Service/controller layer conventions"; the
-`vault` and `operations` domains still have none of that layer yet. Treat any described
-"architecture" as what you find as you build it, not an established convention to preserve.
+`vault` domain now has one too (card tokenization via `POST /v1/vault/tokenize`); `operations`
+still has none of that layer yet. Treat any described "architecture" as what you find as you build
+it, not an established convention to preserve.
 
 `payment` also has a `gateway`/`gateway/adapter`/`gateway/dto`/`config` set of subpackages
 implementing a strategy/adapter pattern for routing payment-method-specific processing
@@ -167,6 +168,16 @@ Package (produces the runnable jar under `target/`):
 - `jackson-databind` — declared explicitly, though `spring-boot-starter-webmvc` already pulls it in
   transitively; no direct Jackson API usage in the codebase yet that would require the explicit
   declaration
+- `spring-boot-starter-security` — pulled in for `spring-security-crypto`'s `AesBytesEncryptor`/
+  `KeyGenerators` (card PAN/DEK encryption in `vault/config/VaultEncryptionConfig`), not for
+  Spring Security's actual auth/filter-chain machinery. **Adding this dependency alone activates
+  Spring Boot's default autoconfiguration**, which locks every endpoint behind HTTP Basic with a
+  random per-restart password (a `Using generated security password` log line, no matter what).
+  `common/config/SecurityConfig` exists specifically to neutralize that: a `SecurityFilterChain`
+  bean that permits all requests, since no real auth (API key/JWT) exists yet — verified with the
+  app running that `POST /v1/orders`/`POST /v1/vault/tokenize` reach the controller (`400` on a bad
+  payload) rather than being blocked with `401`. Don't remove `SecurityConfig` without replacing it
+  with real auth first.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
