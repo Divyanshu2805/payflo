@@ -16,30 +16,35 @@ it, not an established convention to preserve.
 `payment` also has a `gateway`/`gateway/adapter`/`gateway/dto`/`config` set of subpackages
 implementing a strategy/adapter pattern for routing payment-method-specific processing
 (`PaymentAdapter` interface, one implementation per `PaymentMethod`, selected at runtime by
-`PaymentGatewayRouter`) — see "Practices" in [docs/practices.md](docs/practices.md). The
-adapters are stubs (`// TODO`, return `null`); no real or mock acquirer integration exists yet. A
+`PaymentGatewayRouter`) — see "Practices" in [docs/practices.md](docs/practices.md). A
 `payment/processor` mirrors the same adapter pattern one layer down — `PaymentProcessor` interface
 (`charge()`), one implementation per `PaymentMethod` in `payment/processor/strategy`
 (`CardPaymentProcessor` has real mock-acquirer logic with test PANs; `NetBankingPaymentProcessor`/
 `UpiPaymentProcessor` have real mock logic too — a `methodDetails.bank == "BANK_CODE_FAIL"` /
 `methodDetails.vpa == "fail@okaxis"` check respectively), routed by
 `PaymentProcessorRouter`/`PaymentProcessorConfig` — meant to sit below the adapters as the actual
-acquirer-facing call. `NetBankingAdapter`/`UpiPaymentAdapter` call through to it (with a `try/catch`
-around the response-mapping `switch`); `CardPaymentAdapter` still doesn't call anything and stays a
-stub. **No payment method currently reaches a successful response through `POST /v1/payments`**:
-card falls through untouched at `CREATED`; netbanking's and UPI's non-failure paths both now reach
-`PaymentServiceImpl`'s `case PaymentResult.Success` branch, which treats `Success` as an invalid
-state and does `return null` — so a normal netbanking or UPI payment gets a `201 Created` with an
-empty body. Flagged in [docs/gaps.md](docs/gaps.md)
-as a state-machine design decision, not fixed — deciding what `Success` should map to in
-`PaymentStatus` needs a call on how the netbanking/UPI redirect-or-push flows should actually work.
+acquirer-facing call. `NetBankingAdapter`/`UpiPaymentAdapter` call through to it directly (with a
+`try/catch` around the response-mapping `switch`); `CardPaymentAdapter` calls through too, but via
+`vault/service/VaultService.charge` — it decrypts the vaulted card behind `methodDetails.token`
+first (same `try/catch`-wrapped pattern), then routes through the same `PaymentProcessorRouter`.
+`CardPaymentProcessor` never returns `Success` (only `Failure`/`Pending`), so **card is the one
+method that gets a fully correct response today** — `status: FAILED` for a test-declined/expired
+PAN, `status: AUTHORIZING` (with `processorReference` set) otherwise. Netbanking/UPI still don't:
+their non-failure paths reach `PaymentServiceImpl`'s `case PaymentResult.Success` branch, which
+treats `Success` as an invalid state and does `return null` — so a normal netbanking or UPI payment
+gets a `201 Created` with an empty body. Flagged in
+[docs/gaps.md](docs/gaps.md) as a state-machine
+design decision, not fixed — deciding what `Success` should map to in `PaymentStatus` needs a call
+on how the netbanking/UPI redirect-or-push flows should actually work.
 
 `PaymentAdapter` also has a `capture(UUID paymentId)` method (routed via
 `PaymentGatewayRouter.capture`, exposed as `POST /v1/payments/{paymentId}/capture`) for the
-auth-then-capture step. Same story as `initiate`: `CardPaymentAdapter.capture()` is a stub
-(`null`); `NetBankingAdapter`/`UpiPaymentAdapter`'s `capture()` return a hardcoded
-`PaymentResult.Success` unconditionally, not a real (or properly simulated) capture call. The
-endpoint also has no guard on the payment's current status before attempting a capture.
+auth-then-capture step. `CardPaymentAdapter`/`NetBankingAdapter`/`UpiPaymentAdapter`'s `capture()`
+all return a hardcoded `PaymentResult.Success` unconditionally, not a real (or properly simulated)
+capture call — moot in practice today anyway, since `capture` now goes through
+`PaymentTransitionService` and requires the payment to already be `AUTHORIZED`, which nothing
+currently reaches (see above), so every capture call is rejected with `409
+INVALID_STATE_TRANSITION` before any adapter is invoked.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
