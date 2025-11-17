@@ -195,14 +195,40 @@ payment/order endpoints are.
 **Behavior:** locks the payment row (`SELECT ... FOR UPDATE` via
 `PaymentRepository.findByIdAndMerchantIdForUpdate`); rejects with `404 Not Found`
 (`ResourceNotFoundException`) if `paymentId` doesn't exist or doesn't belong to the hardcoded
-merchant. **No check that the payment is actually in a capturable state** (e.g. `AUTHORIZED`) —
-capture can currently be called on a payment in any status, including one that's already
-`CAPTURED`; see [Known gaps](gaps.md). Sets `status = CAPTURING`,
-then calls `PaymentGatewayRouter.capture(method, paymentId)` and applies the result: `Success`
-sets `status = CAPTURED` and `capturedAt`; `Failure` reverts to `status = AUTHORIZED` with
-`errorCode`/`errorDescription`; `Pending` and a `null` result (adapter not implemented) both also
-revert to `status = AUTHORIZED` without an error, so the caller can retry. In practice: `CARD`'s
-adapter is still a stub (`capture` returns `null`), so card captures always revert to
-`AUTHORIZED` and never succeed; `NETBANKING`/`UPI`'s adapters return a hardcoded
-`PaymentResult.Success` regardless of the payment's actual history, so calling capture on either
-always reports `CAPTURED` — there's no real acquirer-side capture call yet for any method.
+merchant. Fires `CAPTURE_REQUEST` through `PaymentTransitionService` (`AUTHORIZED` → `CAPTURING`)
+— rejects with `409 Conflict` (`InvalidStateTransitionException`, code
+`INVALID_STATE_TRANSITION`) if the payment isn't currently `AUTHORIZED`. Then calls
+`PaymentGatewayRouter.capture(method, paymentId)` and applies the result via the same service:
+`Success` fires `CAPTURE_SUCCESS` (`status = CAPTURED`, sets `capturedAt`); `Failure` fires
+`CAPTURE_FAIL` (reverts to `status = AUTHORIZED`, retryable, with `errorCode`/`errorDescription`);
+`Pending` fires `CAPTURE_PENDING` (a self-transition — stays `CAPTURING`, since a retry while the
+original attempt is still genuinely in flight risks a double capture); a `null` result (adapter
+not implemented) sets `status = AUTHORIZED` directly, without going through the transition
+service, since that's not a real domain event. In practice: no payment currently ever reaches
+`AUTHORIZED` through any live path (see the `PaymentResult.Success`-discarded gap under `POST
+/v1/payments` above), so every capture call today is rejected with `409
+INVALID_STATE_TRANSITION` before any adapter is even invoked — see
+[Known gaps](gaps.md).
+
+## `POST /v1/vault/tokenize`
+
+Tokenizes a card: encrypts and stores it, returning an opaque token that stands in for the card in
+later requests (e.g. `PaymentInitRequest.methodDetails` for a `CARD` payment) instead of ever
+handling the raw PAN again. **`merchantId` is hardcoded** the same way the other endpoints are.
+
+**Request body** (`TokenizeRequest`): `pan` (required, 13–19 digits, must pass a Luhn checksum),
+`cvv` (required, 3–4 digits — validated but **never stored**, per PCI DSS), `expiryMonth`
+(required, 1–12), `expiryYear` (required, must not be in the past), `customerId` (optional),
+`cardHolderName` (required, min 3 characters).
+
+**Response** — `201 Created` with `TokenizeResponse`: `token`, `lastFour`, `brand` (detected from
+the PAN's leading digits), `expiryMonth`, `expiryYear`. The raw PAN is never echoed back.
+
+**Behavior:** detects `CardBrand` from the PAN prefix; generates a random 256-bit AES data
+encryption key (DEK) per card, encrypts the PAN with it (`AesBytesEncryptor`, GCM mode), then
+encrypts (wraps) that DEK itself with a separate master key-encryption-key (KEK) sourced from
+`vault.encryption.master-key` (env var `VAULT_MASTER_KEY`, with a dev-only default — see
+[Known gaps](gaps.md)). Saves a `VaultCard` row (encrypted PAN,
+wrapped DEK, brand, last 4 digits, first 6 digits, expiry, cardholder name) and a `CardToken` row
+(the generated token, a reference to the `VaultCard`, `customerId`, `merchantId`) linking a
+merchant-facing token to it.

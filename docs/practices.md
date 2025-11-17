@@ -24,8 +24,20 @@
   PaymentProcessorResponse`, the latter a sealed `Pending`/`Success`/`Failure`), one implementation
   per method in `payment/processor/strategy`, selected by `PaymentProcessorRouter` from a
   `Map<PaymentMethod, PaymentProcessor>` bean in `payment/config/PaymentProcessorConfig` —
-  the acquirer-facing call an adapter is meant to delegate to, though no adapter calls it yet (see
+  the acquirer-facing call an adapter delegates to. `NetBankingAdapter`/`UpiPaymentAdapter` call
+  through to it; `CardPaymentAdapter` still doesn't call anything (see
   [Known gaps](gaps.md)).
+- Card data encrypted with a **KEK/DEK pattern**: each `POST /v1/vault/tokenize` call generates a
+  random per-card AES-256 data key (DEK), uses it to encrypt the PAN (`AesBytesEncryptor`, GCM),
+  then wraps that DEK itself with a separate master key-encryption-key (KEK) —
+  `VaultEncryptionConfig`'s `dekEncrypter` bean, sourced from `vault.encryption.master-key`. So
+  compromising the database alone (encrypted PAN + wrapped DEK) isn't enough to recover a card; the
+  KEK has to be compromised too, and it lives outside the database (`spring-security-crypto`, part
+  of `spring-boot-starter-security`, provides `AesBytesEncryptor`/`KeyGenerators`). Pulling in
+  `spring-boot-starter-security` for just the crypto classes has a side effect: Spring Boot's
+  default autoconfiguration locks every endpoint behind HTTP Basic with a random per-restart
+  password unless neutralized — `common/config/SecurityConfig` does that (a `SecurityFilterChain`
+  permitting all requests), since no real auth exists yet.
 - Semantic, one-line commit messages (`feat:`, `fix:`, `docs:`, `chore:`, etc.).
 - Service/controller layer (established by the merchant signup slice): request/response DTOs as
   `record`s in `dto/request`/`dto/response` with Jakarta Validation annotations; entity↔DTO mapping
