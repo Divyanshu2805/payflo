@@ -27,15 +27,14 @@ acquirer-facing call. `NetBankingAdapter`/`UpiPaymentAdapter` call through to it
 `try/catch` around the response-mapping `switch`); `CardPaymentAdapter` calls through too, but via
 `vault/service/VaultService.charge` — it decrypts the vaulted card behind `methodDetails.token`
 first (same `try/catch`-wrapped pattern), then routes through the same `PaymentProcessorRouter`.
-`CardPaymentProcessor` never returns `Success` (only `Failure`/`Pending`), so **card is the one
-method that gets a fully correct response today** — `status: FAILED` for a test-declined/expired
-PAN, `status: AUTHORIZING` (with `processorReference` set) otherwise. Netbanking/UPI still don't:
-their non-failure paths reach `PaymentServiceImpl`'s `case PaymentResult.Success` branch, which
-treats `Success` as an invalid state and does `return null` — so a normal netbanking or UPI payment
-gets a `201 Created` with an empty body. Flagged in
-[docs/gaps.md](docs/gaps.md) as a state-machine
-design decision, not fixed — deciding what `Success` should map to in `PaymentStatus` needs a call
-on how the netbanking/UPI redirect-or-push flows should actually work.
+`CardPaymentProcessor` never returns `Success` (only `Failure`/`Pending`), and
+`NetBankingPaymentProcessor`/`UpiPaymentProcessor` return `Pending` rather than `Success` on their
+happy path too — deliberately, since `PaymentServiceImpl`'s `case PaymentResult.Success` branch
+treats `Success` as an invalid state and does `return null` (the whole response body), a
+placeholder from before any processor had real logic. With nothing producing `Success` anymore,
+that branch is unreachable dead code, and **all three methods now get a correctly-formed
+response**: `status: FAILED` for a declined/rejected test case (bad PAN, `BANK_CODE_FAIL` bank
+code, `fail@okaxis` VPA), `status: AUTHORIZING` (with `processorReference` set) otherwise.
 
 `PaymentAdapter` also has a `capture(UUID paymentId)` method (routed via
 `PaymentGatewayRouter.capture`, exposed as `POST /v1/payments/{paymentId}/capture`) for the
@@ -83,8 +82,9 @@ in `CAPTURING` rather than reverting to `AUTHORIZED`, since a genuinely in-fligh
 retried risks a double capture. A `null` capture result (adapter not implemented) still sets
 `status` directly to `AUTHORIZED`, since that's not a real domain event. One practical consequence:
 since no payment ever reaches `AUTHORIZED` through any live path
-yet (see the `PaymentResult.Success`-discarded gap above), every `capture` call currently gets
-rejected with `409 INVALID_STATE_TRANSITION` before it can do anything. Its transition table also
+yet (see above — every processor's happy path returns `Pending`, which doesn't advance past
+`AUTHORIZING`), every `capture` call currently gets rejected with `409 INVALID_STATE_TRANSITION`
+before it can do anything. Its transition table also
 revised two things from the diagram's earlier version (both now reflected in `docs/domain-vocabulary.md`): a
 failed capture reverts to `AUTHORIZED` rather than terminal `FAILED`, and `REFUND_INIT` now moves
 the payment to `PARTIALLY_REFUNDED` itself rather than only touching `RefundStatus`.
