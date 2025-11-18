@@ -43,4 +43,5 @@ public class CardPaymentAdapter implements PaymentAdapter {
     public PaymentResult capture(UUID paymentId) {
         return new PaymentResult.Success("CARD_REF");
     }
+
 }
