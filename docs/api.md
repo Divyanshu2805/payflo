@@ -156,9 +156,8 @@ any caller identity (see [Known gaps](gaps.md)).
 
 **Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
 (copied from the order), `status`, `method`, `methodDetails`, `errorCode`, `errorDescription`,
-`capturedAt`, `createdAt`. **`status`/response body today depends heavily on `method`** — see the
-note on `PaymentAdapter` below; `NETBANKING`/`UPI` in particular can come back with an empty body
-on their happy path, a currently-open bug (see [Known gaps](gaps.md)).
+`capturedAt`, `createdAt`. All three implemented methods now return a correctly-formed response —
+see the note on `PaymentAdapter` below for the per-method mock-acquirer rules.
 
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
@@ -170,23 +169,22 @@ random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
 fires `AUTHORIZE_ATTEMPT` through `PaymentTransitionService` (`CREATED` → `AUTHORIZING`), and
 routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapter`. The returned
 `PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference` (status stays
-`AUTHORIZING`); `Failure` fires `AUTHORIZE_FAIL` (`status = FAILED`, plus
-`errorCode`/`errorDescription`); `Success` is treated as an invalid synchronous state and discarded
-(`return null` — the whole response body). In practice, per `method`:
+`AUTHORIZING` — nothing advances it further yet, so `POST .../capture` always rejects for now, see
+[Known gaps](gaps.md)); `Failure` fires `AUTHORIZE_FAIL` (`status =
+FAILED`, plus `errorCode`/`errorDescription`); `Success` is treated as an invalid synchronous state
+and discarded (`return null`) — currently unreachable dead code, since no processor produces
+`Success` today (see below). In practice, per `method`:
 - `CARD` — `CardPaymentAdapter` decrypts the vaulted card behind `methodDetails.token` (via
-  `VaultService.charge`) and routes it through the same processor layer. `CardPaymentProcessor`
-  never returns `Success`, so card is the one method that gets a fully correct response today: a
-  test-declined/expired PAN (`4000000000000002`/`4000000000000069`) comes back `status: FAILED`;
-  anything else comes back `status: AUTHORIZING` with `processorReference` set. A missing/unknown
-  `token` (or missing `methodDetails` entirely) is caught and reported as `status: FAILED` with
-  code `CARD_FAILED` rather than crashing.
-- `NETBANKING`/`UPI` — both processors have real mock logic (`methodDetails.bank ==
-  "BANK_CODE_FAIL"` for netbanking, `methodDetails.vpa == "fail@okaxis"` for UPI → `Failure`;
-  anything else → `Success`). A request with that failure sentinel comes back `status: FAILED`
-  with a generated `errorCode`. Any other request hits the `Success` branch above and **the
-  endpoint returns `201 Created` with an empty body** — the `Payment` row is still correctly
-  persisted, it's just never reported back. See
-  [Known gaps](gaps.md).
+  `VaultService.charge`) and routes it through the same processor layer. A test-declined/expired
+  PAN (`4000000000000002`/`4000000000000069`) comes back `status: FAILED`; anything else comes
+  back `status: AUTHORIZING` with `processorReference` set. A missing/unknown `token` (or missing
+  `methodDetails` entirely) is caught and reported as `status: FAILED` with code `CARD_FAILED`
+  rather than crashing.
+- `NETBANKING`/`UPI` — `methodDetails.bank == "BANK_CODE_FAIL"` for netbanking, `methodDetails.vpa
+  == "fail@okaxis"` for UPI, comes back `status: FAILED` with a generated `errorCode`. Anything
+  else comes back `status: AUTHORIZING` with `processorReference` set, same as card's non-failure
+  path — both processors return `Pending` rather than `Success` on their happy path specifically to
+  avoid the discarded-response bug above.
 
 ## `POST /v1/payments/{paymentId}/capture`
 
@@ -211,11 +209,10 @@ merchant. Fires `CAPTURE_REQUEST` through `PaymentTransitionService` (`AUTHORIZE
 original attempt is still genuinely in flight risks a double capture); a `null` result (adapter
 not implemented) sets `status = AUTHORIZED` directly, without going through the transition
 service, since that's not a real domain event. In practice: no payment currently ever reaches
-`AUTHORIZED` through any live path — nothing fires `AUTHORIZE_SUCCESS` anywhere yet (a `Pending`
-result from `initiate` just sets `processorReference` and leaves the payment in `AUTHORIZING`; see
-the `PaymentResult.Success`-discarded gap under `POST /v1/payments` above for netbanking/UPI) — so
-every capture call today is rejected with `409
-INVALID_STATE_TRANSITION` before any adapter is even invoked — see
+`AUTHORIZED` through any live path — nothing fires `AUTHORIZE_SUCCESS` anywhere yet, since every
+processor's happy path returns `Pending` (which just sets `processorReference` and leaves the
+payment in `AUTHORIZING`) rather than a terminal outcome — so every capture call today is rejected
+with `409 INVALID_STATE_TRANSITION` before any adapter is even invoked — see
 [Known gaps](gaps.md).
 
 ## `POST /v1/vault/tokenize`
