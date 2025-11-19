@@ -39,7 +39,11 @@ dispatching to the gateway and `AUTHORIZE_FAIL` on a `Failure` result; `capture`
 `CAPTURE_REQUEST` before dispatching to the processor and `CAPTURE_SUCCESS`/`CAPTURE_FAIL`/
 `CAPTURE_PENDING` on the result (a `null` capture result — the adapter isn't implemented — still
 sets `status` directly to `AUTHORIZED` rather than through the service, since that's not a real
-domain event, just an infrastructure gap). The diagram below reflects the component's actual
+domain event, just an infrastructure gap); `resolveAuthorization` fires `AUTHORIZE_SUCCESS`/
+`AUTHORIZE_FAIL` and then the same `CAPTURE_*` events as part of its auto-capture step — the only
+place `AUTHORIZE_SUCCESS` is fired anywhere, and currently unreachable in practice since nothing
+calls `resolveAuthorization` automatically (see [Known
+gaps](gaps.md)). The diagram below reflects the component's actual
 transition table, which has revised two things from the previously-documented version:
 
 - A failed capture now reverts to `AUTHORIZED` (retryable) instead of going straight to a terminal

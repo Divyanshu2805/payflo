@@ -8,7 +8,9 @@ All 15 planned entities are now implemented (`common/entity`, `common/enums`, `m
 `payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now has a
 `repository`/`service`/`controller` slice (signup, API key generate/list/revoke/rotate) and
 `payment` has a first one too (order creation, get order by ID, cancel order, list payments for an
-order, initiate payment, capture payment) — see "Service/controller layer conventions"; the
+order, initiate payment, capture payment) — see "Service/controller layer conventions" —
+plus a `resolveAuthorization` method on `PaymentService` with no controller route (internal-only,
+meant to be driven by `payment/simulator`, see below); the
 `vault` domain now has one too (card tokenization via `POST /v1/vault/tokenize`); `operations`
 still has none of that layer yet. Treat any described "architecture" as what you find as you build
 it, not an established convention to preserve.
@@ -45,6 +47,20 @@ capture call — moot in practice today anyway, since `capture` now goes through
 currently reaches (see above), so every capture call is rejected with `409
 INVALID_STATE_TRANSITION` before any adapter is invoked.
 
+`payment/simulator` is the intended fix for the "nothing reaches `AUTHORIZED`" gap — a
+`BankCallbackSimulator` (`processCallbacks()`, meant to poll `PaymentRepository.
+findByStatusAndCreatedAtBefore(AUTHORIZING, ...)`) and `SimulatorConfig`
+(`@ConfigurationProperties(prefix = "payment.simulator")`, per-method delay/success-rate plus a
+global `ChaosMode`). `PaymentServiceImpl.resolveAuthorization` — what the simulator calls — is
+fully implemented: fires `AUTHORIZE_SUCCESS`/`AUTHORIZE_FAIL`, then auto-captures on approval
+(fires `CAPTURE_REQUEST`, calls the adapter's `capture()`, fires the matching `CAPTURE_*` event,
+sets the order `PAID` on success). **But `BankCallbackSimulator.processCallbacks()`'s `@Scheduled`
+is commented out, and there's no `@EnableScheduling` anywhere** — so nothing calls it, and today's
+behavior is unchanged: every payment sits in `AUTHORIZING` forever, and `capture` still always
+gets rejected. Don't uncomment `@Scheduled` or add `@EnableScheduling` without being asked —
+that's a deliberate "turn on a recurring background job against payment data" decision, not a
+missing wire.
+
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
 microservices architecture in [docs/architecture.md](docs/architecture.md#target) is the phase-two destination,
@@ -68,7 +84,7 @@ JPA relationship to the owning entity (a real FK can't span two databases, so it
 removed at split time anyway). Follow this convention for new domains rather than the
 originally-sketched `controller`/`service`/`repository` split.
 
-Domain vocabulary lives in `common/enums` (13 enums) and is the source of truth for every status,
+Domain vocabulary lives in `common/enums` (14 enums) and is the source of truth for every status,
 role, and event value — `PaymentStatus`/`PaymentEvent` in particular define the payment state machine.
 Read those before inventing a new status string; they're documented with both state-machine diagrams
 under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.md).

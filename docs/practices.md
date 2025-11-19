@@ -39,6 +39,13 @@
   default autoconfiguration locks every endpoint behind HTTP Basic with a random per-restart
   password unless neutralized — `common/config/SecurityConfig` does that (a `SecurityFilterChain`
   permitting all requests), since no real auth exists yet.
+- `payment/simulator` mocks the async, bank-side half of a payment (the part `PaymentProcessor`'s
+  synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**
+  (currently built but not scheduled, see [Known gaps](gaps.md))
+  meant to poll for `AUTHORIZING` payments and resolve each one after a per-method simulated delay
+  and success rate (`SimulatorConfig`, bound from `payment.simulator.*` in `application.yaml`), with
+  a global `ChaosMode` (`NORMAL`/`SLOW`/`SUCCESS`/`FAILURE`/`TIMEOUT`) to force deterministic
+  outcomes for testing rather than relying on the random success rate.
 - Semantic, one-line commit messages (`feat:`, `fix:`, `docs:`, `chore:`, etc.).
 - Service/controller layer (established by the merchant signup slice): request/response DTOs as
   `record`s in `dto/request`/`dto/response` with Jakarta Validation annotations; entity↔DTO mapping
