@@ -12,7 +12,23 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
 vault:
   encryption:
     master-key: ${VAULT_MASTER_KEY:arXfSlAXS4TRCw5tlKCFSwjG+D4C4ESUV47We3pw2eI=}
+payment:
+  simulator:
+    poll-interval-ms: 5000
+    chaos-mode: NORMAL
+    methods:
+      CARD:
+        min-delay-seconds: 2
+        max-delay-seconds: 6
+        success-rate: 90
+      UPI:
+        min-delay-seconds: 1
+        max-delay-seconds: 3
+        success-rate: 95
+      NETBANKING:
+        min-delay-seconds: 4
+        max-delay-seconds: 10
+        success-rate: 80
