@@ -37,4 +37,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of("INVALID_STATE_TRANSITION", ex.getMessage()));
     }
+
+    @ExceptionHandler(UnsupportedPaymentMethodException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedPaymentMethod(UnsupportedPaymentMethodException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(ex.getErrorCode(), ex.getMessage()));
+    }
 }
