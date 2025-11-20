@@ -1,6 +1,7 @@
 package com.project.payflo.payment.processor;
 
 import com.project.payflo.common.enums.PaymentMethod;
+import com.project.payflo.common.exception.UnsupportedPaymentMethodException;
 import com.project.payflo.payment.processor.dto.PaymentProcessorRequest;
 import com.project.payflo.payment.processor.dto.PaymentProcessorResponse;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,8 @@ public class PaymentProcessorRouter {
     public PaymentProcessorResponse charge(PaymentProcessorRequest request) {
         PaymentProcessor processor = paymentProcessors.get(request.method());
         if (processor == null) {
-            throw new IllegalArgumentException("No payment processor registered for method: "+request.method());
+            throw new UnsupportedPaymentMethodException("UNSUPPORTED_PAYMENT_METHOD",
+                    "No payment processor registered for method: "+request.method());
         }
         return processor.charge(request);
     }

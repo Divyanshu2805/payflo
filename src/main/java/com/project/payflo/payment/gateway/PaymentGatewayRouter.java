@@ -1,6 +1,7 @@
 package com.project.payflo.payment.gateway;
 
 import com.project.payflo.common.enums.PaymentMethod;
+import com.project.payflo.common.exception.UnsupportedPaymentMethodException;
 import com.project.payflo.payment.gateway.dto.PaymentRequest;
 import com.project.payflo.payment.gateway.dto.PaymentResult;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,8 @@ public class PaymentGatewayRouter {
     public PaymentResult initiate(PaymentRequest request) {
         PaymentAdapter adapter = paymentAdapters.get(request.method());
         if (adapter == null) {
-            throw new IllegalArgumentException("No payment adapter registered for method: "+request.method());
+            throw new UnsupportedPaymentMethodException("UNSUPPORTED_PAYMENT_METHOD",
+                    "No payment adapter registered for method: "+request.method());
         }
         return adapter.initiate(request);
     }
@@ -26,7 +28,8 @@ public class PaymentGatewayRouter {
     public PaymentResult capture(PaymentMethod method, UUID paymentId) {
         PaymentAdapter adapter = paymentAdapters.get(method);
         if (adapter == null) {
-            throw new IllegalArgumentException("No payment adapter registered for method: "+method);
+            throw new UnsupportedPaymentMethodException("UNSUPPORTED_PAYMENT_METHOD",
+                    "No payment adapter registered for method: "+method);
         }
         return adapter.capture(paymentId);
     }
