@@ -151,8 +151,10 @@ the same way `OrderController`'s is — a separate fixed test UUID instance fiel
 any caller identity (see [Known gaps](gaps.md)).
 
 **Request body** (`PaymentInitRequest`): `orderId` (required), `method` (required, `PaymentMethod`
-— `CARD`/`NETBANKING`/`UPI`/`WALLET`), `methodDetails` (optional, freeform JSON — for `CARD`, a
-`token` from `POST /v1/vault/tokenize`; for `NETBANKING`, a `bank` code; for `UPI`, a `vpa`).
+— `CARD`/`NETBANKING`/`UPI`/`WALLET`, though `WALLET` has no adapter registered yet and rejects
+with `400 Bad Request` — see the note on `PaymentAdapter` below), `methodDetails` (optional,
+freeform JSON — for `CARD`, a `token` from `POST /v1/vault/tokenize`; for `NETBANKING`, a `bank`
+code; for `UPI`, a `vpa`).
 
 **Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
 (copied from the order), `status`, `method`, `methodDetails`, `errorCode`, `errorDescription`,
@@ -185,6 +187,11 @@ and discarded (`return null`) — currently unreachable dead code, since no proc
   else comes back `status: AUTHORIZING` with `processorReference` set, same as card's non-failure
   path — both processors return `Pending` rather than `Success` on their happy path specifically to
   avoid the discarded-response bug above.
+- `WALLET` — no `PaymentAdapter` is registered for it in `PaymentAdapterConfig`.
+  `PaymentGatewayRouter` throws `UnsupportedPaymentMethodException` (code
+  `UNSUPPORTED_PAYMENT_METHOD`), which `GlobalExceptionHandler` maps to `400 Bad Request` — the
+  whole request rolls back cleanly (no orphaned `Payment`/`Order` row), rather than the unhandled
+  `500` this used to be.
 
 ## `POST /v1/payments/{paymentId}/capture`
 

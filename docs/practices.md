@@ -53,10 +53,10 @@
   interface + impl (`service`/`service.impl`) constructor-injected and `@Transactional`; controllers
   under `/v1/...`.
 - Error handling: custom exceptions (`DuplicateResourceException`, `ResourceNotFoundException`,
-  `ConflictException`) live in `common/exception`, extend `RuntimeException`, and carry an
-  `errorCode`. A single `@RestControllerAdvice` (`GlobalExceptionHandler`, also in
-  `common/exception`) maps them to the right HTTP status (`409`/`404`/`409`) and a shared
-  `ErrorResponse` record (`errorCode`, `errorDescription`, `timestamp`, optional `fieldErrors`).
-  Not yet wired up: a handler for `MethodArgumentNotValidException` (Bean Validation failures) —
-  `ErrorResponse.FieldError` exists
-  for this but nothing populates it yet.
+  `ConflictException`, `InvalidStateTransitionException`, `UnsupportedPaymentMethodException`) live
+  in `common/exception`, extend `RuntimeException`, and carry an `errorCode`. A single
+  `@RestControllerAdvice` (`GlobalExceptionHandler`, also in `common/exception`) maps them to the
+  right HTTP status (`409`/`404`/`409`/`409`/`400` respectively) and a shared `ErrorResponse`
+  record (`errorCode`, `errorDescription`, `timestamp`, optional `fieldErrors`). Not yet wired up: a
+  handler for `MethodArgumentNotValidException` (Bean Validation failures) — `ErrorResponse.FieldError`
+  exists for this but nothing populates it yet.

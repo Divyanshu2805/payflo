@@ -237,8 +237,9 @@ Commit messages for this repo are a single line in semantic-commit format (`type
   and carries `@Getter @Setter @AllArgsConstructor @NoArgsConstructor @Builder`.
 - **Any field with a default value needs `@Builder.Default`.** Without it Lombok silently discards the
   initializer and the builder yields `null` — on a `nullable = false` column that surfaces only as a
-  constraint violation at insert. This bit three entities already; the compiler warns, so don't ignore
-  build warnings.
+  constraint violation at insert. This bit three entities already, and a fourth (`Refund.status`) was
+  caught via the compiler warning before it ever ran — the compiler warns, so don't ignore build
+  warnings.
 - Enums are always `@Enumerated(EnumType.STRING)` with an explicit `length` on the column.
 - Money uses the `Money` embeddable (`long` smallest-unit amount + currency), not a bare numeric column.
 - Cross-domain references (`merchantId` on payment-domain entities, `customer`/`merchant` on
