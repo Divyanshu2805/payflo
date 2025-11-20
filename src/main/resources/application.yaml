@@ -32,3 +32,7 @@ payment:
         min-delay-seconds: 4
         max-delay-seconds: 10
         success-rate: 80
+      WALLET:
+        min-delay-seconds: 1
+        max-delay-seconds: 2
+        success-rate: 92
