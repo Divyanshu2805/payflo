@@ -151,10 +151,9 @@ the same way `OrderController`'s is — a separate fixed test UUID instance fiel
 any caller identity (see [Known gaps](gaps.md)).
 
 **Request body** (`PaymentInitRequest`): `orderId` (required), `method` (required, `PaymentMethod`
-— `CARD`/`NETBANKING`/`UPI`/`WALLET`, though `WALLET` has no adapter registered yet and rejects
-with `400 Bad Request` — see the note on `PaymentAdapter` below), `methodDetails` (optional,
-freeform JSON — for `CARD`, a `token` from `POST /v1/vault/tokenize`; for `NETBANKING`, a `bank`
-code; for `UPI`, a `vpa`).
+— `CARD`/`NETBANKING`/`UPI`/`WALLET`), `methodDetails` (optional, freeform JSON — for `CARD`, a
+`token` from `POST /v1/vault/tokenize`; for `NETBANKING`, a `bank` code; for `UPI`, a `vpa`; for
+`WALLET`, a `walletId`).
 
 **Response** — `201 Created` with `PaymentResponse`: `id`, `orderId`, `merchantId`, `amount`
 (copied from the order), `status`, `method`, `methodDetails`, `errorCode`, `errorDescription`,
@@ -182,16 +181,18 @@ and discarded (`return null`) — currently unreachable dead code, since no proc
   back `status: AUTHORIZING` with `processorReference` set. A missing/unknown `token` (or missing
   `methodDetails` entirely) is caught and reported as `status: FAILED` with code `CARD_FAILED`
   rather than crashing.
-- `NETBANKING`/`UPI` — `methodDetails.bank == "BANK_CODE_FAIL"` for netbanking, `methodDetails.vpa
-  == "fail@okaxis"` for UPI, comes back `status: FAILED` with a generated `errorCode`. Anything
-  else comes back `status: AUTHORIZING` with `processorReference` set, same as card's non-failure
-  path — both processors return `Pending` rather than `Success` on their happy path specifically to
-  avoid the discarded-response bug above.
-- `WALLET` — no `PaymentAdapter` is registered for it in `PaymentAdapterConfig`.
-  `PaymentGatewayRouter` throws `UnsupportedPaymentMethodException` (code
-  `UNSUPPORTED_PAYMENT_METHOD`), which `GlobalExceptionHandler` maps to `400 Bad Request` — the
-  whole request rolls back cleanly (no orphaned `Payment`/`Order` row), rather than the unhandled
-  `500` this used to be.
+- `NETBANKING`/`UPI`/`WALLET` — `methodDetails.bank == "BANK_CODE_FAIL"` for netbanking,
+  `methodDetails.vpa == "fail@okaxis"` for UPI, `methodDetails.walletId == "fail_wallet"` for
+  wallet, comes back `status: FAILED` with a generated `errorCode`. Anything else comes back
+  `status: AUTHORIZING` with `processorReference` set, same as card's non-failure path — all three
+  processors return `Pending` rather than `Success` on their happy path specifically to avoid the
+  discarded-response bug above.
+
+All four `PaymentMethod` values now have both a `PaymentAdapter` and a `PaymentProcessor`
+registered — `UnsupportedPaymentMethodException`/`400 Bad Request` (see [Known
+gaps](gaps.md)) is currently unreachable through either router given
+today's enum values, but stays in place as the defined behavior for any future `PaymentMethod`
+added without adapters to match.
 
 ## `POST /v1/payments/{paymentId}/capture`
 
