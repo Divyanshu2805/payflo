@@ -16,16 +16,16 @@
 - Method-specific payment processing routed through a **strategy/adapter pattern**: a `PaymentAdapter`
   interface (`initiate(PaymentRequest)`/`capture(UUID)`, `payment/gateway`) with one implementation
   per `PaymentMethod` (`payment/gateway/adapter`
-  — `CardPaymentAdapter`, `NetBankingAdapter`, `UpiPaymentAdapter`), selected at runtime by
-  `PaymentGatewayRouter` from a `Map<PaymentMethod, PaymentAdapter>` bean assembled in
-  `payment/config/PaymentAdapterConfig`. Keeps adding a payment method to a new adapter + one config
-  line rather than a growing `switch`. Below that, `payment/processor` mirrors the same pattern one
-  layer down: a `PaymentProcessor` interface (`charge(PaymentProcessorRequest):
+  — `CardPaymentAdapter`, `NetBankingAdapter`, `UpiPaymentAdapter`, `WalletPaymentAdapter`),
+  selected at runtime by `PaymentGatewayRouter` from a `Map<PaymentMethod, PaymentAdapter>` bean
+  assembled in `payment/config/PaymentAdapterConfig`. Keeps adding a payment method to a new
+  adapter + one config line rather than a growing `switch`. Below that, `payment/processor` mirrors
+  the same pattern one layer down: a `PaymentProcessor` interface (`charge(PaymentProcessorRequest):
   PaymentProcessorResponse`, the latter a sealed `Pending`/`Success`/`Failure`), one implementation
   per method in `payment/processor/strategy`, selected by `PaymentProcessorRouter` from a
-  `Map<PaymentMethod, PaymentProcessor>` bean in `payment/config/PaymentProcessorConfig` —
-  the acquirer-facing call an adapter delegates to. `NetBankingAdapter`/`UpiPaymentAdapter` call
-  through to it directly; `CardPaymentAdapter` calls through too, via
+  `Map<PaymentMethod, PaymentProcessor>` bean in `payment/config/PaymentProcessorConfig` — the
+  acquirer-facing call an adapter delegates to. `NetBankingAdapter`/`UpiPaymentAdapter`/
+  `WalletPaymentAdapter` call through to it directly; `CardPaymentAdapter` calls through too, via
   `vault/service/VaultService.charge` (decrypts the vaulted card first — see the KEK/DEK bullet
   below).
 - Card data encrypted with a **KEK/DEK pattern**: each `POST /v1/vault/tokenize` call generates a
