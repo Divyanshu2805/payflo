@@ -1,4 +1,4 @@
-package com.codingshuttle.razorpay.merchant.security;
+package com.project.payflo.merchant.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
