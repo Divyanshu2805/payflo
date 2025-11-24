@@ -174,19 +174,40 @@ routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapte
 [Known gaps](gaps.md)); `Failure` fires `AUTHORIZE_FAIL` (`status =
 FAILED`, plus `errorCode`/`errorDescription`); `Success` is treated as an invalid synchronous state
 and discarded (`return null`) — currently unreachable dead code, since no processor produces
-`Success` today (see below). In practice, per `method`:
-- `CARD` — `CardPaymentAdapter` decrypts the vaulted card behind `methodDetails.token` (via
-  `VaultService.charge`) and routes it through the same processor layer. A test-declined/expired
-  PAN (`4000000000000002`/`4000000000000069`) comes back `status: FAILED`; anything else comes
-  back `status: AUTHORIZING` with `processorReference` set. A missing/unknown `token` (or missing
-  `methodDetails` entirely) is caught and reported as `status: FAILED` with code `CARD_FAILED`
-  rather than crashing.
-- `NETBANKING`/`UPI`/`WALLET` — `methodDetails.bank == "BANK_CODE_FAIL"` for netbanking,
-  `methodDetails.vpa == "fail@okaxis"` for UPI, `methodDetails.walletId == "fail_wallet"` for
-  wallet, comes back `status: FAILED` with a generated `errorCode`. Anything else comes back
-  `status: AUTHORIZING` with `processorReference` set, same as card's non-failure path — all three
-  processors return `Pending` rather than `Success` on their happy path specifically to avoid the
-  discarded-response bug above.
+`Success` today (see below). Each processor's mock logic recognizes several distinct test
+scenarios — modeled on how real gateway sandboxes (Stripe/Razorpay-style test cards, NPCI-style
+test VPAs) document multiple named test values per outcome rather than one binary pass/fail — all
+mapping to `status: FAILED` with a specific `errorCode`; anything not matching a known test value
+comes back `status: AUTHORIZING` with `processorReference` set (the mock "payment is being
+processed" state):
+
+| Method | Trigger | `errorCode` |
+|---|---|---|
+| `CARD` | PAN `4000000000000002` | `CARD_DECLINED` |
+| `CARD` | PAN `4000000000000069` | `CARD_EXPIRED` |
+| `CARD` | PAN `4000000000009995` | `INSUFFICIENT_FUNDS` |
+| `CARD` | PAN `4000000000000119` | `PROCESSING_ERROR` |
+| `CARD` | PAN `4100000000000019` | `FRAUD_SUSPECTED` |
+| `NETBANKING` | `methodDetails.bank` missing/blank | `INVALID_BANK` |
+| `NETBANKING` | `methodDetails.bank == "BANK_CODE_FAIL"` | `BANK_REJECTED` |
+| `NETBANKING` | `methodDetails.bank == "BANK_CODE_INSUFFICIENT_FUNDS"` | `INSUFFICIENT_FUNDS` |
+| `NETBANKING` | `methodDetails.bank == "BANK_CODE_TIMEOUT"` | `BANK_TIMEOUT` |
+| `UPI` | `methodDetails.vpa` missing or not `handle@bank` shaped | `INVALID_VPA` |
+| `UPI` | `methodDetails.vpa == "fail@okaxis"` | `UPI_REJECTED` |
+| `UPI` | `methodDetails.vpa == "nofunds@okaxis"` | `INSUFFICIENT_FUNDS` |
+| `WALLET` | `methodDetails.walletId` missing/blank | `INVALID_WALLET` |
+| `WALLET` | `methodDetails.walletId == "fail_wallet"` | `WALLET_REJECTED` |
+| `WALLET` | `methodDetails.walletId == "low_balance_wallet"` | `INSUFFICIENT_FUNDS` |
+
+`CARD` additionally routes through `CardPaymentAdapter`/`VaultService.charge` (decrypts the
+vaulted card behind `methodDetails.token` first — a missing/unknown `token`, or missing
+`methodDetails` entirely, is caught and reported as `status: FAILED` with code `CARD_FAILED`
+rather than crashing) instead of calling the processor directly. All four processors return
+`Pending` rather than `Success` on their happy path specifically to avoid the discarded-response
+bug above. Note the input-validation entries (`INVALID_BANK`/`INVALID_VPA`/`INVALID_WALLET`) are a
+behavior change from earlier: previously, an omitted `bank`/`vpa`/`walletId` fell through to the
+success path (`Pending`) rather than failing — real systems can't process a payment without
+knowing which bank/VPA/wallet to charge, so this now fails explicitly instead.
 
 All four `PaymentMethod` values now have both a `PaymentAdapter` and a `PaymentProcessor`
 registered — `UnsupportedPaymentMethodException`/`400 Bad Request` (see [Known
