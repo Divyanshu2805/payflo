@@ -20,25 +20,23 @@ implementing a strategy/adapter pattern for routing payment-method-specific proc
 (`PaymentAdapter` interface, one implementation per `PaymentMethod`, selected at runtime by
 `PaymentGatewayRouter`) — see "Practices" in [docs/practices.md](docs/practices.md). A
 `payment/processor` mirrors the same adapter pattern one layer down — `PaymentProcessor` interface
-(`charge()`), one implementation per `PaymentMethod` in `payment/processor/strategy`
-(`CardPaymentProcessor` has real mock-acquirer logic with test PANs; `NetBankingPaymentProcessor`/
-`UpiPaymentProcessor`/`WalletPaymentProcessor` have real mock logic too — a `methodDetails.bank ==
-"BANK_CODE_FAIL"` / `methodDetails.vpa == "fail@okaxis"` / `methodDetails.walletId ==
-"fail_wallet"` check respectively), routed by `PaymentProcessorRouter`/`PaymentProcessorConfig` —
-meant to sit below the adapters as the actual acquirer-facing call. `NetBankingAdapter`/
-`UpiPaymentAdapter`/`WalletPaymentAdapter` call through to it directly (with a `try/catch` around
-the response-mapping `switch`); `CardPaymentAdapter` calls through too, but via
-`vault/service/VaultService.charge` — it decrypts the vaulted card behind `methodDetails.token`
-first (same `try/catch`-wrapped pattern), then routes through the same `PaymentProcessorRouter`.
-`CardPaymentProcessor` never returns `Success` (only `Failure`/`Pending`), and
-`NetBankingPaymentProcessor`/`UpiPaymentProcessor`/`WalletPaymentProcessor` return `Pending` rather
-than `Success` on their happy path too — deliberately, since `PaymentServiceImpl`'s `case
-PaymentResult.Success` branch treats `Success` as an invalid state and does `return null` (the
-whole response body), a placeholder from before any processor had real logic. With nothing
-producing `Success` anymore, that branch is unreachable dead code, and **all four methods now get
-a correctly-formed response**: `status: FAILED` for a declined/rejected test case (bad PAN,
-`BANK_CODE_FAIL` bank code, `fail@okaxis` VPA, `fail_wallet` wallet ID), `status: AUTHORIZING`
-(with `processorReference` set) otherwise. `PaymentMethod` has no fifth value left unregistered, so
+(`charge()`), one implementation per `PaymentMethod` in `payment/processor/strategy`. All four now
+have real mock-acquirer logic recognizing several distinct test scenarios each (test PANs for
+card, `bank`/`vpa`/`walletId` sentinel values for the other three — including required-field
+validation, e.g. a missing `vpa` now fails with `INVALID_VPA` rather than silently succeeding) —
+full table in [docs/api.md](docs/api.md) under `POST /v1/payments`. Routed by
+`PaymentProcessorRouter`/`PaymentProcessorConfig` — meant to sit below the adapters as the actual
+acquirer-facing call. `NetBankingAdapter`/`UpiPaymentAdapter`/`WalletPaymentAdapter` call through
+to it directly (with a `try/catch` around the response-mapping `switch`); `CardPaymentAdapter`
+calls through too, but via `vault/service/VaultService.charge` — it decrypts the vaulted card
+behind `methodDetails.token` first (same `try/catch`-wrapped pattern), then routes through the same
+`PaymentProcessorRouter`. None of the four processors ever return `Success` — deliberately, since
+`PaymentServiceImpl`'s `case PaymentResult.Success` branch treats `Success` as an invalid state and
+does `return null` (the whole response body), a placeholder from before any processor had real
+logic. With nothing producing `Success`, that branch is unreachable dead code, and **all four
+methods get a correctly-formed response**: `status: FAILED` with a specific `errorCode` for a
+recognized test-failure scenario, `status: AUTHORIZING` (with `processorReference` set) otherwise.
+`PaymentMethod` has no fifth value left unregistered, so
 `UnsupportedPaymentMethodException`/`400 Bad Request` (below) is currently unreachable through
 either router — it stays as the defined behavior for any future method added without adapters to
 match.
