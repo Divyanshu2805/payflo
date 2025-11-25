@@ -26,24 +26,16 @@ dropped vs. still planned:
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying
    a payment-initiation request creates a duplicate `Payment` row rather than returning the
    original.
-9. **`BankCallbackSimulator` — the mechanism that would resolve `AUTHORIZING` payments — is built
-   but not scheduled, so `POST /v1/payments/{paymentId}/capture` still can never succeed today.**
-   `payment/simulator/BankCallbackSimulator.processCallbacks()` is meant to poll for payments stuck
-   in `AUTHORIZING` (`PaymentRepository.findByStatusAndCreatedAtBefore`) and resolve each one after
-   a per-method simulated delay (`payment.simulator.methods.<METHOD>.min/max-delay-seconds`,
-   `application.yaml`) by calling `PaymentService.resolveAuthorization` — but its `@Scheduled`
-   annotation is commented out, and `PayFloApplication` has no `@EnableScheduling` either, so
-   nothing ever invokes it. `resolveAuthorization` itself is fully implemented and correct: fires
-   `AUTHORIZE_SUCCESS` (or `AUTHORIZE_FAIL`, per a configurable `payment.simulator.methods.
-   <METHOD>.success-rate` and `chaos-mode` — `NORMAL`/`SLOW`/`SUCCESS`/`FAILURE`/`TIMEOUT`), then
-   auto-captures on approval (fires `CAPTURE_REQUEST` → calls the adapter's `capture()` → fires
-   `CAPTURE_SUCCESS`/`CAPTURE_FAIL`/`CAPTURE_PENDING`, and sets the order to `PAID`). But since
-   nothing calls it automatically, and it isn't exposed via any endpoint either, a payment initiated
-   today sits in `AUTHORIZING` forever — so `POST /v1/payments/{paymentId}/capture` still always
-   gets rejected with `409 INVALID_STATE_TRANSITION`, same symptom as before, just with the fix
-   sitting unplugged rather than nonexistent. Once wired up, note that `capture` becomes largely
-   redundant in the normal flow — `resolveAuthorization`'s auto-capture already does the job that
-   endpoint exists for.
+9. ~~`BankCallbackSimulator` not scheduled~~ — **resolved (2025-11-24):** `processCallbacks()`'s
+   `@Scheduled` is uncommented and `PayFloApplication` now carries `@EnableScheduling`, so a
+   payment that reaches `AUTHORIZING` resolves on its own — `resolveAuthorization` fires
+   `AUTHORIZE_SUCCESS`/`AUTHORIZE_FAIL` per the configured success rate, then auto-captures on
+   approval and marks the order `PAID` — within `payment.simulator.poll-interval-ms` of its
+   per-method simulated delay, no manual step needed. One residual note: `POST
+   /v1/payments/{paymentId}/capture` is now *more* redundant than before rather than less — by the
+   time a caller could invoke it, auto-capture has usually already moved the payment past
+   `AUTHORIZED` (so the manual call 409s as "already captured") or it's still `AUTHORIZING` (409s as
+   before); there's now only a narrow timing window where a manual capture would actually apply.
 10. **`PaymentTransitionService`'s `actor` is hardcoded to `SYSTEM`** — every `PaymentTransitionLog`
     row is written with `actor = PaymentActor.SYSTEM` (`//TODO: fetch merchant context to identify
     actor`), since there's no auth context yet to attribute a transition to a specific merchant,
