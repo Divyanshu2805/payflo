@@ -37,13 +37,19 @@
   of `spring-boot-starter-security`, provides `AesBytesEncryptor`/`KeyGenerators`). Pulling in
   `spring-boot-starter-security` for just the crypto classes has a side effect: Spring Boot's
   default autoconfiguration locks every endpoint behind HTTP Basic with a random per-restart
-  password unless neutralized — `common/config/SecurityConfig` does that (a `SecurityFilterChain`
-  permitting all requests), since no real auth exists yet.
+  password unless a `SecurityFilterChain` bean is defined — `merchant/security/WebSecurityConfig`'s
+  `jwtChain` does that now (still `anyRequest().permitAll()`, no enforcement yet; see the JWT
+  bullet below). Only one filter chain may match "any request", which is why the older placeholder
+  `common/config/SecurityConfig` was removed rather than kept alongside it.
+- **JWT auth scaffold** — `merchant/security/JwtUtil` (`io.jsonwebtoken`/`jjwt`, HMAC-signed via
+  `jwt.secret-key` in `application.yaml`) can generate and verify access tokens carrying
+  `merchant_id`/`role` claims, but nothing calls it yet: no login endpoint issues a token, and no
+  filter reads one off an incoming request.
 - `payment/simulator` mocks the async, bank-side half of a payment (the part `PaymentProcessor`'s
-  synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**
-  (currently built but not scheduled, see [Known gaps](gaps.md))
-  meant to poll for `AUTHORIZING` payments and resolve each one after a per-method simulated delay
-  and success rate (`SimulatorConfig`, bound from `payment.simulator.*` in `application.yaml`), with
+  synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**,
+  now actively scheduled (see [Known gaps](gaps.md)), polls for
+  `AUTHORIZING` payments and resolves each one after a per-method simulated delay and success rate
+  (`SimulatorConfig`, bound from `payment.simulator.*` in `application.yaml`), with
   a global `ChaosMode` (`NORMAL`/`SLOW`/`SUCCESS`/`FAILURE`/`TIMEOUT`) to force deterministic
   outcomes for testing rather than relying on the random success rate.
 - Semantic, one-line commit messages (`feat:`, `fix:`, `docs:`, `chore:`, etc.).

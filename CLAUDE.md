@@ -51,19 +51,19 @@ now goes through
 currently reaches (see above), so every capture call is rejected with `409
 INVALID_STATE_TRANSITION` before any adapter is invoked.
 
-`payment/simulator` is the intended fix for the "nothing reaches `AUTHORIZED`" gap — a
-`BankCallbackSimulator` (`processCallbacks()`, meant to poll `PaymentRepository.
+`payment/simulator` is the fix for the "nothing reaches `AUTHORIZED`" gap — a
+`BankCallbackSimulator` (`processCallbacks()`, polling `PaymentRepository.
 findByStatusAndCreatedAtBefore(AUTHORIZING, ...)`) and `SimulatorConfig`
 (`@ConfigurationProperties(prefix = "payment.simulator")`, per-method delay/success-rate plus a
 global `ChaosMode`). `PaymentServiceImpl.resolveAuthorization` — what the simulator calls — is
 fully implemented: fires `AUTHORIZE_SUCCESS`/`AUTHORIZE_FAIL`, then auto-captures on approval
 (fires `CAPTURE_REQUEST`, calls the adapter's `capture()`, fires the matching `CAPTURE_*` event,
-sets the order `PAID` on success). **But `BankCallbackSimulator.processCallbacks()`'s `@Scheduled`
-is commented out, and there's no `@EnableScheduling` anywhere** — so nothing calls it, and today's
-behavior is unchanged: every payment sits in `AUTHORIZING` forever, and `capture` still always
-gets rejected. Don't uncomment `@Scheduled` or add `@EnableScheduling` without being asked —
-that's a deliberate "turn on a recurring background job against payment data" decision, not a
-missing wire.
+sets the order `PAID` on success). **`BankCallbackSimulator.processCallbacks()`'s `@Scheduled` is
+now active and `PayFloApplication` carries `@EnableScheduling`** — a deliberate decision, made and
+confirmed explicitly, to turn on a recurring background job against payment data. A payment that
+reaches `AUTHORIZING` now resolves on its own (approve/fail per the configured success rate, then
+auto-captures and marks the order `PAID`) within `payment.simulator.poll-interval-ms` of its
+per-method simulated delay — no need to touch this switch again.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
@@ -193,16 +193,23 @@ Package (produces the runnable jar under `target/`):
 - `jackson-databind` — declared explicitly, though `spring-boot-starter-webmvc` already pulls it in
   transitively; no direct Jackson API usage in the codebase yet that would require the explicit
   declaration
-- `spring-boot-starter-security` — pulled in for `spring-security-crypto`'s `AesBytesEncryptor`/
-  `KeyGenerators` (card PAN/DEK encryption in `vault/config/VaultEncryptionConfig`), not for
-  Spring Security's actual auth/filter-chain machinery. **Adding this dependency alone activates
-  Spring Boot's default autoconfiguration**, which locks every endpoint behind HTTP Basic with a
-  random per-restart password (a `Using generated security password` log line, no matter what).
-  `common/config/SecurityConfig` exists specifically to neutralize that: a `SecurityFilterChain`
-  bean that permits all requests, since no real auth (API key/JWT) exists yet — verified with the
-  app running that `POST /v1/orders`/`POST /v1/vault/tokenize` reach the controller (`400` on a bad
-  payload) rather than being blocked with `401`. Don't remove `SecurityConfig` without replacing it
-  with real auth first.
+- `spring-boot-starter-security` — originally pulled in only for `spring-security-crypto`'s
+  `AesBytesEncryptor`/`KeyGenerators` (card PAN/DEK encryption in
+  `vault/config/VaultEncryptionConfig`); now also backs the real (if still unenforced)
+  `merchant/security/WebSecurityConfig` filter chain below. **Adding this dependency alone
+  activates Spring Boot's default autoconfiguration**, which locks every endpoint behind HTTP
+  Basic with a random per-restart password (a `Using generated security password` log line, no
+  matter what) unless a `SecurityFilterChain` bean is defined — `WebSecurityConfig.jwtChain` is
+  that bean now. Only one `SecurityFilterChain` matching "any request" is allowed per app; having
+  two (the old placeholder `common/config/SecurityConfig` plus a new one) fails startup with
+  `UnreachableFilterChainException` — hit and fixed once already, so don't add a second catch-all
+  chain without either scoping one with `.securityMatcher(...)` or removing the other.
+- `io.jsonwebtoken:jjwt-api`/`jjwt-impl`/`jjwt-jackson` (`0.12.6`) — JWT signing/parsing for
+  `merchant/security/JwtUtil` (`generateAccessToken`/`verifyAccessToken`, HMAC-signed via
+  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). Currently a scaffold, not
+  enforcement: nothing calls `JwtUtil` yet, and `WebSecurityConfig.jwtChain` still does
+  `anyRequest().permitAll()` — no filter is wired in front of it to actually validate a token. See
+  "Project state" for what's still missing before this does anything.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
