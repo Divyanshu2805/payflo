@@ -53,3 +53,13 @@ dropped vs. still planned:
     be zeroed, so it lingers on the heap until garbage collected (a well-known, hard-to-avoid
     limitation of using `String` for sensitive data in Java; a hardened version would carry the PAN
     as `char[]`/`byte[]` end-to-end instead).
+12. **`POST /v1/auth/login` cannot actually authenticate anyone.** `AuthServiceImpl.login` injects a
+    plain `AuthenticationManager` and calls `.authenticate(new
+    UsernamePasswordAuthenticationToken(email, password))`, but `WebSecurityConfig` never wires a
+    `UserDetailsService` or `PasswordEncoder` backed by `AppUserRepository` — so Spring Boot's
+    default autoconfiguration supplies its own single in-memory user with a random per-restart
+    password instead, and that's what `authenticate()` actually checks against. Every real merchant
+    email/password combination fails. `JwtUtil.generateAccessToken` (called after a hypothetical
+    successful authentication) and `WebSecurityConfig.jwtChain` (still `anyRequest().permitAll()`,
+    validating nothing) are both otherwise-correct scaffolding waiting on this and a real JWT
+    filter respectively — see [APIs](api.md) for the full behavior as observed in code.

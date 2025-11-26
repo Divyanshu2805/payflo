@@ -25,6 +25,30 @@ Creates the `Merchant` (status forced to `PENDING_KYC`, ignoring any status sent
 there isn't one, since `MerchantSignupRequest` has no status field) then the `AppUser`
 (`role = OWNER`), both in one `@Transactional` method.
 
+## `POST /v1/auth/login`
+
+Authenticates a merchant user and issues a JWT access token.
+
+**Request body** (`LoginRequest`): `email` (required, valid email format), `password` (required).
+
+**Response** — `200 OK` with `LoginResponse`: `accessToken` — a JWT carrying `merchant_id` and
+`role` claims, HMAC-signed via `JwtUtil` (60-minute expiry).
+
+**Behavior — not functional yet, see [Known gaps](gaps.md):**
+`AuthServiceImpl.login` authenticates via a plain `AuthenticationManager.authenticate(new
+UsernamePasswordAuthenticationToken(email, password))` call, then separately looks up the
+`AppUser` by email (`ResourceNotFoundException` if missing) to read its `merchant_id`/`role` for
+the token. Nothing in `WebSecurityConfig` wires a `UserDetailsService` or `PasswordEncoder` to
+`AppUserRepository`, so the injected `AuthenticationManager` falls back to Spring Boot's default
+autoconfigured in-memory user (a single `user` account with a random per-restart password) instead
+of checking real merchant credentials — every login attempt with an actual merchant email/password
+currently fails with a bad-credentials `AuthenticationException`. `GlobalExceptionHandler` has no
+mapping for it (not verified against the running app which status code that ends up as — Spring
+Security's own filter-chain exception translation gets first look at it, ahead of the
+`@RestControllerAdvice`). Also note: even a successful login wouldn't let the returned token do
+anything, since no filter validates a JWT on subsequent requests yet (`WebSecurityConfig.jwtChain`
+still permits all requests unauthenticated).
+
 ## `POST /v1/merchants/{merchantId}/api-keys`
 
 Generates a new API key for a merchant, returning the secret in plaintext exactly once.
