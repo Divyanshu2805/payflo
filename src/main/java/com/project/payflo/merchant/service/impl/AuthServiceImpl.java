@@ -3,16 +3,22 @@ package com.project.payflo.merchant.service.impl;
 import com.project.payflo.common.enums.MerchantStatus;
 import com.project.payflo.common.enums.UserRole;
 import com.project.payflo.common.exception.DuplicateResourceException;
+import com.project.payflo.common.exception.ResourceNotFoundException;
+import com.project.payflo.merchant.dto.request.LoginRequest;
 import com.project.payflo.merchant.dto.request.MerchantSignupRequest;
+import com.project.payflo.merchant.dto.response.LoginResponse;
 import com.project.payflo.merchant.dto.response.MerchantResponse;
 import com.project.payflo.merchant.entity.AppUser;
 import com.project.payflo.merchant.entity.Merchant;
 import com.project.payflo.merchant.mapper.MerchantMapper;
 import com.project.payflo.merchant.repository.AppUserRepository;
 import com.project.payflo.merchant.repository.MerchantRepository;
+import com.project.payflo.merchant.security.JwtUtil;
 import com.project.payflo.merchant.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +30,8 @@ public class AuthServiceImpl implements AuthService {
     private final AppUserRepository appUserRepository;
     private final MerchantRepository merchantRepository;
     private final MerchantMapper merchantMapper;
+    private final JwtUtil jwtUtil;
+    private final AuthenticationManager authenticationManager;
 
     @Override
     @Transactional
@@ -47,6 +55,21 @@ public class AuthServiceImpl implements AuthService {
         appUserRepository.save(appUser);
 
         return merchantMapper.toResponse(merchant);
+    }
+
+    @Override
+    public LoginResponse login(LoginRequest request) {
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+        );
+
+        AppUser appUser = appUserRepository.findByEmail(request.email())
+                .orElseThrow(() -> new ResourceNotFoundException("User", request.email()));
+
+        String token = jwtUtil.generateAccessToken(request.email(), appUser.getMerchant().getId(), appUser.getRole().toString());
+
+        return new LoginResponse(token);
     }
 }
 
