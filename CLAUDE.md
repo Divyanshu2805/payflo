@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 All 15 planned entities are now implemented (`common/entity`, `common/enums`, `merchant/entity`,
 `payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now has a
-`repository`/`service`/`controller` slice (signup, API key generate/list/revoke/rotate) and
+`repository`/`service`/`controller` slice (signup, login, API key generate/list/revoke/rotate) and
 `payment` has a first one too (order creation, get order by ID, cancel order, list payments for an
 order, initiate payment, capture payment) — see "Service/controller layer conventions" —
 plus a `resolveAuthorization` method on `PaymentService` with no controller route (internal-only,
@@ -206,10 +206,18 @@ Package (produces the runnable jar under `target/`):
   chain without either scoping one with `.securityMatcher(...)` or removing the other.
 - `io.jsonwebtoken:jjwt-api`/`jjwt-impl`/`jjwt-jackson` (`0.12.6`) — JWT signing/parsing for
   `merchant/security/JwtUtil` (`generateAccessToken`/`verifyAccessToken`, HMAC-signed via
-  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). Currently a scaffold, not
-  enforcement: nothing calls `JwtUtil` yet, and `WebSecurityConfig.jwtChain` still does
-  `anyRequest().permitAll()` — no filter is wired in front of it to actually validate a token. See
-  "Project state" for what's still missing before this does anything.
+  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). `POST /v1/auth/login`
+  (`AuthServiceImpl.login`) now calls `generateAccessToken` and returns a real token — but
+  `WebSecurityConfig.jwtChain` still does `anyRequest().permitAll()`, so no filter validates that
+  token on any later request; it's currently a token nobody checks. Login itself has a separate,
+  sharper gap: it authenticates via a plain injected `AuthenticationManager`, but nothing in
+  `WebSecurityConfig` wires a `UserDetailsService`/`PasswordEncoder` to `AppUserRepository` — so
+  Spring Boot's default autoconfiguration fills that gap with its own single in-memory user and
+  random per-restart password (the same `Using generated security password` mechanism above), and
+  `login` checks credentials against *that*, not against any real `AppUser` row. Every real login
+  attempt currently fails with bad credentials regardless of the email/password sent. See
+  [Known gaps](docs/gaps.md) for the tracked version of
+  this.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
