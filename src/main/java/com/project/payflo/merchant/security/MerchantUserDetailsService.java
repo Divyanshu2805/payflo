@@ -1,7 +1,7 @@
-package com.codingshuttle.razorpay.merchant.security;
+package com.project.payflo.merchant.security;
 
-import com.codingshuttle.razorpay.common.exception.ResourceNotFoundException;
-import com.codingshuttle.razorpay.merchant.repository.AppUserRepository;
+import com.project.payflo.common.exception.ResourceNotFoundException;
+import com.project.payflo.merchant.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
