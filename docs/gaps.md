@@ -53,13 +53,18 @@ dropped vs. still planned:
     be zeroed, so it lingers on the heap until garbage collected (a well-known, hard-to-avoid
     limitation of using `String` for sensitive data in Java; a hardened version would carry the PAN
     as `char[]`/`byte[]` end-to-end instead).
-12. **`POST /v1/auth/login` cannot actually authenticate anyone.** `AuthServiceImpl.login` injects a
-    plain `AuthenticationManager` and calls `.authenticate(new
-    UsernamePasswordAuthenticationToken(email, password))`, but `WebSecurityConfig` never wires a
-    `UserDetailsService` or `PasswordEncoder` backed by `AppUserRepository` — so Spring Boot's
-    default autoconfiguration supplies its own single in-memory user with a random per-restart
-    password instead, and that's what `authenticate()` actually checks against. Every real merchant
-    email/password combination fails. `JwtUtil.generateAccessToken` (called after a hypothetical
-    successful authentication) and `WebSecurityConfig.jwtChain` (still `anyRequest().permitAll()`,
-    validating nothing) are both otherwise-correct scaffolding waiting on this and a real JWT
-    filter respectively — see [APIs](api.md) for the full behavior as observed in code.
+12. **`POST /v1/auth/login` still can't authenticate a real merchant — but the reason changed.**
+    `WebSecurityConfig` now defines a real `PasswordEncoder` (`BCryptPasswordEncoder`) and
+    `AuthenticationManager` (`DaoAuthenticationProvider` wired to a new
+    `merchant/security/MerchantUserDetailsService`, which loads an `AppUser` — now
+    `implements UserDetails`, with `getUsername()`/`getPassword()`/`getAuthorities()` — by email via
+    `AppUserRepository`). So `AuthServiceImpl.login`'s `AuthenticationManager.authenticate(...)` call
+    checks a real `AppUser` row now, not Spring Boot's default in-memory user. It still fails for
+    every real merchant, though, because of gap 6 above: `AuthServiceImpl.signup` writes the raw
+    password straight into `AppUser.passwordHash` with no hashing, and `BCryptPasswordEncoder`
+    expects the stored value to already be a bcrypt hash — comparing a bcrypt hash of the submitted
+    password against a plaintext string never matches. Fixing gap 6 (hash on signup) is now the only
+    thing standing between this and working end-to-end. `JwtUtil.generateAccessToken` (called after
+    a hypothetical successful authentication) and `WebSecurityConfig.jwtChain` (still
+    `anyRequest().permitAll()`, validating nothing) remain otherwise-correct scaffolding waiting on
+    a real JWT filter — see [APIs](api.md) for the full behavior as observed in code.
