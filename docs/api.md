@@ -34,20 +34,20 @@ Authenticates a merchant user and issues a JWT access token.
 **Response** — `200 OK` with `LoginResponse`: `accessToken` — a JWT carrying `merchant_id` and
 `role` claims, HMAC-signed via `JwtUtil` (60-minute expiry).
 
-**Behavior — not functional yet, see [Known gaps](gaps.md):**
-`AuthServiceImpl.login` authenticates via a plain `AuthenticationManager.authenticate(new
-UsernamePasswordAuthenticationToken(email, password))` call, then separately looks up the
-`AppUser` by email (`ResourceNotFoundException` if missing) to read its `merchant_id`/`role` for
-the token. Nothing in `WebSecurityConfig` wires a `UserDetailsService` or `PasswordEncoder` to
-`AppUserRepository`, so the injected `AuthenticationManager` falls back to Spring Boot's default
-autoconfigured in-memory user (a single `user` account with a random per-restart password) instead
-of checking real merchant credentials — every login attempt with an actual merchant email/password
-currently fails with a bad-credentials `AuthenticationException`. `GlobalExceptionHandler` has no
-mapping for it (not verified against the running app which status code that ends up as — Spring
-Security's own filter-chain exception translation gets first look at it, ahead of the
-`@RestControllerAdvice`). Also note: even a successful login wouldn't let the returned token do
-anything, since no filter validates a JWT on subsequent requests yet (`WebSecurityConfig.jwtChain`
-still permits all requests unauthenticated).
+**Behavior — still not functional, see [Known gaps](gaps.md) item
+12:** `AuthServiceImpl.login` authenticates via `AuthenticationManager.authenticate(new
+UsernamePasswordAuthenticationToken(email, password))`, then separately looks up the `AppUser` by
+email (`ResourceNotFoundException` if missing) to read its `merchant_id`/`role` for the token.
+`WebSecurityConfig` now wires a real `AuthenticationManager` (`DaoAuthenticationProvider` +
+`merchant/security/MerchantUserDetailsService`, backed by `AppUserRepository`) and a
+`BCryptPasswordEncoder`, so `authenticate()` checks an actual `AppUser` row rather than Spring
+Boot's default in-memory user. It still fails for every real merchant, though:
+`AuthServiceImpl.signup` never hashes the password before writing it to `AppUser.passwordHash` (see
+[Known gaps](gaps.md) item 6), and `BCryptPasswordEncoder` requires
+the stored value to already be a bcrypt hash to compare against — a plaintext value never matches.
+Also note: even a successful login wouldn't let the returned token do anything yet, since no filter
+validates a JWT on subsequent requests (`WebSecurityConfig.jwtChain` still permits all requests
+unauthenticated).
 
 ## `POST /v1/merchants/{merchantId}/api-keys`
 

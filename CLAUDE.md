@@ -209,14 +209,15 @@ Package (produces the runnable jar under `target/`):
   `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). `POST /v1/auth/login`
   (`AuthServiceImpl.login`) now calls `generateAccessToken` and returns a real token — but
   `WebSecurityConfig.jwtChain` still does `anyRequest().permitAll()`, so no filter validates that
-  token on any later request; it's currently a token nobody checks. Login itself has a separate,
-  sharper gap: it authenticates via a plain injected `AuthenticationManager`, but nothing in
-  `WebSecurityConfig` wires a `UserDetailsService`/`PasswordEncoder` to `AppUserRepository` — so
-  Spring Boot's default autoconfiguration fills that gap with its own single in-memory user and
-  random per-restart password (the same `Using generated security password` mechanism above), and
-  `login` checks credentials against *that*, not against any real `AppUser` row. Every real login
-  attempt currently fails with bad credentials regardless of the email/password sent. See
-  [Known gaps](docs/gaps.md) for the tracked version of
+  token on any later request; it's currently a token nobody checks. `WebSecurityConfig` also now
+  defines a real `PasswordEncoder` (`BCryptPasswordEncoder`) and `AuthenticationManager`
+  (`DaoAuthenticationProvider` + `merchant/security/MerchantUserDetailsService`, which loads an
+  `AppUser` — now `implements UserDetails` — by email via `AppUserRepository`), so login checks a
+  real `AppUser` row rather than Spring Boot's autoconfigured default user. It still can't
+  succeed for anyone, though: `AuthServiceImpl.signup` writes the password straight into
+  `AppUser.passwordHash` with no hashing, and `BCryptPasswordEncoder` needs the stored value to
+  already be a bcrypt hash to match against — a plaintext value never matches. See [Known
+  gaps](docs/gaps.md) item 12 for the tracked version of
   this.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
