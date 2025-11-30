@@ -1,6 +1,5 @@
 package com.project.payflo.merchant.security;
 
-import com.project.payflo.common.exception.ResourceNotFoundException;
 import com.project.payflo.merchant.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +16,6 @@ public class MerchantUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return appUserRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", email));
+                .orElseThrow(() -> new UsernameNotFoundException("No user found with email: " + email));
     }
 }
