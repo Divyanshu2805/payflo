@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
     private final MerchantMapper merchantMapper;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -49,7 +51,7 @@ public class AuthServiceImpl implements AuthService {
         AppUser appUser = AppUser.builder()
                 .email(request.email())
                 .merchant(merchant)
-                .passwordHash(request.password())
+                .passwordHash(passwordEncoder.encode(request.password()))
                 .role(UserRole.OWNER)
                 .build();
         appUserRepository.save(appUser);
