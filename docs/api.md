@@ -34,20 +34,19 @@ Authenticates a merchant user and issues a JWT access token.
 **Response** — `200 OK` with `LoginResponse`: `accessToken` — a JWT carrying `merchant_id` and
 `role` claims, HMAC-signed via `JwtUtil` (60-minute expiry).
 
-**Behavior — still not functional, see [Known gaps](gaps.md) item
-12:** `AuthServiceImpl.login` authenticates via `AuthenticationManager.authenticate(new
-UsernamePasswordAuthenticationToken(email, password))`, then separately looks up the `AppUser` by
-email (`ResourceNotFoundException` if missing) to read its `merchant_id`/`role` for the token.
-`WebSecurityConfig` now wires a real `AuthenticationManager` (`DaoAuthenticationProvider` +
-`merchant/security/MerchantUserDetailsService`, backed by `AppUserRepository`) and a
-`BCryptPasswordEncoder`, so `authenticate()` checks an actual `AppUser` row rather than Spring
-Boot's default in-memory user. It still fails for every real merchant, though:
-`AuthServiceImpl.signup` never hashes the password before writing it to `AppUser.passwordHash` (see
-[Known gaps](gaps.md) item 6), and `BCryptPasswordEncoder` requires
-the stored value to already be a bcrypt hash to compare against — a plaintext value never matches.
-Also note: even a successful login wouldn't let the returned token do anything yet, since no filter
-validates a JWT on subsequent requests (`WebSecurityConfig.jwtChain` still permits all requests
-unauthenticated).
+**Behavior — functional as of 2025-11-24, see [Known gaps](gaps.md)
+item 12:** `AuthServiceImpl.login` authenticates via `AuthenticationManager.authenticate(new
+UsernamePasswordAuthenticationToken(email, password))` — backed by a real `DaoAuthenticationProvider`
++ `merchant/security/MerchantUserDetailsService` + `BCryptPasswordEncoder` (`WebSecurityConfig`) —
+then separately looks up the `AppUser` by email to read its `merchant_id`/`role` for the token.
+`AuthServiceImpl.signup` now hashes the password before storing it, so a correct email/password
+succeeds and returns a real JWT. An incorrect password or an unknown email both fail the same way:
+`MerchantUserDetailsService` throws `UsernameNotFoundException` for a missing user (rather than a
+`ResourceNotFoundException` that would leak a `404`), which `DaoAuthenticationProvider` folds into
+the same `BadCredentialsException` as a wrong password either way — `GlobalExceptionHandler` maps
+that to a uniform `401` (`INVALID_CREDENTIALS`, "Invalid email or password"). Still open: nothing
+validates the returned JWT on subsequent requests (`WebSecurityConfig.jwtChain` still permits all
+requests unauthenticated), so the token doesn't gate access to anything yet.
 
 ## `POST /v1/merchants/{merchantId}/api-keys`
 
