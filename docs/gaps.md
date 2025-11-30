@@ -10,13 +10,12 @@ dropped vs. still planned:
 3. `CUSTOMER` has no `gst_id`.
 4. `PAYMENT` has no running `refunded_amount` total (derivable from `REFUND` rows instead).
 5. `PAYMENT_TRANSITION_LOG` has no `reason` field.
-6. **Secrets are stored unhashed in three places** — `AuthServiceImpl.signup` writes
-   `request.password()` straight into `AppUser.passwordHash`, and both
+6. ~~Secrets are stored unhashed~~ — **partially resolved (2025-11-24):** `AuthServiceImpl.signup`
+   now hashes the password with the `PasswordEncoder` (`BCryptPasswordEncoder`) bean from
+   `WebSecurityConfig` before writing it to `AppUser.passwordHash`. Still open:
    `ApiKeyServiceImpl.create`/`.rotate` write the raw generated secret straight into
-   `ApiKey.keySecretHash`/`previousKeySecretHash`. None of it is hashed. Flagged, not fixed yet;
-   commit and push proceeded as-is at the user's explicit call (2025-10-10 for the password,
-   2025-10-14/26 for the API key secret), pending one shared hashing-dependency decision
-   (`spring-security-crypto` vs. full `spring-boot-starter-security`) to fix all of it together.
+   `ApiKey.keySecretHash`/`previousKeySecretHash`, unhashed. Flagged, not fixed yet — commit and
+   push proceeded as-is at the user's explicit call (2025-10-14/26).
 7. **`OrderController`/`PaymentController` use a hardcoded `merchantId`** — each has its own fixed
    test UUID instance field instead of deriving the merchant from any caller identity, since
    there's no auth yet. Every order or payment created, fetched, cancelled, or listed currently
@@ -53,18 +52,21 @@ dropped vs. still planned:
     be zeroed, so it lingers on the heap until garbage collected (a well-known, hard-to-avoid
     limitation of using `String` for sensitive data in Java; a hardened version would carry the PAN
     as `char[]`/`byte[]` end-to-end instead).
-12. **`POST /v1/auth/login` still can't authenticate a real merchant — but the reason changed.**
-    `WebSecurityConfig` now defines a real `PasswordEncoder` (`BCryptPasswordEncoder`) and
-    `AuthenticationManager` (`DaoAuthenticationProvider` wired to a new
-    `merchant/security/MerchantUserDetailsService`, which loads an `AppUser` — now
-    `implements UserDetails`, with `getUsername()`/`getPassword()`/`getAuthorities()` — by email via
-    `AppUserRepository`). So `AuthServiceImpl.login`'s `AuthenticationManager.authenticate(...)` call
-    checks a real `AppUser` row now, not Spring Boot's default in-memory user. It still fails for
-    every real merchant, though, because of gap 6 above: `AuthServiceImpl.signup` writes the raw
-    password straight into `AppUser.passwordHash` with no hashing, and `BCryptPasswordEncoder`
-    expects the stored value to already be a bcrypt hash — comparing a bcrypt hash of the submitted
-    password against a plaintext string never matches. Fixing gap 6 (hash on signup) is now the only
-    thing standing between this and working end-to-end. `JwtUtil.generateAccessToken` (called after
-    a hypothetical successful authentication) and `WebSecurityConfig.jwtChain` (still
-    `anyRequest().permitAll()`, validating nothing) remain otherwise-correct scaffolding waiting on
-    a real JWT filter — see [APIs](api.md) for the full behavior as observed in code.
+12. ~~`POST /v1/auth/login` can't authenticate a real merchant~~ — **resolved (2025-11-24):**
+    `WebSecurityConfig` defines a real `PasswordEncoder` (`BCryptPasswordEncoder`) and
+    `AuthenticationManager` (`DaoAuthenticationProvider` wired to
+    `merchant/security/MerchantUserDetailsService`, which loads an `AppUser` — `implements
+    UserDetails` — by email via `AppUserRepository`), and `AuthServiceImpl.signup` now hashes the
+    password before storing it (gap 6). A correct email/password now authenticates successfully and
+    returns a real JWT. Two related bugs found and fixed alongside it: `MerchantUserDetailsService`
+    was throwing `ResourceNotFoundException` for an unknown email — a plain exception
+    `DaoAuthenticationProvider` doesn't special-case, so it leaked a `404` revealing whether an
+    email was registered, distinguishable from a `401` for a wrong password on an existing account.
+    It now throws `UsernameNotFoundException`, which `DaoAuthenticationProvider` deliberately
+    converts to the same generic `BadCredentialsException` either way. Second, nothing handled
+    `AuthenticationException` at all, so a bad-credentials failure fell through to Spring Security's
+    default entry point and returned a bare `403` with no body; `GlobalExceptionHandler` now maps
+    any `AuthenticationException` to `401` with `INVALID_CREDENTIALS`. What's still open: nothing
+    validates the returned JWT on later requests — `WebSecurityConfig.jwtChain` still does
+    `anyRequest().permitAll()` — so the token is real but nothing checks it yet. See
+    [APIs](api.md) for the full current behavior.

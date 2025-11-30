@@ -209,14 +209,19 @@ Package (produces the runnable jar under `target/`):
   `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). `POST /v1/auth/login`
   (`AuthServiceImpl.login`) now calls `generateAccessToken` and returns a real token — but
   `WebSecurityConfig.jwtChain` still does `anyRequest().permitAll()`, so no filter validates that
-  token on any later request; it's currently a token nobody checks. `WebSecurityConfig` also now
+  token on any later request; it's currently a token nobody checks. `WebSecurityConfig` also
   defines a real `PasswordEncoder` (`BCryptPasswordEncoder`) and `AuthenticationManager`
   (`DaoAuthenticationProvider` + `merchant/security/MerchantUserDetailsService`, which loads an
-  `AppUser` — now `implements UserDetails` — by email via `AppUserRepository`), so login checks a
-  real `AppUser` row rather than Spring Boot's autoconfigured default user. It still can't
-  succeed for anyone, though: `AuthServiceImpl.signup` writes the password straight into
-  `AppUser.passwordHash` with no hashing, and `BCryptPasswordEncoder` needs the stored value to
-  already be a bcrypt hash to match against — a plaintext value never matches. See [Known
+  `AppUser` — `implements UserDetails` — by email via `AppUserRepository`), and
+  `AuthServiceImpl.signup` now hashes the password with that same `PasswordEncoder` before storing
+  it — so login actually works end-to-end for a correct email/password now. Along with the hashing
+  fix, two related bugs were caught and fixed: `MerchantUserDetailsService` was throwing
+  `ResourceNotFoundException` for an unknown email (leaking a `404` distinguishable from a wrong
+  password's failure) instead of `UsernameNotFoundException` (which `DaoAuthenticationProvider`
+  deliberately folds into the same generic failure as a bad password); and nothing handled
+  `AuthenticationException` at all, so a bad-credentials login fell through to Spring Security's
+  default entry point as a bare `403` — `GlobalExceptionHandler` now maps it to a clean `401`
+  (`INVALID_CREDENTIALS`). See [Known
   gaps](docs/gaps.md) item 12 for the tracked version of
   this.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
