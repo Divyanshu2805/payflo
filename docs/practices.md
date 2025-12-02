@@ -41,13 +41,16 @@
   `jwtChain` does that now (still `anyRequest().permitAll()`, no enforcement yet; see the JWT
   bullet below). Only one filter chain may match "any request", which is why the older placeholder
   `common/config/SecurityConfig` was removed rather than kept alongside it.
-- **JWT auth scaffold** — `merchant/security/JwtUtil` (`io.jsonwebtoken`/`jjwt`, HMAC-signed via
-  `jwt.secret-key` in `application.yaml`) can generate and verify access tokens carrying
-  `merchant_id`/`role` claims, but nothing calls it yet: no login endpoint issues a token, and no
-  filter reads one off an incoming request.
+- **JWT auth** — `merchant/security/JwtUtil` (`io.jsonwebtoken`/`jjwt`, HMAC-signed via
+  `jwt.secret-key` in `application.yaml`) generates and verifies access tokens carrying
+  `merchant_id`/`role` claims. `POST /v1/auth/login` now calls it and returns a real token for a
+  correct email/password. `WebSecurityConfig.jwtChain` requires authentication for
+  `/v1/merchants/**`/`/v1/admin/**`/`/actuator/**` (permitting only signup/login/webhook) — but no
+  filter reads a token off an incoming request yet, so those routes currently reject every caller,
+  token or not (see [Known gaps](gaps.md)).
 - `payment/simulator` mocks the async, bank-side half of a payment (the part `PaymentProcessor`'s
-  synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**,
-  now actively scheduled (see [Known gaps](gaps.md)), polls for
+  synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**
+  (currently disabled again, see [Known gaps](gaps.md)) polls for
   `AUTHORIZING` payments and resolves each one after a per-method simulated delay and success rate
   (`SimulatorConfig`, bound from `payment.simulator.*` in `application.yaml`), with
   a global `ChaosMode` (`NORMAL`/`SLOW`/`SUCCESS`/`FAILURE`/`TIMEOUT`) to force deterministic

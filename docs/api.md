@@ -48,6 +48,11 @@ that to a uniform `401` (`INVALID_CREDENTIALS`, "Invalid email or password"). St
 validates the returned JWT on subsequent requests (`WebSecurityConfig.jwtChain` still permits all
 requests unauthenticated), so the token doesn't gate access to anything yet.
 
+> **All four endpoints below are currently unreachable, see [Known
+> gaps](gaps.md) item 13.** `WebSecurityConfig.jwtChain` now
+> requires authentication for `/v1/merchants/**`, but no filter validates a JWT, so every request
+> here gets rejected regardless of whether a valid token is attached.
+
 ## `POST /v1/merchants/{merchantId}/api-keys`
 
 Generates a new API key for a merchant, returning the secret in plaintext exactly once.
