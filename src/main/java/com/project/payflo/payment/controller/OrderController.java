@@ -1,5 +1,6 @@
 package com.project.payflo.payment.controller;
 
+import com.project.payflo.merchant.security.MerchantContext;
 import com.project.payflo.payment.dto.request.CreateOrderRequest;
 import com.project.payflo.payment.dto.response.OrderResponse;
 import com.project.payflo.payment.dto.response.PaymentResponse;
@@ -24,26 +25,26 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
-    private UUID merchantId = UUID.fromString("e313ee5e-49a8-4e9b-8d66-cb4556c642a4");
+    private final MerchantContext merchantContext;
 
     @PostMapping
     public ResponseEntity<OrderResponse> create(@RequestBody @Valid CreateOrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(orderService.create(merchantId, request));
+                .body(orderService.create(merchantContext.getMerchantId(), request));
     }
 
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getById(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(orderService.getById(merchantId, orderId));
+        return ResponseEntity.ok(orderService.getById(merchantContext.getMerchantId(), orderId));
     }
 
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<OrderResponse> cancel(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(orderService.cancel(merchantId, orderId));
+        return ResponseEntity.ok(orderService.cancel(merchantContext.getMerchantId(), orderId));
     }
 
     @GetMapping("/{orderId}/payments")
     public ResponseEntity<List<PaymentResponse>> listPayments(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(orderService.listPayments(merchantId, orderId));
+        return ResponseEntity.ok(orderService.listPayments(merchantContext.getMerchantId(), orderId));
     }
 }

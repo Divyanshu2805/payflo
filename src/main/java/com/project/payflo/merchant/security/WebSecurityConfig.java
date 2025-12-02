@@ -14,19 +14,31 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @RequiredArgsConstructor
 public class WebSecurityConfig {
 
-    private static final String[] JWT_ROUTES = {"/v1/auth/**", "/v1/merchants/**", "/v1/admin/**", "/actuator/**", "/webhook/**"};
-    private static final String[] API_KEY_ROUTES = {"/v1/orders/**", "/v1/payments/**", "/v1/vault/**"};
+    /**
+     * Every route that needs a resolved merchant identity (via {@link MerchantContext}) has to go
+     * through {@link JwtAuthenticationFilter}, so it has to be in this matcher — there's no second,
+     * separate auth mechanism (e.g. API-key auth) actually implemented yet. Orders/payments/vault
+     * used to be open (permitAll, hardcoded merchantId in the controller); they now require the
+     * same JWT everything else here does, since MerchantContext has nothing to populate otherwise.
+     */
+    private static final String[] PROTECTED_ROUTES = {
+            "/v1/auth/**", "/v1/merchants/**", "/v1/admin/**", "/actuator/**", "/webhook/**",
+            "/v1/orders/**", "/v1/payments/**", "/v1/vault/**"
+    };
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     @Order(1)
     public SecurityFilterChain jwtChain(HttpSecurity http) {
         return http
-                .securityMatcher(JWT_ROUTES)
+                .securityMatcher(PROTECTED_ROUTES)
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -34,7 +46,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/v1/auth/signup", "/v1/auth/login", "/webhook/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form.disable())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
