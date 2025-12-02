@@ -58,12 +58,15 @@ findByStatusAndCreatedAtBefore(AUTHORIZING, ...)`) and `SimulatorConfig`
 global `ChaosMode`). `PaymentServiceImpl.resolveAuthorization` — what the simulator calls — is
 fully implemented: fires `AUTHORIZE_SUCCESS`/`AUTHORIZE_FAIL`, then auto-captures on approval
 (fires `CAPTURE_REQUEST`, calls the adapter's `capture()`, fires the matching `CAPTURE_*` event,
-sets the order `PAID` on success). **`BankCallbackSimulator.processCallbacks()`'s `@Scheduled` is
-now active and `PayFloApplication` carries `@EnableScheduling`** — a deliberate decision, made and
-confirmed explicitly, to turn on a recurring background job against payment data. A payment that
-reaches `AUTHORIZING` now resolves on its own (approve/fail per the configured success rate, then
-auto-captures and marks the order `PAID`) within `payment.simulator.poll-interval-ms` of its
-per-method simulated delay — no need to touch this switch again.
+sets the order `PAID` on success). **`BankCallbackSimulator.processCallbacks()`'s `@Scheduled` and
+`PayFloApplication`'s `@EnableScheduling` were briefly turned on (2025-11-24), then explicitly
+turned back off the same day** — both are commented out again. Today's behavior is unchanged from
+before that: nothing calls `resolveAuthorization` automatically, every payment sits in
+`AUTHORIZING` forever, and `capture` always gets rejected. Turning this on remains a deliberate
+"recurring background job against payment data" decision to make explicitly, not a side effect of
+other work — it's been flipped both ways once already this session, so double check the current
+state (`grep -n "@EnableScheduling\|@Scheduled" PayFloApplication.java BankCallbackSimulator.java`)
+rather than assuming from this paragraph alone.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
@@ -195,35 +198,42 @@ Package (produces the runnable jar under `target/`):
   declaration
 - `spring-boot-starter-security` — originally pulled in only for `spring-security-crypto`'s
   `AesBytesEncryptor`/`KeyGenerators` (card PAN/DEK encryption in
-  `vault/config/VaultEncryptionConfig`); now also backs the real (if still unenforced)
-  `merchant/security/WebSecurityConfig` filter chain below. **Adding this dependency alone
-  activates Spring Boot's default autoconfiguration**, which locks every endpoint behind HTTP
-  Basic with a random per-restart password (a `Using generated security password` log line, no
-  matter what) unless a `SecurityFilterChain` bean is defined — `WebSecurityConfig.jwtChain` is
-  that bean now. Only one `SecurityFilterChain` matching "any request" is allowed per app; having
-  two (the old placeholder `common/config/SecurityConfig` plus a new one) fails startup with
-  `UnreachableFilterChainException` — hit and fixed once already, so don't add a second catch-all
-  chain without either scoping one with `.securityMatcher(...)` or removing the other.
+  `vault/config/VaultEncryptionConfig`); now also backs the real `merchant/security/WebSecurityConfig`
+  filter chain below. **Adding this dependency alone activates Spring Boot's default
+  autoconfiguration**, which locks every endpoint behind HTTP Basic with a random per-restart
+  password (a `Using generated security password` log line, no matter what) unless a
+  `SecurityFilterChain` bean is defined — `WebSecurityConfig.jwtChain` is that bean now. Only one
+  `SecurityFilterChain` matching "any request" is allowed per app; having two (the old placeholder
+  `common/config/SecurityConfig` plus a new one) fails startup with
+  `UnreachableFilterChainException` — hit and fixed once already. `jwtChain` now scopes itself with
+  `.securityMatcher("/v1/auth/**", "/v1/merchants/**", "/v1/admin/**", "/actuator/**",
+  "/webhook/**")` rather than matching "any request", which is what makes a second, unscoped
+  catch-all chain safe to add later for `/v1/orders`/`/v1/payments`/`/v1/vault` if needed — right
+  now those routes simply aren't covered by any `SecurityFilterChain` at all, which Spring Security
+  treats as "skip its filters entirely" rather than an error, so they stay reachable exactly as
+  before.
 - `io.jsonwebtoken:jjwt-api`/`jjwt-impl`/`jjwt-jackson` (`0.12.6`) — JWT signing/parsing for
   `merchant/security/JwtUtil` (`generateAccessToken`/`verifyAccessToken`, HMAC-signed via
   `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). `POST /v1/auth/login`
-  (`AuthServiceImpl.login`) now calls `generateAccessToken` and returns a real token — but
-  `WebSecurityConfig.jwtChain` still does `anyRequest().permitAll()`, so no filter validates that
-  token on any later request; it's currently a token nobody checks. `WebSecurityConfig` also
-  defines a real `PasswordEncoder` (`BCryptPasswordEncoder`) and `AuthenticationManager`
-  (`DaoAuthenticationProvider` + `merchant/security/MerchantUserDetailsService`, which loads an
-  `AppUser` — `implements UserDetails` — by email via `AppUserRepository`), and
-  `AuthServiceImpl.signup` now hashes the password with that same `PasswordEncoder` before storing
-  it — so login actually works end-to-end for a correct email/password now. Along with the hashing
-  fix, two related bugs were caught and fixed: `MerchantUserDetailsService` was throwing
-  `ResourceNotFoundException` for an unknown email (leaking a `404` distinguishable from a wrong
-  password's failure) instead of `UsernameNotFoundException` (which `DaoAuthenticationProvider`
-  deliberately folds into the same generic failure as a bad password); and nothing handled
-  `AuthenticationException` at all, so a bad-credentials login fell through to Spring Security's
-  default entry point as a bare `403` — `GlobalExceptionHandler` now maps it to a clean `401`
-  (`INVALID_CREDENTIALS`). See [Known
-  gaps](docs/gaps.md) item 12 for the tracked version of
-  this.
+  (`AuthServiceImpl.login`) calls `generateAccessToken` and returns a real token for a correct
+  email/password — `WebSecurityConfig` wires a real `PasswordEncoder` (`BCryptPasswordEncoder`) and
+  `AuthenticationManager` (`DaoAuthenticationProvider` + `merchant/security/MerchantUserDetailsService`,
+  loading an `AppUser` — `implements UserDetails` — by email via `AppUserRepository`), and
+  `AuthServiceImpl.signup` hashes the password with that same encoder before storing it, so login
+  works end-to-end now. Two related bugs were caught and fixed alongside it:
+  `MerchantUserDetailsService` was throwing `ResourceNotFoundException` for an unknown email
+  (leaking a `404` distinguishable from a wrong-password `401`) instead of
+  `UsernameNotFoundException` (which `DaoAuthenticationProvider` deliberately folds into the same
+  generic failure as a bad password); and nothing handled `AuthenticationException` at all, so a
+  bad-credentials login fell through to Spring Security's default entry point as a bare `403` —
+  `GlobalExceptionHandler` now maps it to a clean `401` (`INVALID_CREDENTIALS`).
+  **But `jwtChain` now requires authentication for `/v1/merchants/**` (and `/v1/admin/**`,
+  `/actuator/**`) with no filter anywhere that reads a token off a request and populates
+  `SecurityContextHolder`** — so every one of the `/v1/merchants/{merchantId}/api-keys` endpoints,
+  which worked unauthenticated before this change, now rejects every caller, valid token or not.
+  Committed as-is at the user's explicit call (2025-11-24); a `JwtAuthenticationFilter` is the next
+  piece needed before those routes work again. See [Known
+  gaps](docs/gaps.md) items 12–13 for the tracked version.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
