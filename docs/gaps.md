@@ -16,10 +16,13 @@ dropped vs. still planned:
    `ApiKeyServiceImpl.create`/`.rotate` write the raw generated secret straight into
    `ApiKey.keySecretHash`/`previousKeySecretHash`, unhashed. Flagged, not fixed yet — commit and
    push proceeded as-is at the user's explicit call (2025-10-14/26).
-7. **`OrderController`/`PaymentController` use a hardcoded `merchantId`** — each has its own fixed
-   test UUID instance field instead of deriving the merchant from any caller identity, since
-   there's no auth yet. Every order or payment created, fetched, cancelled, or listed currently
-   belongs to/is scoped to that same merchant regardless of caller.
+7. ~~`OrderController`/`PaymentController` use a hardcoded `merchantId`~~ — **resolved
+   (2025-11-24):** all four merchant-scoped controllers (`OrderController`, `PaymentController`,
+   `VaultController`, `ApiKeyController`) now inject `merchant/security/MerchantContext` (a
+   `@RequestScope` bean) and call `merchantContext.getMerchantId()` instead of a fixed test UUID.
+   `JwtAuthenticationFilter` populates it from the `merchant_id` claim on the caller's JWT. This is
+   also why `/v1/orders/**`/`/v1/payments/**`/`/v1/vault/**` now require authentication (see gap
+   13) — with no request-derived merchant, there'd be nothing for `MerchantContext` to hold.
 8. **`Payment.idempotencyKey` is a fresh random value every call, never checked** —
    `PaymentServiceImpl.initiate` generates `UUID.randomUUID().toString()` per request instead of
    accepting/deriving a caller-supplied key and looking up an existing `Payment` by it, so retrying
@@ -45,8 +48,9 @@ dropped vs. still planned:
     (overridable via `VAULT_MASTER_KEY`) — fine for local development, but a real deployment must
     set a real secret via that env var and keep it in a proper secret store, not source control. If
     this key is ever lost or rotated without a re-encryption migration, every previously-vaulted
-    card's DEK becomes permanently unwrappable. `POST /v1/vault/tokenize` also uses the same
-    hardcoded `merchantId` pattern as the other endpoints. `VaultServiceImpl.charge` decrypts the
+    card's DEK becomes permanently unwrappable. `POST /v1/vault/tokenize` now takes its `merchantId`
+    from `MerchantContext` like the other endpoints (see gap 7), rather than a hardcoded value.
+    `VaultServiceImpl.charge` decrypts the
     PAN into a Java `String` before handing it to `PaymentProcessorRequest.card(...)` — the raw
     `byte[]` is zeroed in a `finally` block after use, but the `String` copy is immutable and can't
     be zeroed, so it lingers on the heap until garbage collected (a well-known, hard-to-avoid
@@ -69,16 +73,17 @@ dropped vs. still planned:
     any `AuthenticationException` to `401` with `INVALID_CREDENTIALS`. What's still open: nothing
     validates the returned JWT on later requests (see gap 13) — so the token is real, but nothing
     can actually use it yet. See [APIs](api.md) for the full current behavior.
-13. **`/v1/merchants/**` now requires authentication with no way to ever provide it.**
-    `WebSecurityConfig.jwtChain`'s `securityMatcher` covers `/v1/auth/**`/`/v1/merchants/**`/
-    `/v1/admin/**`/`/actuator/**`/`/webhook/**`, permitting only `/v1/auth/signup`,
-    `/v1/auth/login`, and `/webhook/**` — everything else in that group now requires
-    `.anyRequest().authenticated()`. But there is no `JwtAuthenticationFilter` (or any other
-    mechanism) anywhere in the codebase that reads a `Bearer` token and populates
-    `SecurityContextHolder`, so authentication can never succeed. Net effect:
-    `POST`/`GET`/`DELETE`/`POST .../rotate` under `/v1/merchants/{merchantId}/api-keys` — which
-    worked (unauthenticated) before this change — now reject every request, with or without a
-    valid JWT attached. `/v1/orders`, `/v1/payments`, and `/v1/vault` are unaffected (not covered
-    by this `securityMatcher`, so they fall outside Spring Security's filter processing entirely
-    and remain reachable, same as before). Flagged, not fixed — commit and push proceeded as-is at
-    the user's explicit call (2025-11-24); a `JwtAuthenticationFilter` is the next piece needed.
+13. ~~`/v1/merchants/**` requires authentication with no way to provide it~~ — **resolved
+    (2025-11-24):** `merchant/security/JwtAuthenticationFilter` now exists — a `OncePerRequestFilter`
+    that reads the `Authorization: Bearer <token>` header, verifies it via `JwtUtil`, populates
+    `SecurityContextHolder` (so `.anyRequest().authenticated()` can actually be satisfied), and sets
+    the resolved merchant on `merchant/security/MerchantContext` (a `@RequestScope` bean) from the
+    token's `merchant_id` claim. Delegates auth-failure handling to Spring's own
+    `HandlerExceptionResolver` rather than a bespoke response, so a bad/expired token flows through
+    the normal exception-handling path. `WebSecurityConfig`'s protected-route matcher was also
+    widened to include `/v1/orders/**`/`/v1/payments/**`/`/v1/vault/**` — those now require
+    authentication too (a real behavior change; they were previously fully open), because
+    `MerchantContext` needs a JWT to populate from regardless of which controller uses it (see
+    gap 7). Every merchant-scoped controller (`OrderController`, `PaymentController`,
+    `VaultController`, `ApiKeyController`) now injects `MerchantContext` instead of a hardcoded or
+    path-variable merchant id.

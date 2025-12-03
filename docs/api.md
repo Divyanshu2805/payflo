@@ -48,16 +48,15 @@ that to a uniform `401` (`INVALID_CREDENTIALS`, "Invalid email or password"). St
 validates the returned JWT on subsequent requests (`WebSecurityConfig.jwtChain` still permits all
 requests unauthenticated), so the token doesn't gate access to anything yet.
 
-> **All four endpoints below are currently unreachable, see [Known
-> gaps](gaps.md) item 13.** `WebSecurityConfig.jwtChain` now
-> requires authentication for `/v1/merchants/**`, but no filter validates a JWT, so every request
-> here gets rejected regardless of whether a valid token is attached.
+> **`merchantId` is no longer a path parameter for any endpoint below** (moved 2025-11-24) — the
+> route is now `/v1/merchants/api-keys`, and every method takes its merchant from
+> `MerchantContext` (populated by `JwtAuthenticationFilter` from the caller's JWT). All four
+> require a valid JWT.
 
-## `POST /v1/merchants/{merchantId}/api-keys`
+## `POST /v1/merchants/api-keys`
 
-Generates a new API key for a merchant, returning the secret in plaintext exactly once.
-
-**Path parameter:** `merchantId` — the owning merchant's UUID.
+Generates a new API key for the authenticated merchant, returning the secret in plaintext exactly
+once.
 
 **Request body** (`CreateApiKeyRequest`): `environment` — one of `Environment` (`TEST`, `LIVE`).
 
@@ -65,43 +64,36 @@ Generates a new API key for a merchant, returning the secret in plaintext exactl
 `pfx_<environment>_<24-byte random>`, e.g. `pfx_test_ab12...`), `keySecret` (the raw, show-once
 secret — see [Known gaps](gaps.md), stored unhashed), `environment`.
 
-**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`, via
-`GlobalExceptionHandler`) if `merchantId` doesn't exist. `keyId` and the raw secret are generated
-via `RandomizerUtil.randomBase64` (`SecureRandom`-backed, URL-safe Base64, no padding); the raw
-secret is written directly to `ApiKey.keySecretHash` with no hashing applied. No authorization
-check yet — any caller can generate a key for any `merchantId`.
+**Behavior:** `keyId` and the raw secret are generated via `RandomizerUtil.randomBase64`
+(`SecureRandom`-backed, URL-safe Base64, no padding); the raw secret is written directly to
+`ApiKey.keySecretHash` with no hashing applied. Since `merchantId` now comes from the caller's own
+JWT rather than an arbitrary path value, a key can only ever be generated for the authenticated
+merchant — the old "any caller can generate a key for any merchantId" gap no longer applies.
 
-## `GET /v1/merchants/{merchantId}/api-keys`
+## `GET /v1/merchants/api-keys`
 
-Lists all API keys belonging to a merchant. Never returns the secret.
-
-**Path parameter:** `merchantId` — the owning merchant's UUID.
+Lists all API keys belonging to the authenticated merchant. Never returns the secret.
 
 **Response** — `200 OK` with a list of `ApiKeyResponse`: `id`, `keyId`, `environment`, `enabled`,
 `lastUsedAt`, `createdAt`.
 
-**Behavior:** does **not** validate that `merchantId` exists — an unknown `merchantId` returns an
-empty list (`200 OK`) rather than `404`, unlike the create endpoint. No authorization check yet,
-same as create.
-
-## `DELETE /v1/merchants/{merchantId}/api-keys/{keyId}`
+## `DELETE /v1/merchants/api-keys/{keyId}`
 
 Revokes an API key. A soft revoke — sets `ApiKey.enabled = false`, doesn't delete the row (there's
 no dedicated `revoked_at` timestamp on `API_KEY`, unlike `CARD_TOKEN.revoked_at`).
 
-**Path parameters:** `merchantId`, `keyId`.
+**Path parameter:** `keyId`.
 
 **Response** — `204 No Content`.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `keyId` doesn't exist
-*or* belongs to a different merchant than `merchantId` — the merchant-ownership check is enforced
-here, unlike list. No authorization check on the caller themselves yet.
+*or* belongs to a different merchant than the caller's.
 
-## `POST /v1/merchants/{merchantId}/api-keys/{keyId}/rotate`
+## `POST /v1/merchants/api-keys/{keyId}/rotate`
 
 Rotates an API key: generates a new secret, keeps the old one valid for a 24-hour grace period.
 
-**Path parameters:** `merchantId`, `keyId`.
+**Path parameter:** `keyId`.
 
 **Response** — `200 OK` with `ApiKeyCreateResponse`: `id`, `keyId` (unchanged), `keySecret` (the
 new raw secret, shown once — same unhashed-storage gap as create, see
@@ -116,10 +108,10 @@ the previous secret during the window). `keyId` itself doesn't change.
 
 ## `POST /v1/orders`
 
-Creates an order — the first payment-domain endpoint. **`merchantId` is currently hardcoded** to a
-fixed test UUID in `OrderController` (a `private final UUID` field, not derived from any caller
-identity) since there's no auth yet; every order created through this endpoint belongs to that same
-merchant regardless of who calls it. See [Known gaps](gaps.md).
+Creates an order — the first payment-domain endpoint. `merchantId` comes from `MerchantContext`
+(populated by `JwtAuthenticationFilter` from the caller's JWT `merchant_id` claim), not a request
+field — the order always belongs to whichever merchant is authenticated. Requires a valid JWT (see
+[Known gaps](gaps.md) item 7).
 
 **Request body** (`CreateOrderRequest`): `amount` (required, `Money`), `receipt` (optional, max 100
 chars, merchant's own order identifier), `notes` (optional, freeform JSON object), `expiresAt`
@@ -134,34 +126,34 @@ chars, merchant's own order identifier), `notes` (optional, freeform JSON object
 
 ## `GET /v1/orders/{orderId}`
 
-Fetches a single order by ID, scoped to the same hardcoded test merchant `POST /v1/orders` uses
-(see [Known gaps](gaps.md)) — an order belonging to a different
-merchant is treated as not found rather than a `403`.
+Fetches a single order by ID, scoped to the caller's merchant (`MerchantContext`, from the JWT) —
+an order belonging to a different merchant is treated as not found rather than a `403`. Requires a
+valid JWT.
 
 **Path parameters:** `orderId`.
 
 **Response** — `200 OK` with `OrderResponse`: same shape as the create response.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the hardcoded merchant.
+exist or doesn't belong to the caller's merchant.
 
 ## `POST /v1/orders/{orderId}/cancel`
 
-Cancels an order, scoped to the same hardcoded test merchant the other order endpoints use (see
-[Known gaps](gaps.md)).
+Cancels an order, scoped to the caller's merchant like the other order endpoints. Requires a valid
+JWT.
 
 **Path parameters:** `orderId`.
 
 **Response** — `200 OK` with `OrderResponse`: the order with `status` now `CANCELLED`.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the hardcoded merchant, and with `409 Conflict` (`ConflictException`,
+exist or doesn't belong to the caller's merchant, and with `409 Conflict` (`ConflictException`,
 code `ORDER_CANNOT_CANCEL`) if the order is already `CANCELLED` or `PAID`.
 
 ## `GET /v1/orders/{orderId}/payments`
 
-Lists every payment attempt made against an order, scoped to the same hardcoded test merchant the
-other order endpoints use (see [Known gaps](gaps.md)).
+Lists every payment attempt made against an order, scoped to the caller's merchant like the other
+order endpoints. Requires a valid JWT.
 
 **Path parameters:** `orderId`.
 
@@ -170,13 +162,12 @@ other order endpoints use (see [Known gaps](gaps.md)).
 per payment (empty list if the order has no payment attempts yet).
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the hardcoded merchant.
+exist or doesn't belong to the caller's merchant.
 
 ## `POST /v1/payments`
 
-Initiates a payment attempt against an order. **`merchantId` is hardcoded** in `PaymentController`
-the same way `OrderController`'s is — a separate fixed test UUID instance field, not derived from
-any caller identity (see [Known gaps](gaps.md)).
+Initiates a payment attempt against an order. `merchantId` comes from `MerchantContext`, same as
+`OrderController`. Requires a valid JWT.
 
 **Request body** (`PaymentInitRequest`): `orderId` (required), `method` (required, `PaymentMethod`
 — `CARD`/`NETBANKING`/`UPI`/`WALLET`), `methodDetails` (optional, freeform JSON — for `CARD`, a
@@ -191,7 +182,7 @@ see the note on `PaymentAdapter` below for the per-method mock-acquirer rules.
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
 the same order; rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the hardcoded merchant, and with `409 Conflict` (`ConflictException`,
+exist or doesn't belong to the caller's merchant, and with `409 Conflict` (`ConflictException`,
 code `ORDER_NOT_PAYABLE`) unless the order is `CREATED` or `ATTEMPTED`. On success: sets the order
 to `ATTEMPTED` and increments its `attempts`, creates a `Payment` row (`status = CREATED`, a fresh
 random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
@@ -246,8 +237,8 @@ added without adapters to match.
 ## `POST /v1/payments/{paymentId}/capture`
 
 Captures a previously-authorized payment — the second step of the auth-then-capture flow (see
-`PaymentAdapter.capture(UUID)` below). **`merchantId` is hardcoded** the same way the other
-payment/order endpoints are.
+`PaymentAdapter.capture(UUID)` below). `merchantId` comes from `MerchantContext`, same as the
+other payment/order endpoints. Requires a valid JWT.
 
 **Path parameters:** `paymentId`.
 
@@ -276,7 +267,8 @@ with `409 INVALID_STATE_TRANSITION` before any adapter is even invoked — see
 
 Tokenizes a card: encrypts and stores it, returning an opaque token that stands in for the card in
 later requests (e.g. `PaymentInitRequest.methodDetails` for a `CARD` payment) instead of ever
-handling the raw PAN again. **`merchantId` is hardcoded** the same way the other endpoints are.
+handling the raw PAN again. `merchantId` comes from `MerchantContext`, same as the other
+endpoints. Requires a valid JWT.
 
 **Request body** (`TokenizeRequest`): `pan` (required, 13–19 digits, must pass a Luhn checksum),
 `cvv` (required, 3–4 digits — validated but **never stored**, per PCI DSS), `expiryMonth`

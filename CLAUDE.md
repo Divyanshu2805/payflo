@@ -198,42 +198,40 @@ Package (produces the runnable jar under `target/`):
   declaration
 - `spring-boot-starter-security` — originally pulled in only for `spring-security-crypto`'s
   `AesBytesEncryptor`/`KeyGenerators` (card PAN/DEK encryption in
-  `vault/config/VaultEncryptionConfig`); now also backs the real `merchant/security/WebSecurityConfig`
-  filter chain below. **Adding this dependency alone activates Spring Boot's default
-  autoconfiguration**, which locks every endpoint behind HTTP Basic with a random per-restart
-  password (a `Using generated security password` log line, no matter what) unless a
-  `SecurityFilterChain` bean is defined — `WebSecurityConfig.jwtChain` is that bean now. Only one
-  `SecurityFilterChain` matching "any request" is allowed per app; having two (the old placeholder
-  `common/config/SecurityConfig` plus a new one) fails startup with
-  `UnreachableFilterChainException` — hit and fixed once already. `jwtChain` now scopes itself with
-  `.securityMatcher("/v1/auth/**", "/v1/merchants/**", "/v1/admin/**", "/actuator/**",
-  "/webhook/**")` rather than matching "any request", which is what makes a second, unscoped
-  catch-all chain safe to add later for `/v1/orders`/`/v1/payments`/`/v1/vault` if needed — right
-  now those routes simply aren't covered by any `SecurityFilterChain` at all, which Spring Security
-  treats as "skip its filters entirely" rather than an error, so they stay reachable exactly as
-  before.
+  `vault/config/VaultEncryptionConfig`); now backs a real, enforced
+  `merchant/security/WebSecurityConfig` filter chain. **Adding this dependency alone activates
+  Spring Boot's default autoconfiguration**, which locks every endpoint behind HTTP Basic with a
+  random per-restart password (a `Using generated security password` log line, no matter what)
+  unless a `SecurityFilterChain` bean is defined — `WebSecurityConfig.jwtChain` is that bean. Only
+  one `SecurityFilterChain` matching "any request" is allowed per app; having two (the old
+  placeholder `common/config/SecurityConfig` plus a new one) fails startup with
+  `UnreachableFilterChainException` — hit and fixed once already. `jwtChain` scopes itself with
+  `.securityMatcher(...)` over `PROTECTED_ROUTES` — `/v1/auth/**`, `/v1/merchants/**`,
+  `/v1/admin/**`, `/actuator/**`, `/webhook/**`, `/v1/orders/**`, `/v1/payments/**`,
+  `/v1/vault/**` — permitting only `/v1/auth/signup`, `/v1/auth/login`, and `/webhook/**`;
+  everything else in that list requires `.anyRequest().authenticated()`. A request matching none of
+  these patterns skips Spring Security's filters entirely (not an error, just unprotected) — there
+  currently isn't a route left in that category.
 - `io.jsonwebtoken:jjwt-api`/`jjwt-impl`/`jjwt-jackson` (`0.12.6`) — JWT signing/parsing for
   `merchant/security/JwtUtil` (`generateAccessToken`/`verifyAccessToken`, HMAC-signed via
-  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). `POST /v1/auth/login`
-  (`AuthServiceImpl.login`) calls `generateAccessToken` and returns a real token for a correct
-  email/password — `WebSecurityConfig` wires a real `PasswordEncoder` (`BCryptPasswordEncoder`) and
-  `AuthenticationManager` (`DaoAuthenticationProvider` + `merchant/security/MerchantUserDetailsService`,
-  loading an `AppUser` — `implements UserDetails` — by email via `AppUserRepository`), and
-  `AuthServiceImpl.signup` hashes the password with that same encoder before storing it, so login
-  works end-to-end now. Two related bugs were caught and fixed alongside it:
-  `MerchantUserDetailsService` was throwing `ResourceNotFoundException` for an unknown email
-  (leaking a `404` distinguishable from a wrong-password `401`) instead of
-  `UsernameNotFoundException` (which `DaoAuthenticationProvider` deliberately folds into the same
-  generic failure as a bad password); and nothing handled `AuthenticationException` at all, so a
-  bad-credentials login fell through to Spring Security's default entry point as a bare `403` —
-  `GlobalExceptionHandler` now maps it to a clean `401` (`INVALID_CREDENTIALS`).
-  **But `jwtChain` now requires authentication for `/v1/merchants/**` (and `/v1/admin/**`,
-  `/actuator/**`) with no filter anywhere that reads a token off a request and populates
-  `SecurityContextHolder`** — so every one of the `/v1/merchants/{merchantId}/api-keys` endpoints,
-  which worked unauthenticated before this change, now rejects every caller, valid token or not.
-  Committed as-is at the user's explicit call (2025-11-24); a `JwtAuthenticationFilter` is the next
-  piece needed before those routes work again. See [Known
-  gaps](docs/gaps.md) items 12–13 for the tracked version.
+  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). The full chain now works
+  end to end: `POST /v1/auth/login` (`AuthServiceImpl.login`) authenticates via a real
+  `AuthenticationManager`/`PasswordEncoder`/`merchant/security/MerchantUserDetailsService` (backed
+  by `AppUserRepository`, with `AuthServiceImpl.signup` hashing the password on the way in) and
+  returns a `generateAccessToken` JWT; `merchant/security/JwtAuthenticationFilter`
+  (`OncePerRequestFilter`, registered on `jwtChain`) reads that token back off the
+  `Authorization: Bearer` header on every later request, verifies it, populates
+  `SecurityContextHolder`, and resolves the token's `merchant_id` claim into
+  `merchant/security/MerchantContext` (a `@RequestScope` bean). Every merchant-scoped controller
+  (`OrderController`, `PaymentController`, `VaultController`, `ApiKeyController`) now injects
+  `MerchantContext` and calls `.getMerchantId()` instead of a hardcoded test UUID or a
+  `{merchantId}` path variable — `ApiKeyController`'s route dropped the path variable entirely,
+  down to `/v1/merchants/api-keys`. Practical effect: `/v1/orders`, `/v1/payments`, and
+  `/v1/vault/tokenize`, previously fully open, now require a valid JWT like everything else, since
+  there's no other way for `MerchantContext` to have anything to resolve. See [Known
+  gaps](docs/gaps.md) item 7 for what's still open (API
+  key secret hashing, and no role/permission distinction within a merchant yet — any authenticated
+  user of a merchant can act as that merchant everywhere).
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
