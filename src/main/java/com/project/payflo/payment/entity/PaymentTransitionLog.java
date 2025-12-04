@@ -45,6 +45,9 @@ public class PaymentTransitionLog extends BaseEntity {
     @Column(name = "actor", length = 100)
     private PaymentActor actor;
 
+    @Column(name = "reason", length = 500)
+    private String reason;
+
     @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;
 }

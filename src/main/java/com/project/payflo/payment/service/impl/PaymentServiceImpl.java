@@ -72,7 +72,7 @@ public class PaymentServiceImpl implements PaymentService {
             case null -> log.warn("Payment adapter for method {} returned no result (not yet implemented)", request.method());
             case PaymentResult.Pending pending -> payment.setProcessorReference(pending.registrationRef());
             case PaymentResult.Failure failure -> {
-                paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL);
+                paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL, failure.errorDescription());
                 payment.setErrorCode(failure.errorCode());
                 payment.setErrorDescription(failure.errorDescription());
             }
@@ -106,7 +106,7 @@ public class PaymentServiceImpl implements PaymentService {
                 log.info("Payment captured, paymentID: {}", paymentId);
             }
             case PaymentResult.Failure failure -> {
-                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
+                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL, failure.errorDescription());
                 payment.setErrorCode(failure.errorCode());
                 payment.setErrorDescription(failure.errorDescription());
                 log.warn("Payment capture failed, paymentID: {}", paymentId);
@@ -159,7 +159,7 @@ public class PaymentServiceImpl implements PaymentService {
                     orderRecord.setOrderStatus(OrderStatus.PAID);
                 }
                 case PaymentResult.Failure failure -> {
-                    paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
+                    paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL, failure.errorDescription());
                     payment.setErrorCode(failure.errorCode());
                     payment.setErrorDescription(failure.errorDescription());
                 }
@@ -170,7 +170,7 @@ public class PaymentServiceImpl implements PaymentService {
                 case null -> payment.setStatus(PaymentStatus.AUTHORIZED);
             }
         } else {
-            paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL);
+            paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL, errorDescription);
             payment.setErrorCode(errorCode);
             payment.setErrorDescription(errorDescription);
         }
