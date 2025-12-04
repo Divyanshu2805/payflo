@@ -37,6 +37,9 @@ public class ApiKey extends BaseEntity {
     @Column(length = 200)
     private String previousKeySecretHash;
 
+    @Column(length = 200)
+    private String webhookSecretHash;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private Environment environment;
