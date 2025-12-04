@@ -49,9 +49,12 @@ inside one codebase and expensive to move once they're network calls, so they're
 the package layout and the no-cross-domain-foreign-key convention exist to keep that later split cheap.
 
 Domain model (see the Entity Relationship Diagram in [docs/schema.md](docs/schema.md)) is
-fully implemented as JPA entities. A first slice of the API now exists across two domains (merchant
-signup and API key management, order creation, lookup, cancellation, and payment
-listing/initiation/capture); the rest of the repository/service/API layer is still to come.
+fully implemented as JPA entities. A working API now spans four domains — merchant (signup, login,
+API key management), order and payment lifecycles (create/cancel/list, initiate/capture, card
+tokenization), all backed by real JWT authentication (`JwtAuthenticationFilter` resolves the
+caller's merchant on every request via `MerchantContext`) — with the rest of the domain-by-domain
+build-out (webhooks, settlement, refunds) still to come. See [docs/status.md](docs/status.md)
+for the detailed status table and known gaps.
 
 ## Documentation
 
