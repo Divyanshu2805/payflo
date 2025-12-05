@@ -36,5 +36,8 @@ public class Customer extends BaseEntity{
     @Column(length = 20)
     private String phone;
 
+    @Column(length = 20)
+    private String gstId;
+
     private LocalDateTime deletedAt;
 }
