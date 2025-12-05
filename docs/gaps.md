@@ -6,8 +6,13 @@ Found while syncing docs to the actual implementation (2025-10-06) — not yet t
 dropped vs. still planned:
 
 1. `ORDER_RECORD` has no `idempotency_key` — the idempotent-order-creation requirement isn't backed yet.
-2. `API_KEY` has no `webhook_secret_hash`.
-3. `CUSTOMER` has no `gst_id`.
+2. ~~`API_KEY` has no `webhook_secret_hash`~~ — **resolved (2025-11-24):** added
+   `ApiKey.webhookSecretHash` (nullable, unmapped to any DTO — same "never returned" pattern as
+   `keySecretHash`). Schema-only for now; nothing writes or reads it yet, since webhook delivery
+   itself isn't built.
+3. ~~`CUSTOMER` has no `gst_id`~~ — **resolved (2025-11-24):** added `Customer.gstId` (nullable).
+   Schema-only — `Customer` still has no repository/service/controller layer at all, so nothing
+   populates it yet.
 4. `PAYMENT` has no running `refunded_amount` total (derivable from `REFUND` rows instead).
 5. ~~`PAYMENT_TRANSITION_LOG` has no `reason` field~~ — **resolved (2025-11-24):** added
    `PaymentTransitionLog.reason` (nullable, `varchar(500)`). `PaymentTransitionService.apply`
