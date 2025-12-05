@@ -157,6 +157,7 @@ erDiagram
         string event
         string to_status
         string actor
+        string reason
         datetime occurred_at
         datetime created_at
         datetime updated_at
@@ -444,11 +445,9 @@ overwritten on the `PAYMENT` row itself.
 | `from_status` / `to_status` | The state change being recorded (`PaymentStatus`). |
 | `event` | What triggered the transition — a `PaymentEvent` (e.g. `AUTHORIZE_SUCCESS`, `CAPTURE_FAIL`, `REFUND_INIT`), not a free-form string. |
 | `actor` | Who or what caused it — `CUSTOMER`, `MERCHANT`, or `SYSTEM`. |
+| `reason` | Free-form context for the transition, e.g. the processor's `errorDescription` on an `AUTHORIZE_FAIL`/`CAPTURE_FAIL`. Populated only where `PaymentServiceImpl` has a natural string to attach — `null` on the others (`AUTHORIZE_ATTEMPT`, `CAPTURE_REQUEST`, `CAPTURE_SUCCESS`, `CAPTURE_PENDING`, `AUTHORIZE_SUCCESS`). |
 | `occurred_at` | When the transition happened. |
 | `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
-
-> **Gap vs. v1 design:** no `reason` field — the human-readable explanation (especially useful for
-> failures) that was in the original plan isn't present on the entity yet.
 
 ### VAULT_CARD
 

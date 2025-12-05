@@ -9,13 +9,22 @@ dropped vs. still planned:
 2. `API_KEY` has no `webhook_secret_hash`.
 3. `CUSTOMER` has no `gst_id`.
 4. `PAYMENT` has no running `refunded_amount` total (derivable from `REFUND` rows instead).
-5. `PAYMENT_TRANSITION_LOG` has no `reason` field.
-6. ~~Secrets are stored unhashed~~ — **partially resolved (2025-11-24):** `AuthServiceImpl.signup`
-   now hashes the password with the `PasswordEncoder` (`BCryptPasswordEncoder`) bean from
-   `WebSecurityConfig` before writing it to `AppUser.passwordHash`. Still open:
-   `ApiKeyServiceImpl.create`/`.rotate` write the raw generated secret straight into
-   `ApiKey.keySecretHash`/`previousKeySecretHash`, unhashed. Flagged, not fixed yet — commit and
-   push proceeded as-is at the user's explicit call (2025-10-14/26).
+5. ~~`PAYMENT_TRANSITION_LOG` has no `reason` field~~ — **resolved (2025-11-24):** added
+   `PaymentTransitionLog.reason` (nullable, `varchar(500)`). `PaymentTransitionService.apply`
+   gained an overload taking a `reason` string (the no-reason `apply(Payment, PaymentEvent)` now
+   just delegates with `null`); `PaymentServiceImpl` passes the processor's `errorDescription` as
+   the reason on every `AUTHORIZE_FAIL`/`CAPTURE_FAIL` transition. Every other transition
+   (`AUTHORIZE_ATTEMPT`, `CAPTURE_REQUEST`, `CAPTURE_SUCCESS`, `CAPTURE_PENDING`,
+   `AUTHORIZE_SUCCESS`) still logs `reason = null` — there isn't a similarly natural string to
+   attach to those yet.
+6. ~~Secrets are stored unhashed~~ — **resolved (2025-11-24):** `AuthServiceImpl.signup` hashes the
+   password with the `PasswordEncoder` (`BCryptPasswordEncoder`) bean from `WebSecurityConfig`
+   before writing it to `AppUser.passwordHash`, and `ApiKeyServiceImpl.create`/`.rotate` now do the
+   same for the generated API key secret — the raw value is only ever returned once in the
+   response (`ApiKeyCreateResponse`, built directly from the raw string rather than mapped off the
+   now-hashed entity field); `ApiKey.keySecretHash`/`previousKeySecretHash` store only the hash.
+   `ApiKeyMapper.toCreateResponse` was deleted since it mapped `keySecretHash` straight to the
+   response and would have leaked the hash instead of the raw secret otherwise.
 7. ~~`OrderController`/`PaymentController` use a hardcoded `merchantId`~~ — **resolved
    (2025-11-24):** all four merchant-scoped controllers (`OrderController`, `PaymentController`,
    `VaultController`, `ApiKeyController`) now inject `merchant/security/MerchantContext` (a

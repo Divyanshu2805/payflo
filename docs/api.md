@@ -12,7 +12,7 @@ Registers a new merchant and its first (`OWNER`) user in one call.
 |---|---|---|
 | `name` | required, max 50 chars | Contact/display name. |
 | `email` | required, valid email format | Merchant login email; also used for the `AppUser`. |
-| `password` | required, min 8 chars | Stored as-is on `AppUser.passwordHash` — see [Known gaps](gaps.md), no hashing yet. |
+| `password` | required, min 8 chars | Hashed (`PasswordEncoder`/`BCryptPasswordEncoder`) before being stored on `AppUser.passwordHash`. |
 | `businessName` | optional, max 50 chars | |
 | `businessType` | optional | One of `BusinessType`. |
 
@@ -62,13 +62,15 @@ once.
 
 **Response** — `201 Created` with `ApiKeyCreateResponse`: `id`, `keyId` (format
 `pfx_<environment>_<24-byte random>`, e.g. `pfx_test_ab12...`), `keySecret` (the raw, show-once
-secret — see [Known gaps](gaps.md), stored unhashed), `environment`.
+secret — never persisted or returned again after this response), `environment`.
 
 **Behavior:** `keyId` and the raw secret are generated via `RandomizerUtil.randomBase64`
-(`SecureRandom`-backed, URL-safe Base64, no padding); the raw secret is written directly to
-`ApiKey.keySecretHash` with no hashing applied. Since `merchantId` now comes from the caller's own
-JWT rather than an arbitrary path value, a key can only ever be generated for the authenticated
-merchant — the old "any caller can generate a key for any merchantId" gap no longer applies.
+(`SecureRandom`-backed, URL-safe Base64, no padding); the raw secret is hashed
+(`PasswordEncoder`/`BCryptPasswordEncoder`) before being written to `ApiKey.keySecretHash` — the
+response is built directly from the raw string generated a moment earlier, not read back off the
+(now-hashed) entity. Since `merchantId` now comes from the caller's own JWT rather than an
+arbitrary path value, a key can only ever be generated for the authenticated merchant — the old
+"any caller can generate a key for any merchantId" gap no longer applies.
 
 ## `GET /v1/merchants/api-keys`
 
@@ -96,8 +98,7 @@ Rotates an API key: generates a new secret, keeps the old one valid for a 24-hou
 **Path parameter:** `keyId`.
 
 **Response** — `200 OK` with `ApiKeyCreateResponse`: `id`, `keyId` (unchanged), `keySecret` (the
-new raw secret, shown once — same unhashed-storage gap as create, see
-[Known gaps](gaps.md)), `environment`.
+new raw secret, shown once, hashed before storage the same way `create` does), `environment`.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `keyId` doesn't exist
 or belongs to a different merchant, and with `409 Conflict` (`ConflictException`, code
