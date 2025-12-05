@@ -41,6 +41,7 @@ erDiagram
         string key_id UK
         string key_secret_hash
         string previous_key_secret_hash
+        string webhook_secret_hash
         string environment
         boolean enabled
         datetime last_used_at
@@ -83,6 +84,7 @@ erDiagram
         string name
         string email
         string phone
+        string gst_id
         datetime deleted_at
         datetime created_at
         datetime updated_at
@@ -319,14 +321,13 @@ Merchant-scoped API credentials, with support for rotation without breaking exis
 | `key_id` | The public identifier half of the key — safe to display, like a username for the key. |
 | `key_secret_hash` | Hash of the secret half; the real secret is never stored, only shown once at creation. |
 | `previous_key_secret_hash` | The prior secret's hash, kept during rotation so a key can still authenticate on either the old or new secret through the grace period. |
+| `webhook_secret_hash` | Reserved for signing webhook payloads tied to this key — schema only for now, nothing reads or writes it yet since webhook delivery isn't built. |
 | `environment` | e.g. test vs live, so sandbox and production credentials stay separate. |
 | `enabled` | Whether the key currently works. |
 | `last_used_at` | Last time this key authenticated a request — useful for spotting stale/unused keys. |
 | `rotated_at` | When the key was last rotated (replaced with a new secret). |
 | `grace_period_expires_at` | After rotation, the old key can keep working briefly so in-flight integrations don't break instantly; this is when that grace period ends. |
 | `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
-
-> **Gap vs. v1 design:** no `webhook_secret_hash` field — was in the original plan, not present in the entity yet.
 
 ### APP_USER
 
@@ -364,10 +365,9 @@ An end customer of a merchant — customers are scoped to a single merchant, not
 | `id` | Primary key. |
 | `merchant_id` | Owning merchant. |
 | `name` / `email` / `phone` | Contact details. |
+| `gst_id` | The customer's GST registration number, for merchants that need it on an invoice/receipt — schema only for now, `Customer` has no repository/service/controller layer yet so nothing populates it. |
 | `deleted_at` | Soft-delete timestamp — set instead of removing the row, so a deleted customer's history stays intact. |
 | `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
-
-> **Gap vs. v1 design:** no `gst_id` field — was in the original plan, not present in the entity yet.
 
 ### ORDER_RECORD
 
