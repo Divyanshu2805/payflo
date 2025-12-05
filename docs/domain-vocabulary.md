@@ -30,14 +30,17 @@ place.
 `payment/statemachine/PaymentStateMachine` encodes this table (`transition(PaymentStatus,
 PaymentEvent): PaymentStatus`, throwing `InvalidStateTransitionException` — mapped to `409
 Conflict` with code `INVALID_STATE_TRANSITION` by `GlobalExceptionHandler` — for an undefined
-pair). `payment/statemachine/PaymentTransitionService.apply(Payment, PaymentEvent)` wraps it: looks
-up the next status, writes a `PaymentTransitionLog` row (`fromStatus`/`event`/`toStatus`/`actor` —
-`actor` is currently always hardcoded to `PaymentActor.SYSTEM`, see [Known
-gaps](gaps.md)), and sets `Payment.status`. `PaymentServiceImpl`
-now goes through this for every transition it makes: `initiate` fires `AUTHORIZE_ATTEMPT` before
-dispatching to the gateway and `AUTHORIZE_FAIL` on a `Failure` result; `capture` fires
-`CAPTURE_REQUEST` before dispatching to the processor and `CAPTURE_SUCCESS`/`CAPTURE_FAIL`/
-`CAPTURE_PENDING` on the result (a `null` capture result — the adapter isn't implemented — still
+pair). `payment/statemachine/PaymentTransitionService` wraps it — `apply(Payment, PaymentEvent)` and
+an overload, `apply(Payment, PaymentEvent, String reason)` (the two-arg form just delegates with a
+`null` reason). Either way it looks up the next status, writes a `PaymentTransitionLog` row
+(`fromStatus`/`event`/`toStatus`/`actor`/`reason` — `actor` is currently always hardcoded to
+`PaymentActor.SYSTEM`, see [Known gaps](gaps.md)), and sets
+`Payment.status`. `PaymentServiceImpl` now goes through this for every transition it makes:
+`initiate` fires `AUTHORIZE_ATTEMPT` before dispatching to the gateway and `AUTHORIZE_FAIL` (with
+the processor's `errorDescription` as the `reason`) on a `Failure` result; `capture` fires
+`CAPTURE_REQUEST` before dispatching to the processor and `CAPTURE_SUCCESS`/`CAPTURE_FAIL`
+(`errorDescription` as `reason` again)/`CAPTURE_PENDING` on the result (a `null` capture result —
+the adapter isn't implemented — still
 sets `status` directly to `AUTHORIZED` rather than through the service, since that's not a real
 domain event, just an infrastructure gap); `resolveAuthorization` fires `AUTHORIZE_SUCCESS`/
 `AUTHORIZE_FAIL` and then the same `CAPTURE_*` events as part of its auto-capture step — the only
