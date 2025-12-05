@@ -41,6 +41,9 @@ public class OrderRecord extends BaseEntity {
     @Column(length = 100)
     private String receipt;
 
+    @Column(length = 100)
+    private String idempotencyKey;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
