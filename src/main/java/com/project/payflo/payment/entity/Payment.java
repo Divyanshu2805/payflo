@@ -39,6 +39,13 @@ public class Payment extends BaseEntity {
     @Embedded
     private Money amount;
 
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "amountUnits", column = @Column(name = "refunded_amount_units")),
+            @AttributeOverride(name = "currency", column = @Column(name = "refunded_currency"))
+    })
+    private Money refundedAmount;
+
     @Column(nullable = false, length = 100)
     private String idempotencyKey;
 
