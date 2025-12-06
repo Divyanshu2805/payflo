@@ -99,6 +99,7 @@ erDiagram
         long amount_units
         string currency
         string receipt
+        string idempotency_key
         string order_status
         int attempts
         jsonb notes
@@ -380,14 +381,12 @@ A payable order created by a merchant; a payment is always initiated against one
 | `customer_id` | The customer this order is for. |
 | `amount_units` / `currency` | Order amount, via the shared `Money` value type. |
 | `receipt` | Merchant-supplied receipt/reference label for the order. |
+| `idempotency_key` | Meant to carry the `X-Idempotent-Header` value so a retried create-order request returns the original order instead of creating a duplicate — schema only for now, see [Known gaps](gaps.md). |
 | `order_status` | Order lifecycle status (created, attempted, paid, cancelled). |
 | `attempts` | How many payment attempts have been made against this order. |
 | `notes` | Free-form merchant-supplied metadata (JSON). |
 | `expires_at` | When the order auto-expires if unpaid. |
 | `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
-
-> **Gap vs. requirements:** no `idempotency_key` field — the "idempotent order creation via
-> `X-Idempotent-Header`" functional requirement isn't backed by the entity yet.
 
 ### PAYMENT
 

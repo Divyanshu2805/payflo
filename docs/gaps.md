@@ -5,7 +5,12 @@
 Found while syncing docs to the actual implementation (2025-10-06) — not yet triaged as intentionally
 dropped vs. still planned:
 
-1. `ORDER_RECORD` has no `idempotency_key` — the idempotent-order-creation requirement isn't backed yet.
+1. ~~`ORDER_RECORD` has no `idempotency_key`~~ — **partially resolved (2025-11-24):** added
+   `OrderRecord.idempotencyKey` (nullable). Schema-only — `CreateOrderRequest` has no field for the
+   caller to supply one, and `OrderServiceImpl.create` neither reads nor checks it, so retrying a
+   create-order request still creates a duplicate order rather than returning the original. Closing
+   that requires accepting an `X-Idempotent-Header` (or a request-body field) and a lookup-before-
+   create, neither of which exists yet.
 2. ~~`API_KEY` has no `webhook_secret_hash`~~ — **resolved (2025-11-24):** added
    `ApiKey.webhookSecretHash` (nullable, unmapped to any DTO — same "never returned" pattern as
    `keySecretHash`). Schema-only for now; nothing writes or reads it yet, since webhook delivery
