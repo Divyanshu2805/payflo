@@ -116,6 +116,8 @@ erDiagram
         UUID merchant_id "no FK - cross-service boundary"
         long amount_units
         string currency
+        long refunded_amount_units
+        string refunded_currency
         string idempotency_key
         string status
         string method
@@ -398,6 +400,7 @@ A single payment attempt against an order.
 | `order_id` | The order this payment attempt is for. |
 | `merchant_id` | Owning merchant — no FK (cross-service boundary, see note above). |
 | `amount_units` / `currency` | Payment amount, via the shared `Money` value type. |
+| `refunded_amount_units` / `refunded_currency` | Running refunded total, via a second `Money` (`@AttributeOverride`d to avoid a column clash with `amount`) — schema only for now, see [Known gaps](gaps.md); nothing writes to it yet since refunds aren't built. |
 | `idempotency_key` | Duplicate-prevention key for payment initiation. |
 | `status` | State-machine status — see `PaymentStatus` (created, authorizing, authorized, capturing, captured, failed, cancelled, refunded, partially refunded, settled, auth-expired). |
 | `method` | Payment method used — card, UPI, net banking, or wallet. |
@@ -411,9 +414,6 @@ A single payment attempt against an order.
 | `refunded_at` | When the payment was (fully) refunded, if it was. |
 | `settled_at` | When this payment was included in a settlement payout. |
 | `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
-
-> **Gap vs. v1 design:** no running `refunded_amount` total on the payment itself — partial-refund
-> tracking would currently need to be derived by summing the linked `REFUND` rows instead.
 
 ### REFUND
 

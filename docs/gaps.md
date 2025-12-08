@@ -18,7 +18,12 @@ dropped vs. still planned:
 3. ~~`CUSTOMER` has no `gst_id`~~ — **resolved (2025-11-24):** added `Customer.gstId` (nullable).
    Schema-only — `Customer` still has no repository/service/controller layer at all, so nothing
    populates it yet.
-4. `PAYMENT` has no running `refunded_amount` total (derivable from `REFUND` rows instead).
+4. ~~`PAYMENT` has no running `refunded_amount` total~~ — **partially resolved (2025-11-24):** added
+   `Payment.refundedAmount` (a second `Money`, `@AttributeOverride`d onto
+   `refunded_amount_units`/`refunded_currency` so it doesn't collide with the existing `amount`
+   columns). Schema-only — refunds aren't built at all yet (no `RefundService`, no endpoint), so
+   nothing ever increments it; the value would need to be derived by summing `REFUND` rows until
+   that exists.
 5. ~~`PAYMENT_TRANSITION_LOG` has no `reason` field~~ — **resolved (2025-11-24):** added
    `PaymentTransitionLog.reason` (nullable, `varchar(500)`). `PaymentTransitionService.apply`
    gained an overload taking a `reason` string (the no-reason `apply(Payment, PaymentEvent)` now
