@@ -20,25 +20,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class WebSecurityConfig {
 
-    /**
-     * Every route that needs a resolved merchant identity (via {@link MerchantContext}) has to go
-     * through {@link JwtAuthenticationFilter}, so it has to be in this matcher — there's no second,
-     * separate auth mechanism (e.g. API-key auth) actually implemented yet. Orders/payments/vault
-     * used to be open (permitAll, hardcoded merchantId in the controller); they now require the
-     * same JWT everything else here does, since MerchantContext has nothing to populate otherwise.
-     */
-    private static final String[] PROTECTED_ROUTES = {
-            "/v1/auth/**", "/v1/merchants/**", "/v1/admin/**", "/actuator/**", "/webhook/**",
-            "/v1/orders/**", "/v1/payments/**", "/v1/vault/**"
-    };
+    private static final String[] JWT_ROUTES = {"/v1/auth/**", "/v1/merchants/**", "/v1/admin/**", "/actuator/**", "/webhook/**"};
+    private static final String[] API_KEY_ROUTES = {"/v1/orders/**", "/v1/payments/**", "/v1/vault/**"};
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
 
     @Bean
     @Order(1)
     public SecurityFilterChain jwtChain(HttpSecurity http) {
         return http
-                .securityMatcher(PROTECTED_ROUTES)
+                .securityMatcher(JWT_ROUTES)
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -47,6 +39,21 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiKeyChain(HttpSecurity http) {
+        return http
+                .securityMatcher(API_KEY_ROUTES)
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
