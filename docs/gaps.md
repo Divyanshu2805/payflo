@@ -33,11 +33,16 @@ dropped vs. still planned:
    `AUTHORIZE_SUCCESS`) still logs `reason = null` — there isn't a similarly natural string to
    attach to those yet.
 6. ~~Secrets are stored unhashed~~ — **resolved (2025-11-24):** `AuthServiceImpl.signup` hashes the
-   password with the `PasswordEncoder` (`BCryptPasswordEncoder`) bean from `WebSecurityConfig`
-   before writing it to `AppUser.passwordHash`, and `ApiKeyServiceImpl.create`/`.rotate` now do the
-   same for the generated API key secret — the raw value is only ever returned once in the
-   response (`ApiKeyCreateResponse`, built directly from the raw string rather than mapped off the
-   now-hashed entity field); `ApiKey.keySecretHash`/`previousKeySecretHash` store only the hash.
+   password with the injected `PasswordEncoder` (`BCryptPasswordEncoder`) bean from
+   `WebSecurityConfig`, and `ApiKeyServiceImpl.create`/`.rotate` now do the same for the generated
+   API key secret — though via their own locally-instantiated `new BCryptPasswordEncoder()` field
+   rather than the shared bean (functionally identical, same default strength, just not reusing the
+   bean already available for injection). The raw value is only ever returned once in the response
+   (`ApiKeyCreateResponse`, built directly from the raw string rather than mapped off the now-hashed
+   entity field); `ApiKey.keySecretHash`/`previousKeySecretHash` store only the hash.
+   `ApiKeyAuthenticationFilter.secretMatches` verifies against either (grace-period-aware) using its
+   own separate `BCryptPasswordEncoder` instance too — three instances of the same encoder across
+   the codebase where one shared bean would do.
    `ApiKeyMapper.toCreateResponse` was deleted since it mapped `keySecretHash` straight to the
    response and would have leaked the hash instead of the raw secret otherwise.
 7. ~~`OrderController`/`PaymentController` use a hardcoded `merchantId`~~ — **resolved
@@ -98,16 +103,23 @@ dropped vs. still planned:
     validated on later requests (`JwtAuthenticationFilter`, see gap 13) — login is fully functional
     end to end. See [APIs](api.md) for the full current behavior.
 13. ~~`/v1/merchants/**` requires authentication with no way to provide it~~ — **resolved
-    (2025-11-24):** `merchant/security/JwtAuthenticationFilter` now exists — a `OncePerRequestFilter`
-    that reads the `Authorization: Bearer <token>` header, verifies it via `JwtUtil`, populates
-    `SecurityContextHolder` (so `.anyRequest().authenticated()` can actually be satisfied), and sets
-    the resolved merchant on `merchant/security/MerchantContext` (a `@RequestScope` bean) from the
-    token's `merchant_id` claim. Delegates auth-failure handling to Spring's own
-    `HandlerExceptionResolver` rather than a bespoke response, so a bad/expired token flows through
-    the normal exception-handling path. `WebSecurityConfig`'s protected-route matcher was also
-    widened to include `/v1/orders/**`/`/v1/payments/**`/`/v1/vault/**` — those now require
-    authentication too (a real behavior change; they were previously fully open), because
-    `MerchantContext` needs a JWT to populate from regardless of which controller uses it (see
-    gap 7). Every merchant-scoped controller (`OrderController`, `PaymentController`,
-    `VaultController`, `ApiKeyController`) now injects `MerchantContext` instead of a hardcoded or
-    path-variable merchant id.
+    (2025-11-24):** `merchant/security/JwtAuthenticationFilter` — a `OncePerRequestFilter` on
+    `jwtChain` — reads the `Authorization: Bearer <token>` header, verifies it via `JwtUtil`,
+    populates `SecurityContextHolder`, and sets the resolved merchant on
+    `merchant/security/MerchantContext` (a `@RequestScope` bean) from the token's `merchant_id`
+    claim. `ApiKeyController` (the only controller on `jwtChain`'s routes) reads it from there.
+    `/v1/orders/**`/`/v1/payments/**`/`/v1/vault/**` also now require authentication (a real
+    behavior change; they were previously fully open) — but via a second, separate mechanism, see
+    gap 14: `apiKeyChain` and `ApiKeyAuthenticationFilter`, not a JWT.
+14. **No role/permission distinction within a merchant.** `ApiKeyAuthenticationFilter` and
+    `JwtAuthenticationFilter` both resolve *which merchant* is calling (`MerchantContext`), but
+    neither carries any notion of *what that caller is allowed to do* — `AppUser.role`
+    (`OWNER`/`ADMIN`/`TEAM`) is never read anywhere outside `JwtUtil.generateAccessToken` putting it
+    on the token as an unused claim, and an API key has no scope/permission concept at all beyond
+    which merchant issued it. Any authenticated user or API key can act as that merchant everywhere
+    — create orders, capture payments, tokenize cards, manage other API keys — with no finer-grained
+    check.
+15. **`ApiKey.lastUsedAt` is never written.** The field exists specifically to track "last time this
+    key authenticated a request" (see the field's own description), but
+    `ApiKeyAuthenticationFilter.doFilterInternal` doesn't update it on a successful match — every
+    key's `lastUsedAt` stays `null` forever, regardless of how often it's used.

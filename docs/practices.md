@@ -37,17 +37,25 @@
   of `spring-boot-starter-security`, provides `AesBytesEncryptor`/`KeyGenerators`). Pulling in
   `spring-boot-starter-security` for just the crypto classes has a side effect: Spring Boot's
   default autoconfiguration locks every endpoint behind HTTP Basic with a random per-restart
-  password unless a `SecurityFilterChain` bean is defined — `merchant/security/WebSecurityConfig`'s
-  `jwtChain` does that now (still `anyRequest().permitAll()`, no enforcement yet; see the JWT
-  bullet below). Only one filter chain may match "any request", which is why the older placeholder
-  `common/config/SecurityConfig` was removed rather than kept alongside it.
+  password unless a `SecurityFilterChain` bean is defined — `merchant/security/WebSecurityConfig`
+  now defines two, both enforced (see the JWT and API-key bullets below). Only one filter chain may
+  match "any request" with no `securityMatcher`; both of these are scoped, which is why the older
+  unscoped placeholder `common/config/SecurityConfig` was removed rather than kept alongside them.
 - **JWT auth** — `merchant/security/JwtUtil` (`io.jsonwebtoken`/`jjwt`, HMAC-signed via
   `jwt.secret-key` in `application.yaml`) generates and verifies access tokens carrying
-  `merchant_id`/`role` claims. `POST /v1/auth/login` now calls it and returns a real token for a
-  correct email/password. `WebSecurityConfig.jwtChain` requires authentication for
-  `/v1/merchants/**`/`/v1/admin/**`/`/actuator/**` (permitting only signup/login/webhook) — but no
-  filter reads a token off an incoming request yet, so those routes currently reject every caller,
-  token or not (see [Known gaps](gaps.md)).
+  `merchant_id`/`role` claims. `POST /v1/auth/login` calls it and returns a real token for a
+  correct email/password. `WebSecurityConfig.jwtChain` requires it for `/v1/merchants/**`/
+  `/v1/admin/**`/`/actuator/**` (permitting only signup/login/webhook) — `merchant/security/
+  JwtAuthenticationFilter` reads the `Authorization: Bearer` header, verifies it, and resolves
+  `MerchantContext` from the `merchant_id` claim.
+- **API-key auth** — the server-to-server counterpart, for a merchant's own backend calling in
+  directly rather than a human via the dashboard. `merchant/security/ApiKeyAuthenticationFilter`,
+  on a second chain (`WebSecurityConfig.apiKeyChain`) covering `/v1/orders/**`/`/v1/payments/**`/
+  `/v1/vault/**`, decodes an `Authorization: Basic base64(keyId:secret)` header, looks up the
+  `ApiKey` by `keyId`, and bcrypt-compares the secret against `keySecretHash` — or, during the 24h
+  post-rotation window, against `previousKeySecretHash` too. Resolves the same `MerchantContext` the
+  JWT filter does, just from a different source, so `OrderController`/`PaymentController`/
+  `VaultController` don't need to know which mechanism authenticated the request.
 - `payment/simulator` mocks the async, bank-side half of a payment (the part `PaymentProcessor`'s
   synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**
   (currently disabled again, see [Known gaps](gaps.md)) polls for
@@ -66,6 +74,10 @@
   in `common/exception`, extend `RuntimeException`, and carry an `errorCode`. A single
   `@RestControllerAdvice` (`GlobalExceptionHandler`, also in `common/exception`) maps them to the
   right HTTP status (`409`/`404`/`409`/`409`/`400` respectively) and a shared `ErrorResponse`
-  record (`errorCode`, `errorDescription`, `timestamp`, optional `fieldErrors`). Not yet wired up: a
-  handler for `MethodArgumentNotValidException` (Bean Validation failures) — `ErrorResponse.FieldError`
-  exists for this but nothing populates it yet.
+  record (`errorCode`, `errorDescription`, `timestamp`, optional `fieldErrors`). Also handles Bean
+  Validation failures (`MethodArgumentNotValidException` → `400`, `VALIDATION_FAILED`, with
+  per-field `fieldErrors` populated from the binding result), Spring Security's
+  `AuthenticationException` (→ `401`, `INVALID_CREDENTIALS` — covers both a wrong login password
+  and an unknown login email, deliberately indistinguishable), and `ApiKeyAuthenticationFilter`'s
+  `org.apache.coyote.BadRequestException` (→ `401`, `INVALID_API_KEY`) for a malformed, unknown, or
+  wrong-secret API key.

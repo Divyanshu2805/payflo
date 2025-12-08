@@ -110,9 +110,9 @@ the previous secret during the window). `keyId` itself doesn't change.
 ## `POST /v1/orders`
 
 Creates an order — the first payment-domain endpoint. `merchantId` comes from `MerchantContext`
-(populated by `JwtAuthenticationFilter` from the caller's JWT `merchant_id` claim), not a request
-field — the order always belongs to whichever merchant is authenticated. Requires a valid JWT (see
-[Known gaps](gaps.md) item 7).
+(populated by `ApiKeyAuthenticationFilter` from the matched API key's owning merchant), not a
+request field — the order always belongs to whichever merchant authenticated. Requires a valid API
+key (`Authorization: Basic base64(keyId:secret)`), not a JWT.
 
 **Request body** (`CreateOrderRequest`): `amount` (required, `Money`), `receipt` (optional, max 100
 chars, merchant's own order identifier), `notes` (optional, freeform JSON object), `expiresAt`
@@ -127,9 +127,9 @@ chars, merchant's own order identifier), `notes` (optional, freeform JSON object
 
 ## `GET /v1/orders/{orderId}`
 
-Fetches a single order by ID, scoped to the caller's merchant (`MerchantContext`, from the JWT) —
-an order belonging to a different merchant is treated as not found rather than a `403`. Requires a
-valid JWT.
+Fetches a single order by ID, scoped to the caller's merchant (`MerchantContext`, resolved from the
+API key) — an order belonging to a different merchant is treated as not found rather than a `403`.
+Requires a valid API key, not a JWT.
 
 **Path parameters:** `orderId`.
 
@@ -141,7 +141,7 @@ exist or doesn't belong to the caller's merchant.
 ## `POST /v1/orders/{orderId}/cancel`
 
 Cancels an order, scoped to the caller's merchant like the other order endpoints. Requires a valid
-JWT.
+API key, not a JWT.
 
 **Path parameters:** `orderId`.
 
@@ -154,7 +154,7 @@ code `ORDER_CANNOT_CANCEL`) if the order is already `CANCELLED` or `PAID`.
 ## `GET /v1/orders/{orderId}/payments`
 
 Lists every payment attempt made against an order, scoped to the caller's merchant like the other
-order endpoints. Requires a valid JWT.
+order endpoints. Requires a valid API key, not a JWT.
 
 **Path parameters:** `orderId`.
 
@@ -168,7 +168,7 @@ exist or doesn't belong to the caller's merchant.
 ## `POST /v1/payments`
 
 Initiates a payment attempt against an order. `merchantId` comes from `MerchantContext`, same as
-`OrderController`. Requires a valid JWT.
+`OrderController`. Requires a valid API key, not a JWT.
 
 **Request body** (`PaymentInitRequest`): `orderId` (required), `method` (required, `PaymentMethod`
 — `CARD`/`NETBANKING`/`UPI`/`WALLET`), `methodDetails` (optional, freeform JSON — for `CARD`, a
@@ -239,7 +239,7 @@ added without adapters to match.
 
 Captures a previously-authorized payment — the second step of the auth-then-capture flow (see
 `PaymentAdapter.capture(UUID)` below). `merchantId` comes from `MerchantContext`, same as the
-other payment/order endpoints. Requires a valid JWT.
+other payment/order endpoints. Requires a valid API key, not a JWT.
 
 **Path parameters:** `paymentId`.
 
@@ -269,7 +269,7 @@ with `409 INVALID_STATE_TRANSITION` before any adapter is even invoked — see
 Tokenizes a card: encrypts and stores it, returning an opaque token that stands in for the card in
 later requests (e.g. `PaymentInitRequest.methodDetails` for a `CARD` payment) instead of ever
 handling the raw PAN again. `merchantId` comes from `MerchantContext`, same as the other
-endpoints. Requires a valid JWT.
+endpoints. Requires a valid API key, not a JWT.
 
 **Request body** (`TokenizeRequest`): `pan` (required, 13–19 digits, must pass a Luhn checksum),
 `cvv` (required, 3–4 digits — validated but **never stored**, per PCI DSS), `expiryMonth`
