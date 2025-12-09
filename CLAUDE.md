@@ -198,40 +198,55 @@ Package (produces the runnable jar under `target/`):
   declaration
 - `spring-boot-starter-security` — originally pulled in only for `spring-security-crypto`'s
   `AesBytesEncryptor`/`KeyGenerators` (card PAN/DEK encryption in
-  `vault/config/VaultEncryptionConfig`); now backs a real, enforced
-  `merchant/security/WebSecurityConfig` filter chain. **Adding this dependency alone activates
+  `vault/config/VaultEncryptionConfig`); now backs two real, enforced
+  `merchant/security/WebSecurityConfig` filter chains. **Adding this dependency alone activates
   Spring Boot's default autoconfiguration**, which locks every endpoint behind HTTP Basic with a
   random per-restart password (a `Using generated security password` log line, no matter what)
-  unless a `SecurityFilterChain` bean is defined — `WebSecurityConfig.jwtChain` is that bean. Only
-  one `SecurityFilterChain` matching "any request" is allowed per app; having two (the old
-  placeholder `common/config/SecurityConfig` plus a new one) fails startup with
-  `UnreachableFilterChainException` — hit and fixed once already. `jwtChain` scopes itself with
-  `.securityMatcher(...)` over `PROTECTED_ROUTES` — `/v1/auth/**`, `/v1/merchants/**`,
-  `/v1/admin/**`, `/actuator/**`, `/webhook/**`, `/v1/orders/**`, `/v1/payments/**`,
-  `/v1/vault/**` — permitting only `/v1/auth/signup`, `/v1/auth/login`, and `/webhook/**`;
-  everything else in that list requires `.anyRequest().authenticated()`. A request matching none of
-  these patterns skips Spring Security's filters entirely (not an error, just unprotected) — there
-  currently isn't a route left in that category.
+  unless a `SecurityFilterChain` bean is defined. Only one `SecurityFilterChain` matching "any
+  request" is allowed per app; having two unscoped ones (the old placeholder
+  `common/config/SecurityConfig` plus a new one) fails startup with
+  `UnreachableFilterChainException` — hit and fixed once already. The two chains here are both
+  scoped with `.securityMatcher(...)`, never matching "any request", so that's not a risk between
+  them: `jwtChain` (`@Order(1)`) covers `JWT_ROUTES` — `/v1/auth/**`, `/v1/merchants/**`,
+  `/v1/admin/**`, `/actuator/**`, `/webhook/**` — permitting only `/v1/auth/signup`,
+  `/v1/auth/login`, and `/webhook/**`, authenticated otherwise; `apiKeyChain` (`@Order(2)`) covers
+  `API_KEY_ROUTES` — `/v1/orders/**`, `/v1/payments/**`, `/v1/vault/**` — authenticated,
+  no exceptions. This finally implements the two-mechanism design noted under "Practices" in
+  `docs/practices.md`: JWT for the human dashboard, API key (HTTP Basic) for a merchant's own backend
+  calling in.
 - `io.jsonwebtoken:jjwt-api`/`jjwt-impl`/`jjwt-jackson` (`0.12.6`) — JWT signing/parsing for
   `merchant/security/JwtUtil` (`generateAccessToken`/`verifyAccessToken`, HMAC-signed via
-  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). The full chain now works
-  end to end: `POST /v1/auth/login` (`AuthServiceImpl.login`) authenticates via a real
+  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). `POST /v1/auth/login`
+  (`AuthServiceImpl.login`) authenticates via a real
   `AuthenticationManager`/`PasswordEncoder`/`merchant/security/MerchantUserDetailsService` (backed
   by `AppUserRepository`, with `AuthServiceImpl.signup` hashing the password on the way in) and
   returns a `generateAccessToken` JWT; `merchant/security/JwtAuthenticationFilter`
   (`OncePerRequestFilter`, registered on `jwtChain`) reads that token back off the
-  `Authorization: Bearer` header on every later request, verifies it, populates
+  `Authorization: Bearer` header on `JWT_ROUTES` requests, verifies it, populates
   `SecurityContextHolder`, and resolves the token's `merchant_id` claim into
-  `merchant/security/MerchantContext` (a `@RequestScope` bean). Every merchant-scoped controller
-  (`OrderController`, `PaymentController`, `VaultController`, `ApiKeyController`) now injects
-  `MerchantContext` and calls `.getMerchantId()` instead of a hardcoded test UUID or a
-  `{merchantId}` path variable — `ApiKeyController`'s route dropped the path variable entirely,
-  down to `/v1/merchants/api-keys`. Practical effect: `/v1/orders`, `/v1/payments`, and
-  `/v1/vault/tokenize`, previously fully open, now require a valid JWT like everything else, since
-  there's no other way for `MerchantContext` to have anything to resolve. See [Known
-  gaps](docs/gaps.md) item 7 for what's still open (API
-  key secret hashing, and no role/permission distinction within a merchant yet — any authenticated
-  user of a merchant can act as that merchant everywhere).
+  `merchant/security/MerchantContext` (a `@RequestScope` bean). `ApiKeyController` (the only
+  controller on `JWT_ROUTES`) injects `MerchantContext` and calls `.getMerchantId()` — its route
+  dropped the `{merchantId}` path variable entirely, down to `/v1/merchants/api-keys`.
+- **API-key (HTTP Basic) auth** — `merchant/security/ApiKeyAuthenticationFilter`
+  (`OncePerRequestFilter`, registered on `apiKeyChain`) is the counterpart for `API_KEY_ROUTES`:
+  decodes an `Authorization: Basic base64(keyId:secret)` header, looks up the `ApiKey` by `keyId`
+  (`ApiKeyRepository.findByKeyId`, new), and checks the raw secret against `keySecretHash` — or,
+  during the 24h post-rotation window (`ApiKey.isInGracePeriod()`), against
+  `previousKeySecretHash` too, so a key just rotated doesn't immediately break an in-flight
+  integration. On success it populates `SecurityContextHolder` and resolves `MerchantContext`
+  (`merchantId` **and** `keyId`, the latter finally giving that once-dead field on `MerchantContext`
+  a purpose) from the matched `ApiKey`'s owning merchant. `OrderController`, `PaymentController`,
+  and `VaultController` — all on `API_KEY_ROUTES` — read `MerchantContext.getMerchantId()` exactly
+  the same way `ApiKeyController` does off `jwtChain`; the controllers don't know or care which
+  chain authenticated the request. Practical effect: `/v1/orders`, `/v1/payments`, and
+  `/v1/vault/tokenize`, previously fully open, now require a valid API key (not a JWT — a JWT
+  presented here wouldn't be read, since this chain's filter only understands `Basic`). A
+  malformed/unknown/wrong-secret key throws `org.apache.coyote.BadRequestException`, now mapped by
+  `GlobalExceptionHandler` to `401` (`INVALID_API_KEY`). See [Known
+  gaps](docs/gaps.md) items 14–15 for what's still open —
+  no role/permission distinction within a merchant (any authenticated caller does anything that
+  merchant can), and `ApiKey.lastUsedAt` still never gets touched on a successful auth despite
+  existing for exactly that purpose.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
