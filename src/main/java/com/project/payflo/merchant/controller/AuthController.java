@@ -2,6 +2,7 @@ package com.project.payflo.merchant.controller;
 
 import com.project.payflo.merchant.dto.request.LoginRequest;
 import com.project.payflo.merchant.dto.request.MerchantSignupRequest;
+import com.project.payflo.merchant.dto.request.RefreshTokenRequest;
 import com.project.payflo.merchant.dto.response.LoginResponse;
 import com.project.payflo.merchant.dto.response.MerchantResponse;
 import com.project.payflo.merchant.service.AuthService;
@@ -33,5 +34,18 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.OK).body(
                 authService.login(request)
         );
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh(@RequestBody @Valid RefreshTokenRequest request) {
+        return ResponseEntity.status(HttpStatus.OK).body(
+                authService.refresh(request)
+        );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestBody @Valid RefreshTokenRequest request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
     }
 }
