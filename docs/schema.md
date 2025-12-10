@@ -281,9 +281,14 @@ erDiagram
 
 Common columns that recur across most entities: `id` (primary key) and, since all 8 implemented entities
 extend a shared `BaseEntity` base class, `created_at`/`updated_at`/`created_by`/`updated_by`. Note:
-`@EnableJpaAuditing` is now on, so `created_at`/`updated_at` populate correctly — but `created_by`/
-`updated_by` still won't, since there's no `AuditorAware` bean yet (needs auth to exist first to have
-a current-user source), so those two columns are always null today. Money fields use a shared `Money`
+`@EnableJpaAuditing` is on, so `created_at`/`updated_at` populate correctly, and `created_by`/
+`updated_by` now do too — `audit/AuditorAwareImpl` (`AuditorAware<String>`) sources the current
+auditor from `MerchantContext`: the API key's `keyId` if the request authenticated that way,
+else `"merchant_id: <uuid>"` from a JWT-authenticated request, else `"SYSTEM"` for anything with no
+active request context (startup, or a background job like the — currently disabled —
+`BankCallbackSimulator`, since `MerchantContext` is `@RequestScope` and would throw if accessed
+outside a request; the fallback is wrapped in a `try/catch` for exactly that case). Money fields use
+a shared `Money`
 embeddable value type (`amount_units` + `currency`) rather
 than a flat `_paise` column, so an amount always carries its currency with it; the amount is a `long`
 count of the smallest currency unit (paise for INR), never a floating-point value, so money arithmetic

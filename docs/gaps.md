@@ -69,10 +69,14 @@ dropped vs. still planned:
    in [CLAUDE.md](CLAUDE.md) — not something to toggle back on as a side effect of other work.
 10. **`PaymentTransitionService`'s `actor` is hardcoded to `SYSTEM`** — every `PaymentTransitionLog`
     row is written with `actor = PaymentActor.SYSTEM` (`//TODO: fetch merchant context to identify
-    actor`), since there's no auth context yet to attribute a transition to a specific merchant,
-    customer, or admin. `PaymentTransitionLogRepository` is also currently a bare
-    `JpaRepository` — no custom finder methods yet (nothing reads the log back out through the API
-    today).
+    actor`). Auth context now exists (`MerchantContext`, resolved by either the JWT or API-key
+    filter) — this just hasn't been updated to read it yet, unlike `audit/AuditorAwareImpl` (added
+    2025-12-05), which reads the exact same bean, the same way, for the exact same reason
+    (`createdBy`/`updatedBy`), including the `try/catch` needed because `MerchantContext` is
+    `@RequestScope` and `PaymentTransitionService.apply` can run outside a request too (from
+    `BankCallbackSimulator`, currently disabled). That's the template to copy here.
+    `PaymentTransitionLogRepository` is also currently a bare `JpaRepository` — no custom finder
+    methods yet (nothing reads the log back out through the API today).
 11. **`vault.encryption.master-key` has a hardcoded dev-only default** in `application.yaml`
     (overridable via `VAULT_MASTER_KEY`) — fine for local development, but a real deployment must
     set a real secret via that env var and keep it in a proper secret store, not source control. If
