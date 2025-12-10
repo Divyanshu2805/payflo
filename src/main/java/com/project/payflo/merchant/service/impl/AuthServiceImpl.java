@@ -6,6 +6,7 @@ import com.project.payflo.common.exception.DuplicateResourceException;
 import com.project.payflo.common.exception.ResourceNotFoundException;
 import com.project.payflo.merchant.dto.request.LoginRequest;
 import com.project.payflo.merchant.dto.request.MerchantSignupRequest;
+import com.project.payflo.merchant.dto.request.RefreshTokenRequest;
 import com.project.payflo.merchant.dto.response.LoginResponse;
 import com.project.payflo.merchant.dto.response.MerchantResponse;
 import com.project.payflo.merchant.entity.AppUser;
@@ -15,6 +16,7 @@ import com.project.payflo.merchant.repository.AppUserRepository;
 import com.project.payflo.merchant.repository.MerchantRepository;
 import com.project.payflo.merchant.security.JwtUtil;
 import com.project.payflo.merchant.service.AuthService;
+import com.project.payflo.merchant.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -34,6 +36,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     @Transactional
@@ -60,6 +63,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public LoginResponse login(LoginRequest request) {
 
         authenticationManager.authenticate(
@@ -69,9 +73,27 @@ public class AuthServiceImpl implements AuthService {
         AppUser appUser = appUserRepository.findByEmail(request.email())
                 .orElseThrow(() -> new ResourceNotFoundException("User", request.email()));
 
-        String token = jwtUtil.generateAccessToken(request.email(), appUser.getMerchant().getId(), appUser.getRole().toString());
+        String accessToken = jwtUtil.generateAccessToken(request.email(), appUser.getMerchant().getId(), appUser.getRole().toString());
+        String refreshToken = refreshTokenService.issue(appUser);
 
-        return new LoginResponse(token);
+        return new LoginResponse(accessToken, refreshToken);
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse refresh(RefreshTokenRequest request) {
+        AppUser appUser = refreshTokenService.rotate(request.refreshToken());
+
+        String accessToken = jwtUtil.generateAccessToken(appUser.getEmail(), appUser.getMerchant().getId(), appUser.getRole().toString());
+        String newRefreshToken = refreshTokenService.issue(appUser);
+
+        return new LoginResponse(accessToken, newRefreshToken);
+    }
+
+    @Override
+    @Transactional
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revoke(request.refreshToken());
     }
 }
 
