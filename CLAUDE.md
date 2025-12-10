@@ -113,10 +113,13 @@ failed capture reverts to `AUTHORIZED` rather than terminal `FAILED`, and `REFUN
 the payment to `PARTIALLY_REFUNDED` itself rather than only touching `RefundStatus`.
 
 `BaseEntity` wires Spring Data JPA auditing annotations (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`/
-`@LastModifiedBy`). `@EnableJpaAuditing` is now on `PayFloApplication`, so `createdAt`/`updatedAt`
-populate correctly — but there's still no `AuditorAware` bean, so `createdBy`/`updatedBy` still
-always come back null. Wiring one up needs something to source the current user from, which needs
-auth to exist first.
+`@LastModifiedBy`). `@EnableJpaAuditing(auditorAwareRef = "auditorAwareImpl")` is on
+`PayFloApplication`, so all four now populate: `createdAt`/`updatedAt` automatically, and
+`createdBy`/`updatedBy` via `audit/AuditorAwareImpl` — it reads `merchant/security/MerchantContext`
+(prefers the API key's `keyId`, falls back to `"merchant_id: <uuid>"` for a JWT-authenticated
+request, and to `"SYSTEM"` wrapped in a `try/catch` for anything with no active request, since
+`MerchantContext` is `@RequestScope` and would otherwise throw outside one — startup, or a
+background job).
 
 The domain model (entities, relationships) and full functional/non-functional requirements have been
 designed — see [docs/requirements.md](docs/requirements.md) for the requirements and the v2 ER
