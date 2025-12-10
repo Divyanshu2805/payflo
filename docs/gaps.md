@@ -127,3 +127,38 @@ dropped vs. still planned:
     key authenticated a request" (see the field's own description), but
     `ApiKeyAuthenticationFilter.doFilterInternal` doesn't update it on a successful match — every
     key's `lastUsedAt` stays `null` forever, regardless of how often it's used.
+16. ~~A stale `Authorization: Bearer` header on a `permitAll()` route returns an empty `200`
+    instead of a `401`~~ — **resolved (2025-12-08), found while adding refresh tokens:**
+    `JwtAuthenticationFilter` runs on every `jwtChain` request *including* `permitAll()` ones (only
+    `securityMatcher` scopes the chain, not the authorization rule), so a client attaching a
+    stale/expired access token to a call it's making *because* that token just expired — exactly
+    what a real frontend does when it hits `/v1/auth/refresh` — would throw from
+    `jwtUtil.verifyAccessToken()`, get caught by the filter, and be hex to
+    `HandlerExceptionResolver`, which had nothing registered for jjwt's `JwtException` and so left
+    the response in its untouched default state. `GlobalExceptionHandler` now maps
+    `io.jsonwebtoken.JwtException` to `401` (`INVALID_ACCESS_TOKEN`) — verified by hand: a garbled
+    Bearer token on a `/v1/auth/refresh` call now returns a clean `401` instead of an empty `200`.
+17. **`MethodArgumentNotValidException` has a `@ExceptionHandler` in `GlobalExceptionHandler`, but
+    it's never actually invoked.** Found while testing refresh tokens (a blank `refreshToken` on
+    `POST /v1/auth/refresh` should trigger it) and confirmed it's pre-existing and unrelated to
+    that feature — `POST /v1/auth/login` with a blank `password` reproduces the identical symptom.
+    The app's own log shows `DefaultHandlerExceptionResolver` (Spring's built-in resolver, not our
+    `@RestControllerAdvice`) resolving the exception and producing Spring Boot's generic error body
+    (`{"timestamp":...,"status":400,"error":"Bad Request","path":...}`) instead of the project's
+    `ErrorResponse`/`VALIDATION_FAILED` shape — even though `GlobalExceptionHandler`'s *other*
+    handlers (`AuthenticationException`, `BadRequestException`, `InvalidRefreshTokenException`) all
+    fire correctly, so this isn't a broad wiring problem with the class itself, just this one
+    exception type. The HTTP status code (`400`) is still correct either way — this is a response
+    *shape* inconsistency, not a security or correctness bug — but it means every `@Valid`
+    validation failure across the whole API returns a differently-shaped error body than everything
+    else. Root cause not yet confirmed; flagged rather than guessed at.
+18. **No absolute cap on refresh-token session age.** `RefreshTokenService.issue` always sets
+    `expiresAt = now + 7 days` on every rotation, including ones minted by `/v1/auth/refresh` itself
+    — so a session refreshed at least once a week never truly expires. A cheap follow-up (not built
+    now): carry the original issuance time forward across rotations and cap total lineage age
+    independent of the per-token sliding window.
+19. **No cleanup job for expired/revoked `refresh_token` rows.** The table grows forever. Not built
+    now on purpose — `CLAUDE.md` treats `@EnableScheduling`/background jobs against auth/payment
+    data as a deliberate, individually-made decision (flipped on and back off once already this
+    session for `BankCallbackSimulator`), not something to bundle in as a side effect of an
+    unrelated feature.

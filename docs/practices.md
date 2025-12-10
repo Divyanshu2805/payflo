@@ -43,11 +43,24 @@
   unscoped placeholder `common/config/SecurityConfig` was removed rather than kept alongside them.
 - **JWT auth** — `merchant/security/JwtUtil` (`io.jsonwebtoken`/`jjwt`, HMAC-signed via
   `jwt.secret-key` in `application.yaml`) generates and verifies access tokens carrying
-  `merchant_id`/`role` claims. `POST /v1/auth/login` calls it and returns a real token for a
-  correct email/password. `WebSecurityConfig.jwtChain` requires it for `/v1/merchants/**`/
-  `/v1/admin/**`/`/actuator/**` (permitting only signup/login/webhook) — `merchant/security/
-  JwtAuthenticationFilter` reads the `Authorization: Bearer` header, verifies it, and resolves
-  `MerchantContext` from the `merchant_id` claim.
+  `merchant_id`/`role` claims, 100-minute expiry. `POST /v1/auth/login` calls it and returns a real
+  token for a correct email/password. `WebSecurityConfig.jwtChain` requires it for
+  `/v1/merchants/**`/`/v1/admin/**`/`/actuator/**` (permitting only
+  signup/login/refresh/logout/webhook) — `merchant/security/JwtAuthenticationFilter` reads the
+  `Authorization: Bearer` header, verifies it, and resolves `MerchantContext` from the
+  `merchant_id` claim.
+- **Refresh tokens** (added 2025-12-08) — `merchant/service/RefreshTokenService` closes the gap of
+  "access token expires, only option is log in again with the password." Deliberately *not*
+  another JWT: a refresh token's value comes from `SecureRandom` entropy, not a signature, so it's
+  a plain random string (`RandomizerUtil.randomBase64(40)`, same length `ApiKeyServiceImpl` uses
+  for its secret), hashed with SHA-256 (`common/util/HashUtil`, exact-match lookup — unlike bcrypt,
+  which can't be looked up by value) into `RefreshToken.tokenHash`, and validated by DB lookup
+  rather than by re-verifying a signature. Single-use: `POST /v1/auth/refresh` revokes the
+  presented token and issues a brand-new access+refresh pair in one call (`AuthServiceImpl.refresh`,
+  wrapped in its own `@Transactional` since `issue`/`rotate` are each independently transactional —
+  see [Known gaps](gaps.md) item 18 for the one thing this rotation
+  scheme doesn't close). `POST /v1/auth/logout` revokes one directly. Both routes are `permitAll()`
+  on `jwtChain` — refreshing has to work *without* a valid access token, that's the entire point.
 - **API-key auth** — the server-to-server counterpart, for a merchant's own backend calling in
   directly rather than a human via the dashboard. `merchant/security/ApiKeyAuthenticationFilter`,
   on a second chain (`WebSecurityConfig.apiKeyChain`) covering `/v1/orders/**`/`/v1/payments/**`/
