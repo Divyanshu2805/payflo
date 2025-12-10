@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 All 15 planned entities are now implemented (`common/entity`, `common/enums`, `merchant/entity`,
 `payment/entity`, `vault/entity`, `operations/entity`). The `merchant` domain now has a
-`repository`/`service`/`controller` slice (signup, login, API key generate/list/revoke/rotate) and
+`repository`/`service`/`controller` slice (signup, login, refresh, logout, API key generate/list/revoke/rotate) and
 `payment` has a first one too (order creation, get order by ID, cancel order, list payments for an
 order, initiate payment, capture payment) — see "Service/controller layer conventions" —
 plus a `resolveAuthorization` method on `PaymentService` with no controller route (internal-only,
@@ -219,17 +219,34 @@ Package (produces the runnable jar under `target/`):
   calling in.
 - `io.jsonwebtoken:jjwt-api`/`jjwt-impl`/`jjwt-jackson` (`0.12.6`) — JWT signing/parsing for
   `merchant/security/JwtUtil` (`generateAccessToken`/`verifyAccessToken`, HMAC-signed via
-  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default). `POST /v1/auth/login`
-  (`AuthServiceImpl.login`) authenticates via a real
+  `jwt.secret-key` in `application.yaml`, a hardcoded dev-only default, 100-minute expiry).
+  `POST /v1/auth/login` (`AuthServiceImpl.login`) authenticates via a real
   `AuthenticationManager`/`PasswordEncoder`/`merchant/security/MerchantUserDetailsService` (backed
   by `AppUserRepository`, with `AuthServiceImpl.signup` hashing the password on the way in) and
   returns a `generateAccessToken` JWT; `merchant/security/JwtAuthenticationFilter`
   (`OncePerRequestFilter`, registered on `jwtChain`) reads that token back off the
   `Authorization: Bearer` header on `JWT_ROUTES` requests, verifies it, populates
   `SecurityContextHolder`, and resolves the token's `merchant_id` claim into
-  `merchant/security/MerchantContext` (a `@RequestScope` bean). `ApiKeyController` (the only
-  controller on `JWT_ROUTES`) injects `MerchantContext` and calls `.getMerchantId()` — its route
-  dropped the `{merchantId}` path variable entirely, down to `/v1/merchants/api-keys`.
+  `merchant/security/MerchantContext` (a `@RequestScope` bean). `ApiKeyController` injects
+  `MerchantContext` and calls `.getMerchantId()` the same way — its route dropped the
+  `{merchantId}` path variable entirely, down to `/v1/merchants/api-keys`.
+- **Refresh tokens** (`merchant/entity/RefreshToken`, `merchant/service/RefreshTokenService`, added
+  2025-12-08) — a DB-backed, single-use, rotating token, not another JWT: its security is
+  `SecureRandom` entropy (`RandomizerUtil.randomBase64(40)`, same length as `ApiKeyServiceImpl`'s
+  secret), hashed with plain SHA-256 (`common/util/HashUtil.sha256Hex` — exact-match lookup, unlike
+  bcrypt) into `RefreshToken.tokenHash`, so validity is a DB lookup rather than a signature check
+  and can be revoked before natural expiry. `POST /v1/auth/login` now also returns a
+  `refreshToken`; `POST /v1/auth/refresh` (`AuthServiceImpl.refresh`, its own `@Transactional` —
+  `RefreshTokenServiceImpl.rotate`/`.issue` are each independently transactional, so an outer one is
+  needed to keep "revoke old, issue new" atomic) exchanges it for a fresh access+refresh pair and
+  revokes the one presented; `POST /v1/auth/logout` revokes one directly. Both new routes are in
+  `jwtChain`'s `permitAll()` list alongside signup/login — refresh has to work without a currently
+  valid access token, that's the entire point. Building this surfaced and fixed a real pre-existing
+  gap: `JwtAuthenticationFilter` runs on every `jwtChain` request *including* `permitAll()` ones, so
+  a stale `Authorization: Bearer` header attached to a refresh call (exactly what a real frontend
+  does) used to leave the response as an untouched empty `200` — `GlobalExceptionHandler` now maps
+  `io.jsonwebtoken.JwtException` to a real `401`. See [Known
+  gaps](docs/gaps.md) items 16–19.
 - **API-key (HTTP Basic) auth** — `merchant/security/ApiKeyAuthenticationFilter`
   (`OncePerRequestFilter`, registered on `apiKeyChain`) is the counterpart for `API_KEY_ROUTES`:
   decodes an `Authorization: Basic base64(keyId:secret)` header, looks up the `ApiKey` by `keyId`

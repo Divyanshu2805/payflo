@@ -27,26 +27,67 @@ there isn't one, since `MerchantSignupRequest` has no status field) then the `Ap
 
 ## `POST /v1/auth/login`
 
-Authenticates a merchant user and issues a JWT access token.
+Authenticates a merchant user and issues a JWT access token plus a refresh token.
 
 **Request body** (`LoginRequest`): `email` (required, valid email format), `password` (required).
 
 **Response** — `200 OK` with `LoginResponse`: `accessToken` — a JWT carrying `merchant_id` and
-`role` claims, HMAC-signed via `JwtUtil` (60-minute expiry).
+`role` claims, HMAC-signed via `JwtUtil` (100-minute expiry) — and `refreshToken` — a raw,
+high-entropy random string (see `### POST /v1/auth/refresh` below), shown only in this response.
 
-**Behavior — functional as of 2025-11-24, see [Known gaps](gaps.md)
-item 12:** `AuthServiceImpl.login` authenticates via `AuthenticationManager.authenticate(new
+**Behavior:** `AuthServiceImpl.login` authenticates via `AuthenticationManager.authenticate(new
 UsernamePasswordAuthenticationToken(email, password))` — backed by a real `DaoAuthenticationProvider`
 + `merchant/security/MerchantUserDetailsService` + `BCryptPasswordEncoder` (`WebSecurityConfig`) —
-then separately looks up the `AppUser` by email to read its `merchant_id`/`role` for the token.
-`AuthServiceImpl.signup` now hashes the password before storing it, so a correct email/password
-succeeds and returns a real JWT. An incorrect password or an unknown email both fail the same way:
-`MerchantUserDetailsService` throws `UsernameNotFoundException` for a missing user (rather than a
-`ResourceNotFoundException` that would leak a `404`), which `DaoAuthenticationProvider` folds into
-the same `BadCredentialsException` as a wrong password either way — `GlobalExceptionHandler` maps
-that to a uniform `401` (`INVALID_CREDENTIALS`, "Invalid email or password"). Still open: nothing
-validates the returned JWT on subsequent requests (`WebSecurityConfig.jwtChain` still permits all
-requests unauthenticated), so the token doesn't gate access to anything yet.
+then separately looks up the `AppUser` by email to read its `merchant_id`/`role` for the token, and
+calls `RefreshTokenService.issue(appUser)` for the refresh token. An incorrect password or an
+unknown email both fail the same way: `MerchantUserDetailsService` throws
+`UsernameNotFoundException` for a missing user (rather than a `ResourceNotFoundException` that
+would leak a `404`), which `DaoAuthenticationProvider` folds into the same
+`BadCredentialsException` as a wrong password either way — `GlobalExceptionHandler` maps that to a
+uniform `401` (`INVALID_CREDENTIALS`, "Invalid email or password"). The returned access token *is*
+validated on later requests — `merchant/security/JwtAuthenticationFilter`, on `WebSecurityConfig`'s
+`jwtChain` — for every route under that chain except signup/login/refresh/logout/webhook.
+
+## `POST /v1/auth/refresh`
+
+Exchanges a valid, unused refresh token for a brand-new access+refresh pair. The presented refresh
+token is consumed in the process — single-use, not repeatable.
+
+**Request body** (`RefreshTokenRequest`): `refreshToken` (required).
+
+**Response** — `200 OK` with `LoginResponse` (same shape as login): a new `accessToken` and a new
+`refreshToken`. Both differ from whatever was presented.
+
+**Behavior:** `RefreshTokenService.rotate(rawToken)` hashes the presented token
+(`HashUtil.sha256Hex`) and looks it up by that hash. Rejects with `401`
+(`INVALID_REFRESH_TOKEN`, generic message — deliberately not distinguishing *why*, to avoid leaking
+whether a token merely expired vs. was already used vs. never existed) if: not found, already
+`revoked` (logged server-side as a reuse warning — a stronger signal than an expiry, since it means
+someone presented a token that was already exchanged), or past `expiresAt`. On success, marks the
+old row `revoked` and issues a new pair via `AuthServiceImpl.refresh`, wrapped in one
+`@Transactional` — `rotate()` and `issue()` are each independently transactional on
+`RefreshTokenServiceImpl`, so without an outer transaction a failure between the two could revoke
+the old token without ever handing back a replacement. **No route requires a token here** —
+`/v1/auth/refresh` is in `jwtChain`'s `permitAll()` list, same as signup/login, since the entire
+point is to work *after* the access token has expired. A stale/garbled `Authorization: Bearer`
+header attached anyway is still validated by `JwtAuthenticationFilter` regardless of the route
+being public, and now correctly returns `401` (`INVALID_ACCESS_TOKEN`) rather than an empty `200`
+— see [Known gaps](gaps.md) item 16 for why that fix was needed.
+
+## `POST /v1/auth/logout`
+
+Revokes a refresh token, ending that session. Doesn't touch the caller's current access token
+(still valid until it naturally expires) — only prevents it from ever being renewed via this
+refresh token again.
+
+**Request body** (`RefreshTokenRequest`): `refreshToken` (required).
+
+**Response** — `204 No Content`.
+
+**Behavior:** `RefreshTokenService.revoke(rawToken)` — if a matching, non-revoked row exists, marks
+it `revoked`. If no row matches the hash, silently no-ops and still returns `204` — logout
+deliberately never reveals whether a token existed, matching `/refresh`'s generic-error philosophy
+from the other direction.
 
 > **`merchantId` is no longer a path parameter for any endpoint below** (moved 2025-11-24) — the
 > route is now `/v1/merchants/api-keys`, and every method takes its merchant from

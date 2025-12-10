@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2025-11-24._
+_Last updated: 2025-12-08._
 
 **Phase 1 of 2 — monolith.** The whole system is being built as a single Spring Boot application first;
 the microservices split is a deliberate later phase. See
@@ -11,12 +11,12 @@ the microservices split is a deliberate later phase. See
 | Area | Status |
 |---|---|
 | Architecture | Monolith (phase 1) — single app, single database |
-| Domain entities | 15 of 15 built — all entities implemented, persistence layer only |
+| Domain entities | 16 built — all 15 originally planned entities, plus `RefreshToken` (added 2025-12-08, not in the original v1 design) |
 | Domain enums | Complete for the merchant, payment, vault, and operations domains |
-| Repositories | Started — `merchant` (`AppUserRepository`, `MerchantRepository`, `ApiKeyRepository`), `payment` (`OrderRepository`, `PaymentRepository`, `PaymentTransitionLogRepository`), and `vault` (`VaultCardRepository`, `CardTokenRepository`) domains |
-| Services / business logic | Started — `merchant` (`AuthService`, `ApiKeyService`), `payment` (`OrderService`, `PaymentService`), and `vault` (`VaultService`) domains |
-| REST APIs | 13 endpoints — `POST /v1/auth/signup`/`POST /v1/auth/login`; `POST`/`GET`/`DELETE`/`POST .../rotate` under `/v1/merchants/api-keys`; `POST`/`GET .../{orderId}`/`POST .../{orderId}/cancel`/`GET .../{orderId}/payments` under `/v1/orders`; `POST /v1/payments`/`POST .../{paymentId}/capture`; `POST /v1/vault/tokenize` (see [APIs](api.md)) |
-| Auth (API key, JWT), rate limiting | Both mechanisms are now real and enforced, on two separate `SecurityFilterChain`s. JWT: `POST /v1/auth/signup`/`POST /v1/auth/login` are fully functional (bcrypt password, real `AppUser` check, clean `401` on bad credentials); `JwtAuthenticationFilter` validates the token on `/v1/auth/**`/`/v1/merchants/**`/`/v1/admin/**`/`/actuator/**` (all but signup/login) and resolves `MerchantContext`. API key: `ApiKeyAuthenticationFilter` validates an `Authorization: Basic base64(keyId:secret)` header (bcrypt-compared, grace-period-aware) on `/v1/orders/**`/`/v1/payments/**`/`/v1/vault/**`, resolving the same `MerchantContext` a different way. No per-resource authorization beyond "belongs to the caller's merchant" — no roles/permissions within a merchant (see [Known gaps](gaps.md) item 14). |
+| Repositories | Started — `merchant` (`AppUserRepository`, `RefreshTokenRepository`, `MerchantRepository`, `ApiKeyRepository`), `payment` (`OrderRepository`, `PaymentRepository`, `PaymentTransitionLogRepository`), and `vault` (`VaultCardRepository`, `CardTokenRepository`) domains |
+| Services / business logic | Started — `merchant` (`AuthService`, `RefreshTokenService`, `ApiKeyService`), `payment` (`OrderService`, `PaymentService`), and `vault` (`VaultService`) domains |
+| REST APIs | 15 endpoints — `POST /v1/auth/signup`/`POST /v1/auth/login`/`POST /v1/auth/refresh`/`POST /v1/auth/logout`; `POST`/`GET`/`DELETE`/`POST .../rotate` under `/v1/merchants/api-keys`; `POST`/`GET .../{orderId}`/`POST .../{orderId}/cancel`/`GET .../{orderId}/payments` under `/v1/orders`; `POST /v1/payments`/`POST .../{paymentId}/capture`; `POST /v1/vault/tokenize` (see [APIs](api.md)) |
+| Auth (API key, JWT), rate limiting | Both mechanisms are real and enforced, on two separate `SecurityFilterChain`s. JWT: `POST /v1/auth/signup`/`POST /v1/auth/login` are fully functional (bcrypt password, real `AppUser` check, clean `401` on bad credentials); login now also issues a DB-backed, hashed, rotating refresh token (`POST /v1/auth/refresh` exchanges it for a new access+refresh pair, single-use; `POST /v1/auth/logout` revokes one); `JwtAuthenticationFilter` validates the access token on `/v1/auth/**`/`/v1/merchants/**`/`/v1/admin/**`/`/actuator/**` (all but signup/login/refresh/logout) and resolves `MerchantContext`. API key: `ApiKeyAuthenticationFilter` validates an `Authorization: Basic base64(keyId:secret)` header (bcrypt-compared, grace-period-aware) on `/v1/orders/**`/`/v1/payments/**`/`/v1/vault/**`, resolving the same `MerchantContext` a different way. No per-resource authorization beyond "belongs to the caller's merchant" — no roles/permissions within a merchant (see [Known gaps](gaps.md) item 14). |
 | Card tokenization/vaulting | `POST /v1/vault/tokenize` implemented — PAN encrypted with a per-card AES-256-GCM data key, which is itself wrapped with a master key (`vault.encryption.master-key`); only a token, brand, last 4 digits, and expiry are ever returned. CVV is validated but never persisted. A token is now consumable — `CardPaymentAdapter` decrypts and charges the vaulted card via `POST /v1/payments`. |
 | Webhooks | Entities built — delivery, retry, and DLQ logic not started |
 | Analytics | Not started — no dedicated entity in the design |

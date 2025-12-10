@@ -2,12 +2,14 @@
 
 [← Back to docs index](README.md)
 
-All 15 planned entities are now implemented as JPA entities (no repositories/services/controllers
-yet — just the persistence layer).
+All 15 originally-planned entities are implemented, plus `REFRESH_TOKEN` (added 2025-12-08 — not
+part of the original v1 design, see [Known gaps](gaps.md)). Several
+domains now have a full repository/service/controller layer on top of the persistence layer too —
+see "Project Status" above for exactly which.
 
-- **Implemented:** `MERCHANT`, `API_KEY`, `APP_USER`, `MERCHANT_WEBHOOK_CONFIG`, `CUSTOMER`,
-  `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`, `VAULT_CARD`, `CARD_TOKEN`,
-  `SETTLEMENT`, `SETTLEMENT_PAYMENT`, `WEBHOOK_EVENT`, `DLQ_EVENT`
+- **Implemented:** `MERCHANT`, `API_KEY`, `APP_USER`, `REFRESH_TOKEN`, `MERCHANT_WEBHOOK_CONFIG`,
+  `CUSTOMER`, `ORDER_RECORD`, `PAYMENT`, `REFUND`, `PAYMENT_TRANSITION_LOG`, `VAULT_CARD`,
+  `CARD_TOKEN`, `SETTLEMENT`, `SETTLEMENT_PAYMENT`, `WEBHOOK_EVENT`, `DLQ_EVENT`
 
 ## Entity Relationship Diagram (v2)
 
@@ -59,6 +61,19 @@ erDiagram
         string email UK
         string password_hash
         string role
+        datetime created_at
+        datetime updated_at
+        string created_by
+        string updated_by
+    }
+
+    REFRESH_TOKEN {
+        UUID id PK
+        UUID app_user_id FK
+        string token_hash UK
+        datetime expires_at
+        boolean revoked
+        datetime revoked_at
         datetime created_at
         datetime updated_at
         string created_by
@@ -267,6 +282,7 @@ erDiagram
 
     MERCHANT ||--o{ API_KEY : has
     MERCHANT ||--o{ APP_USER : has
+    APP_USER ||--o{ REFRESH_TOKEN : has
     MERCHANT ||--o{ MERCHANT_WEBHOOK_CONFIG : configures
     MERCHANT ||--o{ CUSTOMER : has
     ORDER_RECORD ||--o{ PAYMENT : has
@@ -349,6 +365,23 @@ A human user with dashboard login access, belonging to one merchant.
 | `password_hash` | Hashed login password. |
 | `role` | Permission level within the merchant's dashboard (owner, admin, or team). |
 | `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
+
+### REFRESH_TOKEN
+
+A single-use, rotating JWT refresh token — added 2025-12-08, not part of the original v1 design.
+Lets `POST /v1/auth/login` issue a short-lived access token without forcing a password re-entry
+every time it expires, while staying revocable (unlike a stateless token) since validity is a DB
+lookup, not a signature check.
+
+| Field | Meaning |
+|---|---|
+| `id` | Primary key. |
+| `app_user_id` | The dashboard user this refresh token was issued to (real FK — `RefreshToken` and `AppUser` are both in the `merchant` domain, unlike the cross-domain `merchant_id` columns elsewhere in this table, which are deliberately plain UUIDs). |
+| `token_hash` | SHA-256 hex digest of the raw token (`common/util/HashUtil.sha256Hex`) — the raw value is returned to the caller exactly once and never stored. Plain SHA-256 rather than bcrypt: a refresh token's security comes from `SecureRandom` entropy, not a slow hash, and rotation needs an exact-match lookup, which bcrypt's per-hash salting doesn't support. |
+| `expires_at` | When this token stops being acceptable, independent of `revoked` — `jwt.refresh-token-expiry-days` (7) days from issuance. |
+| `revoked` | Set the moment this token is used (rotation) or a caller logs out with it — a refresh token is single-use, not a long-lived credential like `ApiKey`. |
+| `revoked_at` | When it was revoked, if it was. |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. Since issuance happens during signup/login/refresh/logout — all `permitAll` — `created_by`/`updated_by` read `"SYSTEM"` (`AuditorAwareImpl`'s fallback), same as `MERCHANT`/`APP_USER` rows from those same calls. |
 
 ### MERCHANT_WEBHOOK_CONFIG
 
