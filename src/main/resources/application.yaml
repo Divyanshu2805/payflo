@@ -2,8 +2,8 @@ spring:
   application:
     name: payflo
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:9000/payfloDB}
-    username: ${DB_USER:testUser}
+    url: ${DB_URL:jdbc:postgresql://localhost:1000/payflo-db}
+    username: ${DB_USER:user}
     password: ${DB_PASS:password}
   jpa:
     hibernate:
