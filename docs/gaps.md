@@ -162,3 +162,15 @@ dropped vs. still planned:
     data as a deliberate, individually-made decision (flipped on and back off once already this
     session for `BankCallbackSimulator`), not something to bundle in as a side effect of an
     unrelated feature.
+20. **The four rate limiters don't behave the same when Redis is unavailable, and two have
+    correctness holes.** `SlidingWindowLuaLimiter` and `TokenBucketRateLimiter` catch
+    `DataAccessException` and fail open. `FixedWindowRateLimiter` and `SlidingWindowRateLimiter`
+    don't — a Redis outage surfaces as an unhandled error on every API-key request instead of
+    letting traffic through. `FixedWindowRateLimiter` also does `INCR` and `EXPIRE` as two separate
+    calls, so a crash between them leaves a counter with no TTL that never resets (a permanent
+    lockout for that key), and its `ttl != null & ttl > 0` uses a non-short-circuit `&` that would
+    throw on a `null` TTL. `SlidingWindowRateLimiter` (non-Lua) does check-then-add as separate
+    calls, so concurrent requests can both pass at the limit. The configured default
+    (`app.rate-limit.method: fixed`) is one of the two that fail closed. Separately, rate limiting
+    runs *after* the API key is authenticated, so failed-authentication attempts (wrong keyId or
+    secret) are not counted or throttled at all.
