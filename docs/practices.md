@@ -81,6 +81,15 @@
   (`DataAccessException` → allow); see [Known gaps](gaps.md) item 20
   for the ones that don't. `RateLimitException` (carrying `retryAfterSeconds`) is mapped by
   `GlobalExceptionHandler` to `429`.
+- **Idempotency** (`common/idempotency`) — `IdempotencyFilter` (a `OncePerRequestFilter`) makes
+  retried writes safe. It claims `idempotency:<merchantId>:<key>` in Redis with an atomic
+  `SET NX` and a `30s` in-progress TTL (`IdempotencyStore.setIfAbsent`), runs the request through a
+  `ContentCachingResponseWrapper`, and on a successful response stores `status|body` under the key
+  for `24h`; on an error response it deletes the placeholder instead so the client can retry. A
+  second request that finds a completed entry replays it; one that finds the in-progress marker gets
+  `IdempotencyConflictException`. The store is an interface (`IdempotencyStore`) with one Redis
+  implementation, so the backing store can change without touching the filter. Fails open on a Redis
+  outage (the request just runs unguarded).
 - `payment/simulator` mocks the async, bank-side half of a payment (the part `PaymentProcessor`'s
   synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**
   (currently disabled again, see [Known gaps](gaps.md)) polls for

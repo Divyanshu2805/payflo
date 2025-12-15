@@ -174,3 +174,18 @@ dropped vs. still planned:
     (`app.rate-limit.method: fixed`) is one of the two that fail closed. Separately, rate limiting
     runs *after* the API key is authenticated, so failed-authentication attempts (wrong keyId or
     secret) are not counted or throttled at all.
+21. **Idempotency filter gaps** (found by reading the code while documenting it; not exercised
+    against a running instance). (a) `GlobalExceptionHandler` has no handler for
+    `IdempotencyConflictException`, and the filter hands it to `HandlerExceptionResolver` directly
+    — with nothing registered the exception isn't resolved, so a retry that arrives while the
+    original is still running is meant to get a `409` but there's nothing that produces one; the
+    response is left in its default state. (b) The filter isn't scoped to the API-key chain, so it
+    also wraps `/v1/auth/**` routes, where `MerchantContext` has no merchant yet and the key
+    becomes just the raw client-supplied header value with no merchant prefix — two different
+    clients sending the same `X-Idempotency-Key` to `/v1/auth/login` would share one Redis entry,
+    and the second would be replayed the first's stored response (which contains tokens). (c) The
+    key isn't tied to the request body, so the same key with a different payload silently replays
+    the first response instead of being rejected. (d) `replay()` is missing a `return` after
+    handling a malformed stored value, so it would fall through and throw
+    `StringIndexOutOfBoundsException` (not reachable today, since nothing writes such a value). (e)
+    A stray `import java.awt.*;` is left in `IdempotencyFilter`.

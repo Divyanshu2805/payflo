@@ -8,6 +8,13 @@
 body (`errorCode: RATE_LIMIT_EXCEEDED`) plus `Retry-After` (seconds) and `X-RateLimit-Reset` (epoch
 seconds). Endpoints on the JWT chain are not rate limited.
 
+**Idempotency.** Any `POST`/`PUT`/`PATCH` may send an `X-Idempotency-Key` header. A retry with the same
+key (scoped to the authenticated merchant when there is one) within 24 hours returns the original
+response — same status and body — instead of running the operation again; a retry while the original is
+still in flight is meant to return `409` (see [Known gaps](gaps.md)
+item 21 — that mapping isn't wired up yet). Only successful responses are remembered, so a failed request can be
+retried under the same key.
+
 ## `POST /v1/auth/signup`
 
 Registers a new merchant and its first (`OWNER`) user in one call.
