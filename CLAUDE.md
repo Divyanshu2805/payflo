@@ -184,7 +184,7 @@ Package (produces the runnable jar under `target/`):
 
 - `spring-boot-starter-data-jpa` — JPA/Hibernate persistence
 - `spring-boot-starter-webmvc` — Spring MVC (web layer)
-- `postgresql` (runtime) — datasource is configured in `application.yaml` (Postgres on `localhost:9000`,
+- `postgresql` (runtime) — datasource is configured in `application.yaml` (Postgres on `localhost:1000`,
   overridable via `DB_URL`/`DB_USER`/`DB_PASS` env vars). `ddl-auto: update` incrementally alters the
   schema on restart instead of dropping it — still not a real migration tool (no version history,
   no rollback), so don't treat it as a substitute for one once that's needed
@@ -267,6 +267,15 @@ Package (produces the runnable jar under `target/`):
   no role/permission distinction within a merchant (any authenticated caller does anything that
   merchant can), and `ApiKey.lastUsedAt` still never gets touched on a successful auth despite
   existing for exactly that purpose.
+- `spring-boot-starter-data-redis` (added 2025-12-11) — Redis, configured via `spring.data.redis.*`
+  in `application.yaml` (`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` env vars, default
+  `localhost:6379`); `common/config/RedisConfig` exposes a `StringRedisTemplate`. Used by
+  `common/rateLimit` (four `RateLimiter` implementations, exactly one active — picked by
+  `@ConditionalOnProperty` on `app.rate-limit.method`; **if that property is unset no `RateLimiter`
+  bean exists and `ApiKeyAuthenticationFilter` fails to construct**), `common/idempotency`, and
+  `merchant/cache`. See [Known gaps](docs/gaps.md) items
+  20–22 for what's still open. Redis is a runtime dependency of the API-key routes; Lettuce
+  connects lazily, so startup itself shouldn't need it (not yet verified against a Redis-less run).
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync

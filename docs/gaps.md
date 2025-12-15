@@ -189,3 +189,12 @@ dropped vs. still planned:
     handling a malformed stored value, so it would fall through and throw
     `StringIndexOutOfBoundsException` (not reachable today, since nothing writes such a value). (e)
     A stray `import java.awt.*;` is left in `IdempotencyFilter`.
+22. **The API key cache is never evicted.** `ApiKeyCache.evict` exists but nothing calls it —
+    `ApiKeyServiceImpl.revoke` (sets `enabled = false`) and `.rotate` (swaps the secret hashes and
+    opens the 24h grace period) both change the database row without touching Redis. Consequences,
+    from reading the code (not yet exercised against a running instance): a revoked key keeps
+    authenticating for up to the 5-minute TTL, and a freshly rotated key's *new* secret is compared
+    against the stale cached hash and rejected for up to the TTL, while the cached entry has no
+    `previousKeySecretHash` to fall back on. Also: an unknown `keyId` isn't negatively cached, so
+    every request with a bogus key still reaches Postgres, and `RedisApiKeyCache.evict` (unlike
+    `get`/`put`) has no `try/catch`, so a Redis outage would make it throw.

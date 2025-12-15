@@ -68,7 +68,12 @@
   `ApiKey` by `keyId`, and bcrypt-compares the secret against `keySecretHash` — or, during the 24h
   post-rotation window, against `previousKeySecretHash` too. Resolves the same `MerchantContext` the
   JWT filter does, just from a different source, so `OrderController`/`PaymentController`/
-  `VaultController` don't need to know which mechanism authenticated the request.
+  `VaultController` don't need to know which mechanism authenticated the request. The lookup goes
+  through a Redis-backed `ApiKeyCache` (`merchant/cache`) first — a cache-aside read keyed on
+  `apikey:<keyId>` with a `5 minute` TTL, falling back to `ApiKeyRepository.findByKeyId` and
+  populating the cache on a miss — so a hot key doesn't hit Postgres on every request (the bcrypt
+  comparison still runs per request). After a successful authentication, the same filter applies the
+  per-key rate limit (see the Rate limiting bullet above).
 - **Rate limiting** (`common/rateLimit`) — a `RateLimiter` interface (`check(key, maxRequests,
   windowSeconds): RateLimitResult`) with four implementations, exactly one of which is active,
   chosen at startup by `@ConditionalOnProperty` on `app.rate-limit.method`: `fixed`
