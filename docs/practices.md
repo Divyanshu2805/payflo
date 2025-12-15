@@ -69,6 +69,18 @@
   post-rotation window, against `previousKeySecretHash` too. Resolves the same `MerchantContext` the
   JWT filter does, just from a different source, so `OrderController`/`PaymentController`/
   `VaultController` don't need to know which mechanism authenticated the request.
+- **Rate limiting** (`common/rateLimit`) — a `RateLimiter` interface (`check(key, maxRequests,
+  windowSeconds): RateLimitResult`) with four implementations, exactly one of which is active,
+  chosen at startup by `@ConditionalOnProperty` on `app.rate-limit.method`: `fixed`
+  (`FixedWindowRateLimiter`, `INCR` + `EXPIRE` counter), `sliding` (`SlidingWindowRateLimiter`,
+  sorted set of request timestamps), `sliding-lua` (`SlidingWindowLuaLimiter`, the same sorted-set
+  window done atomically in a Lua script) and `bucket` (`TokenBucketRateLimiter`, a Redis hash of
+  tokens + last-refill time, refilled and consumed atomically in a Lua script so it has no
+  double-window burst at the boundary). Strategy pattern again — swapping the algorithm is a config
+  change, not a code change. The Lua-based limiters fail open on a Redis outage
+  (`DataAccessException` → allow); see [Known gaps](gaps.md) item 20
+  for the ones that don't. `RateLimitException` (carrying `retryAfterSeconds`) is mapped by
+  `GlobalExceptionHandler` to `429`.
 - `payment/simulator` mocks the async, bank-side half of a payment (the part `PaymentProcessor`'s
   synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**
   (currently disabled again, see [Known gaps](gaps.md)) polls for

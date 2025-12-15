@@ -2,6 +2,12 @@
 
 [← Back to docs index](README.md)
 
+**Rate limiting.** Every endpoint on the API-key chain (`/v1/orders/**`, `/v1/payments/**`,
+`/v1/vault/**`) is limited per API key. A successful call carries `X-RateLimit-Limit` and
+`X-RateLimit-Remaining` response headers; an over-limit call returns `429` with the standard error
+body (`errorCode: RATE_LIMIT_EXCEEDED`) plus `Retry-After` (seconds) and `X-RateLimit-Reset` (epoch
+seconds). Endpoints on the JWT chain are not rate limited.
+
 ## `POST /v1/auth/signup`
 
 Registers a new merchant and its first (`OWNER`) user in one call.

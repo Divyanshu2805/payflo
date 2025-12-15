@@ -22,12 +22,14 @@ functional and non-functional requirements in [docs/requirements.md](docs/requir
 - Java 25
 - Spring Boot 4.1.0 (Spring MVC, Spring Data JPA)
 - PostgreSQL
+- Redis (rate limiting, idempotency keys, API key cache)
 - Lombok, MapStruct, Jakarta Bean Validation
 - Maven
 
 ## Getting Started
 
-Requires JDK 25 and a PostgreSQL instance.
+Requires JDK 25, a PostgreSQL instance, and a Redis instance (used by API-key-authenticated
+endpoints for rate limiting and caching).
 
 ```bash
 ./mvnw.cmd clean compile
