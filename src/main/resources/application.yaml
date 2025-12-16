@@ -2,13 +2,13 @@ spring:
   application:
     name: payflo
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:1000/payflo-db}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/payflo-db}
     username: ${DB_USER:user}
     password: ${DB_PASS:password}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:6380}
       password: ${REDIS_PASSWORD:}
   jpa:
     hibernate:
@@ -41,6 +41,7 @@ payment:
         min-delay-seconds: 1
         max-delay-seconds: 2
         success-rate: 92
+
 jwt:
   secret-key: dont-use-in-prod-a9asd7fulasjdfaklsdfu98q3uhjdiosh897as9d8f7ua9osufdjilasdjf
   refresh-token-expiry-days: 7
