@@ -17,6 +17,34 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    listener:
+      ack-mode: manual
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:29092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        retries: 3
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: payflo-monolith
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.project.payflo.*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: java.util.LinkedHashMap
+
+threads:
+  virtual:
+    enabled: true
+
 vault:
   master-key: ${VAULT_MASTER_KEY:arXfSlAXS4TRCw5tlKCFSwjG+D4C4ESUV47We3pw2eI=}
 payment:
@@ -51,3 +79,9 @@ app:
     use-case:
       api-key:
         requests-per-minute: 200
+  kafka:
+    topics:
+      payment: payments.events
+      order: orders.events
+      refund: refund.events
+      settlement: settlement.events

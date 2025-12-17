@@ -9,7 +9,7 @@ import java.util.TimeZone;
 
 @SpringBootApplication
 @EnableJpaAuditing(auditorAwareRef = "auditorAwareImpl")
-//@EnableScheduling
+@EnableScheduling
 public class PayFloApplication {
 
 	public static void main(String[] args) {
