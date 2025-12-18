@@ -40,5 +40,17 @@ public class MerchantWebhookConfig extends BaseEntity {
     @Column(length = 255)
     private String eventTypes;
     // Comma-separated list of event types to subscribe to
-    
+
+    public boolean isSubscribedTo(String eventType) {
+        if (eventTypes == null || eventTypes.isBlank()) {
+            return true;
+        }
+        for (String type : eventTypes.split(",")) {
+            String trimmed = type.trim();
+            if (trimmed.equalsIgnoreCase("ALL") || trimmed.equalsIgnoreCase(eventType)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
