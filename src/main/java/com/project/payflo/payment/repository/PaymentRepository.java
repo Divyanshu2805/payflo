@@ -1,6 +1,7 @@
 package com.project.payflo.payment.repository;
 
 import com.project.payflo.common.enums.PaymentStatus;
+import com.project.payflo.payment.entity.OrderRecord;
 import com.project.payflo.payment.entity.Payment;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,7 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
-    List<Payment> findByOrder_Id(UUID orderId);
+    List<Payment> findByOrder_Id(OrderRecord order);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.id = :paymentId and p.merchantId = :merchantId")
