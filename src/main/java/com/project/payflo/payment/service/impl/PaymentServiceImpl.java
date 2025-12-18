@@ -1,7 +1,7 @@
 package com.project.payflo.payment.service.impl;
 
 import com.project.payflo.common.enums.*;
-import com.project.payflo.common.exception.ConflictException;
+import com.project.payflo.common.exception.BusinessRuleViolationException;
 import com.project.payflo.common.exception.ResourceNotFoundException;
 import com.project.payflo.payment.dto.request.PaymentInitRequest;
 import com.project.payflo.payment.dto.response.PaymentResponse;
@@ -11,6 +11,7 @@ import com.project.payflo.payment.gateway.PaymentGatewayRouter;
 import com.project.payflo.payment.gateway.dto.PaymentRequest;
 import com.project.payflo.payment.gateway.dto.PaymentResult;
 import com.project.payflo.payment.mapper.PaymentMapper;
+import com.project.payflo.payment.outbox.OutboxEventPublisher;
 import com.project.payflo.payment.repository.OrderRepository;
 import com.project.payflo.payment.repository.PaymentRepository;
 import com.project.payflo.payment.service.PaymentService;
@@ -18,9 +19,11 @@ import com.project.payflo.payment.statemachine.PaymentTransitionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,15 +36,19 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentGatewayRouter paymentGatewayRouter;
     private final PaymentMapper paymentMapper;
     private final PaymentTransitionService paymentTransitionService;
+    private final OutboxEventPublisher eventPublisher;
 
     @Override
     @Transactional
     public PaymentResponse initiate(UUID merchantId, PaymentInitRequest request) {
+//        OrderRecord order = orderRepository.findByIdAndMerchantId(request.orderId(), merchantId)
+//                .orElseThrow(() -> new ResourceNotFoundException("Order", request.orderId()));
+
         OrderRecord order = orderRepository.findByIdAndMerchantIdForUpdate(request.orderId(), merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", request.orderId()));
 
         if(order.getOrderStatus() != OrderStatus.CREATED && order.getOrderStatus() != OrderStatus.ATTEMPTED) {
-            throw new ConflictException("ORDER_NOT_PAYABLE",
+            throw new BusinessRuleViolationException("ORDER_NOT_PAYABLE",
                     "Order cannot accept payment in status: "+order.getOrderStatus());
         }
 
@@ -65,14 +72,13 @@ public class PaymentServiceImpl implements PaymentService {
                 request.methodDetails());
 
         paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_ATTEMPT);
-
         PaymentResult result = paymentGatewayRouter.initiate(paymentRequest);
 
         switch (result) {
-            case null -> log.warn("Payment adapter for method {} returned no result (not yet implemented)", request.method());
             case PaymentResult.Pending pending -> payment.setProcessorReference(pending.registrationRef());
             case PaymentResult.Failure failure -> {
-                paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL, failure.errorDescription());
+//                payment.setStatus(PaymentStatus.FAILED);
+                paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL);
                 payment.setErrorCode(failure.errorCode());
                 payment.setErrorDescription(failure.errorDescription());
             }
@@ -85,12 +91,26 @@ public class PaymentServiceImpl implements PaymentService {
         payment = paymentRepository.save(payment);
         orderRepository.save(order);
 
+        eventPublisher.publish(EventAggregateType.PAYMENT, payment.getId(), "PAYMENT_CREATED",
+                Map.of("orderId", order.getId().toString(),
+                        "paymentId", payment.getId().toString(),
+                        "merchantId", merchantId.toString(),
+                        "paymentStatus", payment.getStatus().name(),
+                        "amountUnits", order.getAmount().getAmountUnits(),
+                        "amountCurrency", order.getAmount().getCurrency(),
+                        "paymentMethod", payment.getMethod()
+                )
+        );
+
         return paymentMapper.toResponse(payment);
     }
 
     @Override
     @Transactional
     public PaymentResponse capture(UUID merchantId, UUID paymentId) {
+
+//        Payment payment = paymentRepository.findByIdAndMerchantId(paymentId, merchantId)
+//                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
         Payment payment = paymentRepository.findByIdAndMerchantIdForUpdate(paymentId, merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
@@ -99,31 +119,29 @@ public class PaymentServiceImpl implements PaymentService {
 
         PaymentResult paymentResult = paymentGatewayRouter.capture(payment.getMethod(), paymentId);
 
-        switch (paymentResult) {
-            case PaymentResult.Success success -> {
-                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
-                payment.setCapturedAt(LocalDateTime.now());
-                log.info("Payment captured, paymentID: {}", paymentId);
-            }
-            case PaymentResult.Failure failure -> {
-                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL, failure.errorDescription());
-                payment.setErrorCode(failure.errorCode());
-                payment.setErrorDescription(failure.errorDescription());
-                log.warn("Payment capture failed, paymentID: {}", paymentId);
-            }
-            case PaymentResult.Pending pending -> {
-                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_PENDING);
-                payment.setProcessorReference(pending.registrationRef());
-                log.warn("Payment capture still pending, paymentID: {}", paymentId);
-            }
-            case null -> {
-                payment.setStatus(PaymentStatus.AUTHORIZED);
-                log.warn("Payment adapter for method {} returned no capture result (not yet implemented), paymentID: {}",
-                        payment.getMethod(), paymentId);
-            }
+        if(paymentResult instanceof  PaymentResult.Success success) {
+            paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
+            payment.setCapturedAt(LocalDateTime.now());
+            log.info("Payment captured, paymentID: {}", paymentId);
+        } else if(paymentResult instanceof  PaymentResult.Failure failure) {
+            paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
+            payment.setErrorCode(failure.errorCode());
+            payment.setErrorDescription(failure.errorDescription());
+            log.warn("Payment capture failed, paymentID: {}", paymentId);
         }
 
         payment = paymentRepository.save(payment);
+
+        eventPublisher.publish(EventAggregateType.PAYMENT, payment.getId(), "PAYMENT_STATUS_CHANGED",
+                Map.of("orderId", payment.getOrder().getId().toString(),
+                        "paymentId", payment.getId().toString(),
+                        "merchantId", merchantId.toString(),
+                        "paymentStatus", payment.getStatus().name(),
+                        "amountUnits", payment.getAmount().getAmountUnits(),
+                        "amountCurrency", payment.getAmount().getCurrency(),
+                        "paymentMethod", payment.getMethod()
+                )
+        );
 
         return paymentMapper.toResponse(payment);
     }
@@ -132,6 +150,9 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public void resolveAuthorization(UUID paymentId, boolean approve,
                                      String bankRef, String errorCode, String errorDescription) {
+
+//        Payment payment = paymentRepository.findById(paymentId)
+//                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
         Payment payment = paymentRepository.findByIdForUpdate(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
@@ -152,25 +173,17 @@ public class PaymentServiceImpl implements PaymentService {
             paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_REQUEST);
             PaymentResult captureResult = paymentGatewayRouter.capture(payment.getMethod(), paymentId);
 
-            switch (captureResult) {
-                case PaymentResult.Success success -> {
-                    paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
-                    payment.setCapturedAt(LocalDateTime.now());
-                    orderRecord.setOrderStatus(OrderStatus.PAID);
-                }
-                case PaymentResult.Failure failure -> {
-                    paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL, failure.errorDescription());
-                    payment.setErrorCode(failure.errorCode());
-                    payment.setErrorDescription(failure.errorDescription());
-                }
-                case PaymentResult.Pending pending -> {
-                    paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_PENDING);
-                    payment.setProcessorReference(pending.registrationRef());
-                }
-                case null -> payment.setStatus(PaymentStatus.AUTHORIZED);
+            if(captureResult instanceof PaymentResult.Success success) {
+                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
+                payment.setCapturedAt(LocalDateTime.now());
+                orderRecord.setOrderStatus(OrderStatus.PAID);
+            } else if (captureResult instanceof  PaymentResult.Failure failure){
+                paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
+                payment.setErrorCode(failure.errorCode());
+                payment.setErrorDescription(failure.errorDescription());
             }
         } else {
-            paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL, errorDescription);
+            paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL);
             payment.setErrorCode(errorCode);
             payment.setErrorDescription(errorDescription);
         }
@@ -178,6 +191,16 @@ public class PaymentServiceImpl implements PaymentService {
         paymentRepository.save(payment);
         orderRepository.save(orderRecord);
 
+        eventPublisher.publish(EventAggregateType.PAYMENT, payment.getId(), "PAYMENT_STATUS_CHANGED",
+                Map.of("orderId", payment.getOrder().getId().toString(),
+                        "paymentId", payment.getId().toString(),
+                        "merchantId", payment.getMerchantId().toString(),
+                        "paymentStatus", payment.getStatus().name(),
+                        "amountUnits", payment.getAmount().getAmountUnits(),
+                        "amountCurrency", payment.getAmount().getCurrency(),
+                        "paymentMethod", payment.getMethod()
+                )
+        );
     }
 }
 
