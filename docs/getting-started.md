@@ -6,6 +6,12 @@ Requires Java 25.
 
 Commands below use the Windows wrapper `mvnw.cmd`; on macOS/Linux use `./mvnw` instead.
 
+Local infra (Postgres, Redis, Kafka, Kafka control-center) via `services.docker-compose.yaml`:
+
+```bash
+docker compose -f services.docker-compose.yaml up -d
+```
+
 ```bash
 ./mvnw.cmd clean compile
 ```

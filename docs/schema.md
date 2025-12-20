@@ -345,7 +345,7 @@ Merchant-scoped API credentials, with support for rotation without breaking exis
 | `key_id` | The public identifier half of the key — safe to display, like a username for the key. |
 | `key_secret_hash` | Hash of the secret half; the real secret is never stored, only shown once at creation. |
 | `previous_key_secret_hash` | The prior secret's hash, kept during rotation so a key can still authenticate on either the old or new secret through the grace period. |
-| `webhook_secret_hash` | Reserved for signing webhook payloads tied to this key — schema only for now, nothing reads or writes it yet since webhook delivery isn't built. |
+| `webhook_secret_hash` | Reserved for signing webhook payloads tied to this key — still schema only; webhook delivery (added 2025-12-16) instead signs with `MERCHANT_WEBHOOK_CONFIG.webhook_secret`, a separate per-config secret, so this field remains unused. |
 | `environment` | e.g. test vs live, so sandbox and production credentials stay separate. |
 | `enabled` | Whether the key currently works. |
 | `last_used_at` | Last time this key authenticated a request — useful for spotting stale/unused keys. |
@@ -589,4 +589,23 @@ requirements).
 |---|---|
 | `settlement_id` | Part of the composite primary key (`SettlementPaymentId`); the settlement batch, `@ManyToOne` to `SETTLEMENT`. |
 | `payment_id` | Part of the composite primary key; a payment included in that batch — plain UUID, no FK (cross-service boundary). |
+| `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |
+
+### OUTBOX_EVENT
+
+Not in the original v1/v2 design — added 2025-12-16 as the transactional-outbox backbone for domain
+eventing (see [Practices](practices.md)). Lives in `payment/entity` alongside `PAYMENT`/`ORDER_RECORD`
+since those are its only producers today, though nothing about the table is payment-specific.
+
+| Field | Meaning |
+|---|---|
+| `id` | Primary key. |
+| `aggregate_type` | Which domain the event belongs to — `EventAggregateType` (`PAYMENT`/`ORDER`/`REFUND`/`SETTLEMENT`); used to pick the Kafka topic via `KafkaProperties.topicFor`. |
+| `aggregate_id` | The id of the entity the event is about (an order id, a payment id, ...). |
+| `event_type` | A free-text event name, e.g. `ORDER_CREATED`, `PAYMENT_STATUS_CHANGED`. |
+| `payload` | `jsonb` — the event body, published as-is inside an envelope (`eventType`/`aggregateType`/`aggregateId`/`data`). |
+| `status` | `OutboxStatus` (`PENDING`/`PUBLISHED`/`FAILED`) — `OutboxPoller` moves `PENDING` → `PUBLISHED`/`FAILED`. |
+| `attempts` | How many times `OutboxPoller` has tried to publish this row; `FAILED` at 3, no further retry after that. |
+| `last_error` | The most recent publish failure's message, truncated to 1000 chars. |
+| `published_at` | When the row was successfully published, `null` until then. |
 | `created_at` / `updated_at` / `created_by` / `updated_by` | Inherited from `BaseEntity`. |

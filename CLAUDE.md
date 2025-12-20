@@ -68,16 +68,60 @@ other work — it's been flipped both ways once already this session, so double 
 state (`grep -n "@EnableScheduling\|@Scheduled" PayFloApplication.java BankCallbackSimulator.java`)
 rather than assuming from this paragraph alone.
 
+`merchant` also gained a `Customer` slice (`CustomerRepository`/`CustomerService`/
+`CustomerServiceImpl.findOrCreate`, no controller — it's driven internally from `OrderServiceImpl`,
+not its own endpoint) and a `MerchantWebhookConfig` CRUD slice
+(`repository`/`service`/`service.impl`/`mapper`/`controller`, `POST`/`GET`/`GET .../{id}`/
+`PUT .../{id}`/`DELETE .../{id}` under `/v1/merchants/webhooks`, on `jwtChain`) — both added
+2025-12-16. `POST /v1/orders` now takes an optional `customer` (name/email/phone) and resolves it
+through `CustomerService`, storing the result as `OrderRecord.customerId` (still no FK, per
+convention). `WebhookConfigServiceImpl` also implements `merchant/api/MerchantWebhookApi`
+(`getActiveConfigsForEvent`), the interface `operations/webhook/WebhookKafkaConsumer` (below)
+depends on to resolve a merchant's subscribed webhook targets and their (decrypted) secrets —
+that's the one seam between the `merchant` and `operations` domains here, and it's one-directional
+(`operations` → `merchant`, never the reverse).
+
+`payment` also gained a transactional outbox (`payment/entity/OutboxEvent`,
+`payment/outbox/{OutboxEventPublisher,OutboxPoller,OutboxResultHandler}`, added 2025-12-16):
+`OrderServiceImpl.create`/`.cancel` and `PaymentServiceImpl.initiate`/`.capture`/
+`.resolveAuthorization` insert a `PENDING` `OutboxEvent` row in the same transaction as the domain
+write (`ORDER_CREATED`/`ORDER_CANCELLED`/`PAYMENT_CREATED`/`PAYMENT_STATUS_CHANGED`), and a
+`@Scheduled` `OutboxPoller` (5s) publishes pending rows to Kafka afterward — so a mid-request crash
+can't lose an event the way a direct inline Kafka send could. `operations/webhook` is the consumer
+side: `WebhookKafkaConsumer` (`@KafkaListener` on the four event topics) turns each event into one
+signed `WebhookEvent` row per subscribed target, `WebhookDeliveryScheduler` drains a Redis
+sorted-set retry queue on virtual threads and drives `WebhookDeliverExecutor` (fixed backoff,
+1m→24h over 7 attempts), and `WebhookDlqRecorder` records a `DlqEvent` once attempts are exhausted
+or a record fails before it's ever persisted. See the Kafka callout right below for why this
+exists despite the monolith-first stance, and `docs/gaps.md`'s Known gaps 23–25 for three bugs
+found while documenting this feature (a missing `GlobalExceptionHandler` entry for
+`BusinessRuleViolationException`, a dropped `PaymentTransitionLog.reason` on
+`AUTHORIZE_FAIL`/`CAPTURE_FAIL`, and a topic-name mismatch between the outbox publisher and this
+consumer for `refund`/`settlement` events specifically) — none fixed yet, flagged rather than
+silently patched.
+
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
 microservices architecture in [docs/architecture.md](docs/architecture.md#target) is the phase-two destination,
 not a description of where the code is heading next.
 
 Practically, that means: **do not add, scaffold, or propose service-splitting infrastructure** — no API
-gateway, service discovery/Eureka, config server, Kafka or other broker, per-service databases, or
-inter-service HTTP/Feign clients — until the user explicitly says it's time to split. Suggesting them
-now is premature. Where a design decision would go one way in a monolith and another in microservices,
-take the monolith answer and note the future-split implication in a line rather than building for it.
+gateway, service discovery/Eureka, config server, or inter-service HTTP/Feign clients — until the user
+explicitly says it's time to split. Suggesting them now is premature. Where a design decision would go
+one way in a monolith and another in microservices, take the monolith answer and note the future-split
+implication in a line rather than building for it.
+
+**Kafka was added 2025-12-16**, despite this file previously listing "Kafka or other broker" alongside
+the service-splitting infrastructure above — flagging that explicitly since it reads as a direct
+reversal of that guidance and wasn't called out as a deliberate exception when it landed. In practice
+it's used entirely *within* the single deployable: a transactional outbox
+(`payment/outbox`) inserts domain-event rows in the same DB transaction as the write, a scheduled
+poller (`OutboxPoller`) publishes them, and an in-process `@KafkaListener`
+(`operations/webhook/WebhookKafkaConsumer`) reads them straight back out to drive webhook delivery —
+there's no second service on the other end, no inter-service contract, and nothing here anticipates the
+future split any more than any other domain boundary does. Whether "an event bus inside the monolith"
+is an acceptable case is a call worth the user making explicitly rather than inferring from the code
+that already exists — treat it as decided only once they've said so, not because it compiled and ran.
 
 Package layout is domain-oriented, not layered-by-technical-role — `common` (shared `BaseEntity`,
 `Money`, enums, exceptions, `util` — e.g. `RandomizerUtil` for `SecureRandom`-backed key/secret
@@ -91,7 +135,8 @@ JPA relationship to the owning entity (a real FK can't span two databases, so it
 removed at split time anyway). Follow this convention for new domains rather than the
 originally-sketched `controller`/`service`/`repository` split.
 
-Domain vocabulary lives in `common/enums` (14 enums) and is the source of truth for every status,
+Domain vocabulary lives in `common/enums` (16 enums, including `EventAggregateType`/`OutboxStatus`
+added 2025-12-16 for the outbox — see below) and is the source of truth for every status,
 role, and event value — `PaymentStatus`/`PaymentEvent` in particular define the payment state machine.
 Read those before inventing a new status string; they're documented with both state-machine diagrams
 under "Domain Vocabulary" in [docs/domain-vocabulary.md](docs/domain-vocabulary.md).
@@ -102,12 +147,16 @@ wraps it — applies a transition, writes a `PaymentTransitionLog` row, sets `Pa
 `PaymentServiceImpl.initiate`/`capture` now go through it for their status changes, including a
 `CAPTURE_PENDING` self-transition (`CAPTURING` → `CAPTURING`) for a `Pending` capture result — kept
 in `CAPTURING` rather than reverting to `AUTHORIZED`, since a genuinely in-flight capture being
-retried risks a double capture. A `null` capture result (adapter not implemented) still sets
-`status` directly to `AUTHORIZED`, since that's not a real domain event. One practical consequence:
-since no payment ever reaches `AUTHORIZED` through any live path
+retried risks a double capture. **This description is stale as of 2025-12-16**: while wiring outbox
+event publishing, `PaymentServiceImpl.capture`'s exhaustive `switch` over `PaymentResult` was
+rewritten to an `if PaymentResult.Success ... else if PaymentResult.Failure ...` chain with no
+branch left for `Pending` or `null` at all — both cases now silently do nothing (no transition, no
+field update), instead of `Pending` firing `CAPTURE_PENDING` or `null` setting `status =
+AUTHORIZED` directly as described above. Not yet fixed; see `docs/gaps.md`'s Known gap 24. One
+practical consequence: since no payment ever reaches `AUTHORIZED` through any live path
 yet (see above — every processor's happy path returns `Pending`, which doesn't advance past
 `AUTHORIZING`), every `capture` call currently gets rejected with `409 INVALID_STATE_TRANSITION`
-before it can do anything. Its transition table also
+before it can do anything — so this regression is dormant, not yet observable. Its transition table also
 revised two things from the diagram's earlier version (both now reflected in `docs/domain-vocabulary.md`): a
 failed capture reverts to `AUTHORIZED` rather than terminal `FAILED`, and `REFUND_INIT` now moves
 the payment to `PARTIALLY_REFUNDED` itself rather than only touching `RefundStatus`.
@@ -140,6 +189,12 @@ Git repo is initialized and pushed to `github.com/Divyanshu2805/payflo` (branch 
 ## Commands
 
 Windows shell in this environment is PowerShell; use `mvnw.cmd`.
+
+Local infra (Postgres, Redis, Kafka, Kafka control-center) via `services.docker-compose.yaml`:
+
+```bash
+docker compose -f services.docker-compose.yaml up -d
+```
 
 ```bash
 ./mvnw.cmd clean compile
@@ -184,8 +239,9 @@ Package (produces the runnable jar under `target/`):
 
 - `spring-boot-starter-data-jpa` — JPA/Hibernate persistence
 - `spring-boot-starter-webmvc` — Spring MVC (web layer)
-- `postgresql` (runtime) — datasource is configured in `application.yaml` (Postgres on `localhost:1000`,
-  overridable via `DB_URL`/`DB_USER`/`DB_PASS` env vars). `ddl-auto: update` incrementally alters the
+- `postgresql` (runtime) — datasource is configured in `application.yaml` (Postgres on `localhost:5432`,
+  matching `services.docker-compose.yaml` added 2025-12-16, overridable via `DB_URL`/`DB_USER`/`DB_PASS`
+  env vars). `ddl-auto: update` incrementally alters the
   schema on restart instead of dropping it — still not a real migration tool (no version history,
   no rollback), so don't treat it as a substitute for one once that's needed
 - `lombok` — annotation processor is wired into both compile and test-compile executions of
@@ -200,8 +256,10 @@ Package (produces the runnable jar under `target/`):
   transitively; no direct Jackson API usage in the codebase yet that would require the explicit
   declaration
 - `spring-boot-starter-security` — originally pulled in only for `spring-security-crypto`'s
-  `AesBytesEncryptor`/`KeyGenerators` (card PAN/DEK encryption in
-  `vault/config/VaultEncryptionConfig`); now backs two real, enforced
+  `AesBytesEncryptor`/`KeyGenerators` (card PAN/DEK encryption, the master-key bean now living in
+  `common/config/AesEncryptionConfig` — moved there 2025-12-16 and shared with webhook-secret
+  encryption below, `vault/config/VaultEncryptionConfig` keeps only the per-card DEK helper); now
+  backs two real, enforced
   `merchant/security/WebSecurityConfig` filter chains. **Adding this dependency alone activates
   Spring Boot's default autoconfiguration**, which locks every endpoint behind HTTP Basic with a
   random per-restart password (a `Using generated security password` log line, no matter what)
@@ -269,13 +327,24 @@ Package (produces the runnable jar under `target/`):
   existing for exactly that purpose.
 - `spring-boot-starter-data-redis` (added 2025-12-11) — Redis, configured via `spring.data.redis.*`
   in `application.yaml` (`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD` env vars, default
-  `localhost:6379`); `common/config/RedisConfig` exposes a `StringRedisTemplate`. Used by
+  `localhost:6380` since `services.docker-compose.yaml` maps Redis to that host port); `common/config/RedisConfig` exposes a `StringRedisTemplate`. Used by
   `common/rateLimit` (four `RateLimiter` implementations, exactly one active — picked by
   `@ConditionalOnProperty` on `app.rate-limit.method`; **if that property is unset no `RateLimiter`
-  bean exists and `ApiKeyAuthenticationFilter` fails to construct**), `common/idempotency`, and
-  `merchant/cache`. See [Known gaps](docs/gaps.md) items
-  20–22 for what's still open. Redis is a runtime dependency of the API-key routes; Lettuce
-  connects lazily, so startup itself shouldn't need it (not yet verified against a Redis-less run).
+  bean exists and `ApiKeyAuthenticationFilter` fails to construct**), `common/idempotency`,
+  `merchant/cache`, and now `operations/webhook/WebhookRetryQueue` (a sorted set backing the
+  webhook delivery retry schedule, see below). See [Known
+  gaps](docs/gaps.md) items 20–22 for what's still open.
+  Redis is a runtime dependency of the API-key routes; Lettuce connects lazily, so startup itself
+  shouldn't need it (not yet verified against a Redis-less run).
+- `spring-boot-starter-kafka` (added 2025-12-16) — Kafka, configured via `spring.kafka.*` in
+  `application.yaml` (`KAFKA_BROKERS` env var, default `localhost:29092`, matching
+  `services.docker-compose.yaml`'s external listener; idempotent producer, manual ack/manual-commit
+  consumer, JSON (de)serializers with type headers off). Requires `@EnableScheduling` (see the
+  `BankCallbackSimulator` callout above — this is the reason it's back on) for
+  `payment/outbox/OutboxPoller`'s publish loop. See the "Kafka was added 2025-12-16" callout in
+  Project State above for why this exists despite the monolith-first stance predating it, and
+  Known gap 25 for a topic-name mismatch between the outbox publisher and the webhook-delivery
+  consumer.
 - `spring-boot-starter-data-jpa-test` / `spring-boot-starter-webmvc-test` (test scope)
 
 ## Docs to keep in sync
