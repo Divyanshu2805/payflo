@@ -22,14 +22,15 @@ functional and non-functional requirements in [docs/requirements.md](docs/requir
 - Java 25
 - Spring Boot 4.1.0 (Spring MVC, Spring Data JPA)
 - PostgreSQL
-- Redis (rate limiting, idempotency keys, API key cache)
+- Redis (rate limiting, idempotency keys, API key cache, webhook retry queue)
+- Apache Kafka (transactional outbox for domain events, consumed for webhook delivery)
 - Lombok, MapStruct, Jakarta Bean Validation
 - Maven
 
 ## Getting Started
 
-Requires JDK 25, a PostgreSQL instance, and a Redis instance (used by API-key-authenticated
-endpoints for rate limiting and caching).
+Requires JDK 25, a PostgreSQL instance, a Redis instance, and a Kafka broker — `services.docker-compose.yaml`
+brings up all three (plus a Kafka control-center UI) for local development.
 
 ```bash
 ./mvnw.cmd clean compile
@@ -51,11 +52,13 @@ inside one codebase and expensive to move once they're network calls, so they're
 the package layout and the no-cross-domain-foreign-key convention exist to keep that later split cheap.
 
 Domain model (see the Entity Relationship Diagram in [docs/schema.md](docs/schema.md)) is
-fully implemented as JPA entities. A working API now spans four domains — merchant (signup, login,
-API key management), order and payment lifecycles (create/cancel/list, initiate/capture, card
-tokenization), all backed by real JWT authentication (`JwtAuthenticationFilter` resolves the
-caller's merchant on every request via `MerchantContext`) — with the rest of the domain-by-domain
-build-out (webhooks, settlement, refunds) still to come. See [docs/status.md](docs/status.md)
+fully implemented as JPA entities. A working API now spans five domains — merchant (signup, login,
+API key management, webhook config), order and payment lifecycles (create/cancel/list,
+initiate/capture, card tokenization), all backed by real JWT authentication
+(`JwtAuthenticationFilter` resolves the caller's merchant on every request via `MerchantContext`).
+Order and payment writes publish domain events through a Kafka-backed transactional outbox, which a
+separate consumer turns into signed webhook deliveries with retries and a dead-letter queue — with
+settlement and refunds still to come. See [docs/status.md](docs/status.md)
 for the detailed status table and known gaps.
 
 ## Documentation

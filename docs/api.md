@@ -170,14 +170,18 @@ key (`Authorization: Basic base64(keyId:secret)`), not a JWT.
 
 **Request body** (`CreateOrderRequest`): `amount` (required, `Money`), `receipt` (optional, max 100
 chars, merchant's own order identifier), `notes` (optional, freeform JSON object), `expiresAt`
-(optional, defaults to `payment.order.default-order-expiry-minutes` — 30 — minutes from now).
+(optional, defaults to `payment.order.default-order-expiry-minutes` — 30 — minutes from now),
+`customer` (optional, `name`/`email`/`phone` — when present and `email` is non-blank, resolved
+through `CustomerService.findOrCreate`, looked up or created by merchant+email).
 
-**Response** — `201 Created` with `OrderResponse`: `id`, `merchantId`, `receipt`, `amount`,
-`status` (always `CREATED` on creation), `attempts` (always `0`), `notes`, `expiresAt`,
-`createdAt`.
+**Response** — `201 Created` with `OrderResponse`: `id`, `merchantId`, `customerId` (the resolved
+customer, `null` if none was supplied), `receipt`, `amount`, `status` (always `CREATED` on
+creation), `attempts` (always `0`), `notes`, `expiresAt`, `createdAt`.
 
 **Behavior:** rejects with `409 Conflict` (`DuplicateResourceException`, code
-`ORDER_RECEIPT_DUPLICATE`) if `receipt` is non-null and already used by this merchant.
+`ORDER_RECEIPT_DUPLICATE`) if `receipt` is non-null and already used by this merchant. On success,
+publishes an `ORDER_CREATED` event to the outbox (see [Practices](practices.md)) after the order is
+saved.
 
 ## `GET /v1/orders/{orderId}`
 
@@ -202,8 +206,11 @@ API key, not a JWT.
 **Response** — `200 OK` with `OrderResponse`: the order with `status` now `CANCELLED`.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the caller's merchant, and with `409 Conflict` (`ConflictException`,
-code `ORDER_CANNOT_CANCEL`) if the order is already `CANCELLED` or `PAID`.
+exist or doesn't belong to the caller's merchant, and is *meant* to reject with `409 Conflict`
+(`BusinessRuleViolationException`, code `ORDER_CANNOT_CANCEL`) if the order is already `CANCELLED`
+or `PAID` — but currently returns an unhandled `500` instead, see [Known
+gaps](gaps.md) item 23. On success, publishes an `ORDER_CANCELLED`
+event to the outbox.
 
 ## `GET /v1/orders/{orderId}/payments`
 
@@ -237,8 +244,10 @@ see the note on `PaymentAdapter` below for the per-method mock-acquirer rules.
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
 the same order; rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the caller's merchant, and with `409 Conflict` (`ConflictException`,
-code `ORDER_NOT_PAYABLE`) unless the order is `CREATED` or `ATTEMPTED`. On success: sets the order
+exist or doesn't belong to the caller's merchant, and is *meant* to reject with `409 Conflict`
+(`BusinessRuleViolationException`, code `ORDER_NOT_PAYABLE`) unless the order is `CREATED` or
+`ATTEMPTED` — but currently returns an unhandled `500` instead, see [Known
+gaps](gaps.md) item 23. On success: sets the order
 to `ATTEMPTED` and increments its `attempts`, creates a `Payment` row (`status = CREATED`, a fresh
 random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
 fires `AUTHORIZE_ATTEMPT` through `PaymentTransitionService` (`CREATED` → `AUTHORIZING`), and
@@ -246,9 +255,10 @@ routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapte
 `PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference` (status stays
 `AUTHORIZING` — nothing advances it further yet, so `POST .../capture` always rejects for now, see
 [Known gaps](gaps.md)); `Failure` fires `AUTHORIZE_FAIL` (`status =
-FAILED`, plus `errorCode`/`errorDescription`); `Success` is treated as an invalid synchronous state
+FAILED`, plus `errorCode`/`errorDescription` — no longer mirrored onto the transition log's
+`reason`, see item 24); `Success` is treated as an invalid synchronous state
 and discarded (`return null`) — currently unreachable dead code, since no processor produces
-`Success` today (see below). Each processor's mock logic recognizes several distinct test
+`Success` today (see below). On success, publishes a `PAYMENT_CREATED` event to the outbox. Each processor's mock logic recognizes several distinct test
 scenarios — modeled on how real gateway sandboxes (Stripe/Razorpay-style test cards, NPCI-style
 test VPAs) document multiple named test values per outcome rather than one binary pass/fail — all
 mapping to `status: FAILED` with a specific `errorCode`; anything not matching a known test value
@@ -307,11 +317,13 @@ merchant. Fires `CAPTURE_REQUEST` through `PaymentTransitionService` (`AUTHORIZE
 `INVALID_STATE_TRANSITION`) if the payment isn't currently `AUTHORIZED`. Then calls
 `PaymentGatewayRouter.capture(method, paymentId)` and applies the result via the same service:
 `Success` fires `CAPTURE_SUCCESS` (`status = CAPTURED`, sets `capturedAt`); `Failure` fires
-`CAPTURE_FAIL` (reverts to `status = AUTHORIZED`, retryable, with `errorCode`/`errorDescription`);
-`Pending` fires `CAPTURE_PENDING` (a self-transition — stays `CAPTURING`, since a retry while the
-original attempt is still genuinely in flight risks a double capture); a `null` result (adapter
-not implemented) sets `status = AUTHORIZED` directly, without going through the transition
-service, since that's not a real domain event. In practice: no payment currently ever reaches
+`CAPTURE_FAIL` (reverts to `status = AUTHORIZED`, retryable, with `errorCode`/`errorDescription`,
+though no longer recorded as the transition log's `reason` — see [Known
+gaps](gaps.md) item 24); `Pending` and a `null` result (adapter not
+implemented) currently do nothing at all — no transition, no field update — a regression also
+covered in item 24 (previously `Pending` fired `CAPTURE_PENDING` and `null` set
+`status = AUTHORIZED` directly). On success, publishes a `PAYMENT_STATUS_CHANGED` event to the
+outbox. In practice: no payment currently ever reaches
 `AUTHORIZED` through any live path — nothing fires `AUTHORIZE_SUCCESS` anywhere yet, since every
 processor's happy path returns `Pending` (which just sets `processorReference` and leaves the
 payment in `AUTHORIZING`) rather than a terminal outcome — so every capture call today is rejected
@@ -336,8 +348,66 @@ the PAN's leading digits), `expiryMonth`, `expiryYear`. The raw PAN is never ech
 **Behavior:** detects `CardBrand` from the PAN prefix; generates a random 256-bit AES data
 encryption key (DEK) per card, encrypts the PAN with it (`AesBytesEncryptor`, GCM mode), then
 encrypts (wraps) that DEK itself with a separate master key-encryption-key (KEK) sourced from
-`vault.encryption.master-key` (env var `VAULT_MASTER_KEY`, with a dev-only default — see
+`vault.master-key` (env var `VAULT_MASTER_KEY`, with a dev-only default — see
 [Known gaps](gaps.md)). Saves a `VaultCard` row (encrypted PAN,
 wrapped DEK, brand, last 4 digits, first 6 digits, expiry, cardholder name) and a `CardToken` row
 (the generated token, a reference to the `VaultCard`, `customerId`, `merchantId`) linking a
 merchant-facing token to it.
+
+## `POST /v1/merchants/webhooks`
+
+Registers a new webhook config for the caller's merchant. Requires a valid JWT (`jwtChain`), not an
+API key.
+
+**Request body** (`UpdateWebhookConfigRequest`): `targetUrl` (required, max 500 chars, must be
+`http(s)://...`), `eventTypes` (optional, max 1000 chars — comma-separated event type names, e.g.
+`"PAYMENT_STATUS_CHANGED,ORDER_CREATED"`; null/blank/`"ALL"` subscribes to every event type).
+
+**Response** — `200 OK` with `WebhookConfigResponse`: `id`, `targetUrl`, `webhookSecret` (a
+server-generated random secret, shown **only on this response** — encrypted at rest with the
+shared `BytesEncryptor`, see [Practices](practices.md)), `enabled` (always `true` on creation),
+`eventTypes`.
+
+## `GET /v1/merchants/webhooks`
+
+Lists every webhook config for the caller's merchant. Requires a valid JWT.
+
+**Response** — `200 OK` with a `List<WebhookConfigResponse>` — `webhookSecret` omitted
+(`@JsonInclude(NON_NULL)`) on every entry.
+
+## `GET /v1/merchants/webhooks/{id}`
+
+Fetches a single webhook config by ID, scoped to the caller's merchant. Requires a valid JWT.
+
+**Path parameters:** `id`.
+
+**Response** — `200 OK` with `WebhookConfigResponse` (`webhookSecret` omitted).
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `id` doesn't exist or
+doesn't belong to the caller's merchant.
+
+## `PUT /v1/merchants/webhooks/{id}`
+
+Updates a webhook config's `targetUrl`/`eventTypes`. Requires a valid JWT.
+
+**Path parameters:** `id`.
+
+**Request body:** same `UpdateWebhookConfigRequest` as create.
+
+**Response** — `200 OK` with `WebhookConfigResponse` (`webhookSecret` omitted — the secret itself
+can't be changed via update, only rotated by deleting and recreating the config).
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `id` doesn't exist or
+doesn't belong to the caller's merchant. `enabled` is not settable through this endpoint (no way
+to disable a config without deleting it yet).
+
+## `DELETE /v1/merchants/webhooks/{id}`
+
+Deletes a webhook config. Requires a valid JWT.
+
+**Path parameters:** `id`.
+
+**Response** — `204 No Content`.
+
+**Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `id` doesn't exist or
+doesn't belong to the caller's merchant.
