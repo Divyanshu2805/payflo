@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -126,10 +125,6 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
 
         List<Payment> paymentList = paymentRepository.findByOrder_Id(order);
-
-//        return paymentList.stream().map(
-//                payment -> paymentMapper.toResponse(payment)
-//        ).collect(Collectors.toList());
 
         return paymentMapper.toResponseList(paymentList);
     }
