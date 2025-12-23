@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Phase 1 (monolith) is feature-frozen as of 2025-12-16 — all new work targets the microservices
+> split.** See the "Phase 1 (monolith) is feature-frozen" paragraph further down in this section for
+> what that changes (including reversing the old "no service-splitting infrastructure" rule), and
+> `docs/status.md`'s "Phase 1 → Phase 2 handoff" for exactly what's carried forward unfinished.
+
 ## Project state
 
 All 15 planned entities are now implemented (`common/entity`, `common/enums`, `merchant/entity`,
@@ -100,28 +105,45 @@ missing `GlobalExceptionHandler` entry for `BusinessRuleViolationException`, a d
 regression noted above), and a topic-name mismatch between the outbox publisher and this consumer
 for `refund`/`settlement` events specifically.
 
-**This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
-single Spring Boot application first, then split it into microservices as a separate later phase. The
-microservices architecture in [docs/architecture.md](docs/architecture.md#target) is the phase-two destination,
-not a description of where the code is heading next.
+**Phase 1 (monolith) is feature-frozen as of 2025-12-16.** The plan was always to build the entire
+system as a single Spring Boot application first, then split it into microservices as a separate
+later phase — see the original reasoning below. The user has now explicitly said it's time: no new
+functional work is planned against the monolith (see `docs/status.md`'s "Phase 1 → Phase 2 handoff"
+under [Project Status](docs/status.md) for exactly what's carried forward
+unfinished), and **all work from here targets the microservices split** in
+[docs/architecture.md](docs/architecture.md#target). Earlier versions of this file said not to add, scaffold,
+or propose service-splitting infrastructure — no API gateway, service discovery, config server, or
+inter-service clients — **until the user explicitly says it's time to split; that condition has now
+been met.** Scaffolding those is the expected next work, not something to still hold off on. (This
+paragraph itself is the record of that decision — don't treat silence in some future stale copy of
+this file as license to start splitting on your own judgment; confirm this paragraph is still dated
+2025-12-16 or later, or check with the user, before treating the split as authorized.)
 
-Practically, that means: **do not add, scaffold, or propose service-splitting infrastructure** — no API
-gateway, service discovery/Eureka, config server, or inter-service HTTP/Feign clients — until the user
-explicitly says it's time to split. Suggesting them now is premature. Where a design decision would go
-one way in a monolith and another in microservices, take the monolith answer and note the future-split
-implication in a line rather than building for it.
+The original reasoning, kept for context: domain boundaries are cheap to move inside one codebase
+and expensive to move once they're network calls between separately deployed services. Building the
+whole thing as a monolith first let those boundaries be found and corrected while a mistake cost a
+refactor instead of a migration, and avoided paying for distributed-systems machinery before there
+was anything worth scaling independently. Three conventions were held from day one specifically to
+keep this split cheap once it was time — and they're exactly what makes the split tractable now:
 
-**Kafka was added 2025-12-16**, despite this file previously listing "Kafka or other broker" alongside
-the service-splitting infrastructure above — flagging that explicitly since it reads as a direct
-reversal of that guidance and wasn't called out as a deliberate exception when it landed. In practice
-it's used entirely *within* the single deployable: a transactional outbox
-(`payment/outbox`) inserts domain-event rows in the same DB transaction as the write, a scheduled
-poller (`OutboxPoller`) publishes them, and an in-process `@KafkaListener`
-(`operations/webhook/WebhookKafkaConsumer`) reads them straight back out to drive webhook delivery —
-there's no second service on the other end, no inter-service contract, and nothing here anticipates the
-future split any more than any other domain boundary does. Whether "an event bus inside the monolith"
-is an acceptable case is a call worth the user making explicitly rather than inferring from the code
-that already exists — treat it as decided only once they've said so, not because it compiled and ran.
+- **Domain-oriented packages** (`common`, `merchant`, `payment`, `vault`, `operations`) rather than
+  layer-oriented ones, so each domain is already a candidate service boundary.
+- **No cross-domain foreign keys** — cross-domain references are plain UUIDs, because a real FK
+  can't span two databases and would have to be torn out at split time anyway.
+- **Shared types isolated in `common`**, so what becomes a shared library (or gets duplicated per
+  service) is already identifiable.
+
+**Kafka was added 2025-12-16**, for the transactional outbox (`payment/outbox`) and webhook
+delivery pipeline (`operations/webhook`) — at the time flagged here as a tension with the
+"no broker until it's time to split" rule, since it landed while the monolith was still nominally
+the active phase. With the split now explicitly underway, that tension is resolved: the outbox
+pattern this Kafka usage already follows (write to a local table in the same transaction, publish
+asynchronously) is the standard way to get events out of a soon-to-be-split service without dual
+writes, and `OutboxPoller`/`WebhookKafkaConsumer` are a reasonable starting shape for what becomes
+real inter-service messaging once `payment`/`operations` (and eventually `merchant`) are separate
+deployables. Revisit topic naming, partitioning, and consumer group layout once the actual service
+boundaries are drawn — today's topics (`app.kafka.topics.*`) were sized for "one consumer inside
+the same JVM," not for multiple independently-scaled services.
 
 Package layout is domain-oriented, not layered-by-technical-role — `common` (shared `BaseEntity`,
 `Money`, enums, exceptions, `util` — e.g. `RandomizerUtil` for `SecureRandom`-backed key/secret
