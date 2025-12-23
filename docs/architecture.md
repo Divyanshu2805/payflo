@@ -24,26 +24,45 @@ day one:
   UUID, because a real FK can't span two databases and would have to be torn out at split time anyway.
 - **Shared types isolated in `common`**, so what would become a shared library is already identifiable.
 
-Everything under **Target** below is the destination, not the current state, and not work in progress.
+**As of 2025-12-16, phase 1 is feature-frozen and the split into Target below begins.** "Today"
+is now a snapshot of the final monolith state, not a moving description of current work.
 
-## Today
+## Today (final monolith state, frozen 2025-12-16)
 
-- A **single Spring Boot application** — one deployable, one database, no service-to-service calls.
-- Base package `com.project.payflo`, organized by **domain**, not by technical layer — each domain owns
-  its own `entity` (and eventually `service`/`repository`/`controller`) subpackages, anticipating the
-  eventual microservices split below:
-  - `common` — shared value types and enums used across domains (`BaseEntity`, `Money`, status/type enums).
-  - `merchant` — merchant, API key, dashboard user, and customer entities.
-  - `payment` — order, payment, refund, and payment-transition-log entities.
-- Only the JPA entity layer exists so far — no `repository`, `service`, or `controller` layers, no APIs.
-  The app compiles and can create its schema, but there's nothing to call yet.
+- A **single Spring Boot application** — one deployable, one database, no inter-service network
+  calls. Kafka is in use, but entirely in-process (a transactional outbox and its own consumer
+  inside the same JVM) — see [Practices](practices.md) and the Kafka callout in
+  [CLAUDE.md](CLAUDE.md).
+- Base package `com.project.payflo`, organized by **domain**, not by technical layer — each domain
+  owns its own `entity`/`repository`/`service`/`controller` subpackages (`operations` is the
+  exception — Kafka-consumer classes instead of a classic service layer, see
+  [Practices](practices.md)), anticipating the microservices split below:
+  - `common` — shared value types, enums, exceptions, and config (`BaseEntity`, `Money`, AES
+    encryption, Kafka/Redis config) used across domains.
+  - `merchant` — merchant, API key, dashboard user, customer, and webhook-config entities, plus
+    auth (JWT + API key), rate limiting, and webhook config CRUD.
+  - `payment` — order, payment, refund, payment-transition-log, and outbox-event entities, plus the
+    order/payment lifecycle, the payment gateway/processor adapter layers, and the transactional
+    outbox.
+  - `vault` — card tokenization/vaulting, isolated encryption config.
+  - `operations` — webhook delivery pipeline (Kafka consumer → retry → DLQ); settlement and
+    analytics not started.
+- A full REST API exists — see [Project Status](status.md) for the count and
+  [APIs](api.md) for every endpoint. Refunds, settlement, and analytics were never built; see
+  [Phase 1 → Phase 2 handoff](status.md#phase-1--phase-2-handoff) for the complete carried-forward list.
 - Standard Spring Boot layout otherwise (`src/main/java`, `src/main/resources`, `src/test/java`).
 
 ## Target
 
-The **phase-two** architecture, to be built only after the monolith is complete. None of this exists
-yet — no gateway, no service discovery, no message broker, no per-service databases — and none of it is
-in progress. It's recorded here as the destination the conventions above are protecting the option to
+The **phase-two** architecture, now being built. The `common`/`merchant`/`payment`/`vault`/
+`operations` package boundaries above and the no-cross-domain-FK convention exist specifically to
+make this split cheap. None of the system/business-service split below exists yet — no gateway, no
+service discovery, no config server, no per-service databases — but the message broker in the
+diagram's **Data and Messaging** layer is a head start: Kafka is already running (locally, via
+`services.docker-compose.yaml`) and already carries the domain events (`payments.events`/
+`orders.events`/etc.) that a split `payment-service`/`operations-service` would need to exchange —
+today's producer (`OutboxPoller`) and consumer (`WebhookKafkaConsumer`) just happen to run in the
+same JVM. It's recorded here as the destination the conventions above were protecting the option to
 reach.
 
 ```mermaid

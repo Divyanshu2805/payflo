@@ -46,20 +46,24 @@ brings up all three (plus a Kafka control-center UI) for local development.
 
 ## Project Status
 
-**Phase 1 of 2 — monolith.** The system is being built as a single Spring Boot application first, with
-the split into microservices planned as a deliberate second phase. Domain boundaries are cheap to move
-inside one codebase and expensive to move once they're network calls, so they're being settled first —
-the package layout and the no-cross-domain-foreign-key convention exist to keep that later split cheap.
+**Phase 1 (monolith) is feature-frozen as of 2025-12-16.** The system was built as a single Spring
+Boot application first, on purpose — domain boundaries are cheap to move inside one codebase and
+expensive to move once they're network calls, so the package layout and the
+no-cross-domain-foreign-key convention exist to keep the split cheap. That split now begins; all
+new work targets the microservices architecture in
+[docs/architecture.md](docs/architecture.md#target).
 
 Domain model (see the Entity Relationship Diagram in [docs/schema.md](docs/schema.md)) is
-fully implemented as JPA entities. A working API now spans five domains — merchant (signup, login,
-API key management, webhook config), order and payment lifecycles (create/cancel/list,
+fully implemented as JPA entities. The monolith's working API spans five domains — merchant (signup,
+login, API key management, webhook config), order and payment lifecycles (create/cancel/list,
 initiate/capture, card tokenization), all backed by real JWT authentication
 (`JwtAuthenticationFilter` resolves the caller's merchant on every request via `MerchantContext`).
 Order and payment writes publish domain events through a Kafka-backed transactional outbox, which a
-separate consumer turns into signed webhook deliveries with retries and a dead-letter queue — with
-settlement and refunds still to come. See [docs/status.md](docs/status.md)
-for the detailed status table and known gaps.
+separate consumer turns into signed webhook deliveries with retries and a dead-letter queue.
+Settlement, refunds, and analytics were never started, and a handful of known gaps (idempotency
+enforcement, role/permission checks, rate-limiter edge cases, and more) remain open — see
+[docs/status.md](docs/status.md#phase-1--phase-2-handoff) for the full carried-forward list
+going into the split.
 
 ## Documentation
 
