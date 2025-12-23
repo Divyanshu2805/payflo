@@ -198,40 +198,26 @@ dropped vs. still planned:
     `previousKeySecretHash` to fall back on. Also: an unknown `keyId` isn't negatively cached, so
     every request with a bogus key still reaches Postgres, and `RedisApiKeyCache.evict` (unlike
     `get`/`put`) has no `try/catch`, so a Redis outage would make it throw.
-23. **`BusinessRuleViolationException` has no `@ExceptionHandler`.** Introduced (2025-12-16) to
-    replace `ConflictException` at two throw sites (`OrderServiceImpl.cancel`'s
-    `ORDER_CANNOT_CANCEL`, `PaymentServiceImpl.initiate`'s `ORDER_NOT_PAYABLE`), but
-    `GlobalExceptionHandler` was never given a matching handler the way it has one for
-    `ConflictException` (still used elsewhere, e.g. `ApiKeyServiceImpl`). Both of those calls
-    currently surface as an unhandled `500` instead of the intended `409`.
-24. **`PaymentTransitionLog.reason` regressed back to always `null` on `AUTHORIZE_FAIL`/
+23. ~~`BusinessRuleViolationException` has no `@ExceptionHandler`~~ — **resolved (2025-12-16):**
+    `GlobalExceptionHandler` now has a `handleBusinessRuleViolation` mapping it to `409`, the same
+    way `ConflictException` (still used elsewhere, e.g. `ApiKeyServiceImpl`) is handled.
+    `OrderServiceImpl.cancel`'s `ORDER_CANNOT_CANCEL` and `PaymentServiceImpl.initiate`'s
+    `ORDER_NOT_PAYABLE` now correctly return `409` instead of an unhandled `500`.
+24. ~~`PaymentTransitionLog.reason` regressed back to always `null` on `AUTHORIZE_FAIL`/
     `CAPTURE_FAIL`, and `PaymentServiceImpl.capture` silently drops `Pending`/`null` capture
-    results.** Known gap 5 describes `PaymentServiceImpl` passing the processor's
-    `errorDescription` as the transition reason — while adding outbox event publishing
-    (2025-12-16) those three call sites were rewritten from the three-arg
-    `paymentTransitionService.apply(payment, event, reason)` to the two-arg overload, dropping the
-    reason again. `errorCode`/`errorDescription` are still set on the `Payment` row itself, so the
-    failure detail isn't lost — just no longer mirrored onto the transition log row that's meant to
-    carry it. The same commit also rewrote `capture`'s exhaustive `switch` over `PaymentResult`
-    into an `if PaymentResult.Success ... else if PaymentResult.Failure ...` chain with no branch
-    for `Pending` or `null` — previously `Pending` fired `CAPTURE_PENDING` and a `null` result set
-    `status = AUTHORIZED` directly; now either case falls through doing nothing; the payment stays
-    `CAPTURING` (set by the preceding `CAPTURE_REQUEST` transition) with no error recorded, and the
-    endpoint still returns `200 OK`. Currently dormant in practice: gap 9 means no payment ever
-    reaches `AUTHORIZED` today, so `capture` is always rejected with `409
-    INVALID_STATE_TRANSITION` before this code runs — but it would misbehave silently the moment
-    gap 9 is resolved and an adapter's `capture()` returns anything other than `Success`.
-25. **Webhook delivery consumes the wrong topic names for refund and settlement events.**
-    `WebhookKafkaConsumer`'s `@KafkaListener` topic placeholders are plural
-    (`app.kafka.topics.payments`/`.orders`/`.refunds`/`.settlements`), but `KafkaProperties`/
-    `application.yaml` key them singular (`payment`/`order`/`refund`/`settlement`). Since the
-    plural keys don't exist, Spring falls back to the listener's literal default strings
-    (`payments.events`/`orders.events`/`refunds.events`/`settlements.events`). That happens to
-    match what `OutboxPoller` actually publishes to for `payment`/`order`
-    (`payments.events`/`orders.events`), but not for `refund`/`settlement`, which publish to
-    `refund.events`/`settlement.events` (singular) — a mismatch that won't surface until something
-    actually publishes a `REFUND`/`SETTLEMENT` outbox event, since neither is produced yet.
-    Separately, `WebhookDeliverExecutor`'s `webhook.delivery.signature-header` property is missing
-    the `app.` prefix every other webhook config key uses (`app.webhook.delivery.*`) — harmless
-    today since it's unset and falls back to its `X-Razorpay-Signature` default, but overriding it
-    through the established namespace wouldn't work.
+    results~~ — **resolved (2025-12-16):** the three `AUTHORIZE_FAIL`/`CAPTURE_FAIL` call sites in
+    `PaymentServiceImpl` (`initiate`, `capture`, `resolveAuthorization`) once again pass
+    `failure.errorDescription()`/`errorDescription` as the transition reason. `capture` and the
+    auto-capture branch of `resolveAuthorization` are back to an exhaustive `switch` over
+    `PaymentResult` with `Pending` (fires `CAPTURE_PENDING`) and `null` (sets `status = AUTHORIZED`
+    directly) branches restored, matching the behavior Known gap 5 originally described. The
+    leftover commented-out dead code in both methods (non-locking finder variants, a stray
+    `Collectors.toList()` stream in `OrderServiceImpl.listPayments`) was also removed.
+25. ~~Webhook delivery consumes the wrong topic names for refund and settlement events~~ —
+    **resolved (2025-12-16):** `WebhookKafkaConsumer`'s `@KafkaListener` topic placeholders now key
+    off the same singular property names `KafkaProperties`/`application.yaml` use
+    (`app.kafka.topics.payment`/`.order`/`.refund`/`.settlement`), with defaults matching what
+    `OutboxPoller` actually publishes to (`payments.events`/`orders.events`/`refund.events`/
+    `settlement.events`). `WebhookDeliverExecutor`'s signature-header property is now
+    `app.webhook.delivery.signature-header`, consistent with the rest of the webhook config
+    namespace.

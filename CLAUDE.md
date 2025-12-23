@@ -93,12 +93,12 @@ signed `WebhookEvent` row per subscribed target, `WebhookDeliveryScheduler` drai
 sorted-set retry queue on virtual threads and drives `WebhookDeliverExecutor` (fixed backoff,
 1m→24h over 7 attempts), and `WebhookDlqRecorder` records a `DlqEvent` once attempts are exhausted
 or a record fails before it's ever persisted. See the Kafka callout right below for why this
-exists despite the monolith-first stance, and `docs/gaps.md`'s Known gaps 23–25 for three bugs
-found while documenting this feature (a missing `GlobalExceptionHandler` entry for
-`BusinessRuleViolationException`, a dropped `PaymentTransitionLog.reason` on
-`AUTHORIZE_FAIL`/`CAPTURE_FAIL`, and a topic-name mismatch between the outbox publisher and this
-consumer for `refund`/`settlement` events specifically) — none fixed yet, flagged rather than
-silently patched.
+exists despite the monolith-first stance, and `docs/gaps.md`'s Known gaps 23–25 (all marked
+resolved 2025-12-16) for three bugs found and fixed the same day while documenting this feature: a
+missing `GlobalExceptionHandler` entry for `BusinessRuleViolationException`, a dropped
+`PaymentTransitionLog.reason` on `AUTHORIZE_FAIL`/`CAPTURE_FAIL` (plus the `Pending`/`null` capture
+regression noted above), and a topic-name mismatch between the outbox publisher and this consumer
+for `refund`/`settlement` events specifically.
 
 **This is a monolith, on purpose, and stays one for now.** The plan is to build the entire system as a
 single Spring Boot application first, then split it into microservices as a separate later phase. The
@@ -147,12 +147,11 @@ wraps it — applies a transition, writes a `PaymentTransitionLog` row, sets `Pa
 `PaymentServiceImpl.initiate`/`capture` now go through it for their status changes, including a
 `CAPTURE_PENDING` self-transition (`CAPTURING` → `CAPTURING`) for a `Pending` capture result — kept
 in `CAPTURING` rather than reverting to `AUTHORIZED`, since a genuinely in-flight capture being
-retried risks a double capture. **This description is stale as of 2025-12-16**: while wiring outbox
-event publishing, `PaymentServiceImpl.capture`'s exhaustive `switch` over `PaymentResult` was
-rewritten to an `if PaymentResult.Success ... else if PaymentResult.Failure ...` chain with no
-branch left for `Pending` or `null` at all — both cases now silently do nothing (no transition, no
-field update), instead of `Pending` firing `CAPTURE_PENDING` or `null` setting `status =
-AUTHORIZED` directly as described above. Not yet fixed; see `docs/gaps.md`'s Known gap 24. One
+retried risks a double capture. A `null` capture result (adapter not implemented) still sets
+`status` directly to `AUTHORIZED`, since that's not a real domain event. (Briefly regressed to an
+`if/else instanceof` chain with no `Pending`/`null` branch while wiring outbox event publishing on
+2025-12-16, caught the same day and restored to the exhaustive `switch` described here — see
+`docs/gaps.md`'s Known gap 24 for the writeup.) One
 practical consequence: since no payment ever reaches `AUTHORIZED` through any live path
 yet (see above — every processor's happy path returns `Pending`, which doesn't advance past
 `AUTHORIZING`), every `capture` call currently gets rejected with `409 INVALID_STATE_TRANSITION`
