@@ -116,8 +116,7 @@
   `WebhookDlqRecorder` marks the event `DEAD` and writes a `DlqEvent` in its own `REQUIRES_NEW`
   transaction (survives the caller's transaction rolling back). A record that fails before it even
   becomes a `WebhookEvent` (e.g. the consumer itself throwing) is DLQ'd the same way, with no
-  `WebhookEvent` link. See [Known gaps](gaps.md) item 25 for a topic
-  naming bug in the consumer's `@KafkaListener`.
+  `WebhookEvent` link.
 - `payment/simulator` mocks the async, bank-side half of a payment (the part `PaymentProcessor`'s
   synchronous mock-acquirer logic doesn't cover) — a config-driven **`BankCallbackSimulator`**
   (currently disabled again, see [Known gaps](gaps.md)) polls for
@@ -132,13 +131,12 @@
   interface + impl (`service`/`service.impl`) constructor-injected and `@Transactional`; controllers
   under `/v1/...`.
 - Error handling: custom exceptions (`DuplicateResourceException`, `ResourceNotFoundException`,
-  `ConflictException`, `InvalidStateTransitionException`, `UnsupportedPaymentMethodException`) live
+  `ConflictException`, `BusinessRuleViolationException`, `InvalidStateTransitionException`,
+  `UnsupportedPaymentMethodException`) live
   in `common/exception`, extend `RuntimeException`, and carry an `errorCode`. A single
   `@RestControllerAdvice` (`GlobalExceptionHandler`, also in `common/exception`) maps them to the
-  right HTTP status (`409`/`404`/`409`/`409`/`400` respectively) and a shared `ErrorResponse`
-  record (`errorCode`, `errorDescription`, `timestamp`, optional `fieldErrors`).
-  `BusinessRuleViolationException` (added 2025-12-16, same shape as `ConflictException`) doesn't
-  yet follow this pattern — see [Known gaps](gaps.md) item 23. Also handles Bean
+  right HTTP status (`409`/`404`/`409`/`409`/`409`/`400` respectively) and a shared `ErrorResponse`
+  record (`errorCode`, `errorDescription`, `timestamp`, optional `fieldErrors`). Also handles Bean
   Validation failures (`MethodArgumentNotValidException` → `400`, `VALIDATION_FAILED`, with
   per-field `fieldErrors` populated from the binding result), Spring Security's
   `AuthenticationException` (→ `401`, `INVALID_CREDENTIALS` — covers both a wrong login password

@@ -206,11 +206,9 @@ API key, not a JWT.
 **Response** — `200 OK` with `OrderResponse`: the order with `status` now `CANCELLED`.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the caller's merchant, and is *meant* to reject with `409 Conflict`
+exist or doesn't belong to the caller's merchant, and with `409 Conflict`
 (`BusinessRuleViolationException`, code `ORDER_CANNOT_CANCEL`) if the order is already `CANCELLED`
-or `PAID` — but currently returns an unhandled `500` instead, see [Known
-gaps](gaps.md) item 23. On success, publishes an `ORDER_CANCELLED`
-event to the outbox.
+or `PAID`. On success, publishes an `ORDER_CANCELLED` event to the outbox.
 
 ## `GET /v1/orders/{orderId}/payments`
 
@@ -244,10 +242,9 @@ see the note on `PaymentAdapter` below for the per-method mock-acquirer rules.
 **Behavior:** locks the order row (`SELECT ... FOR UPDATE` via
 `OrderRepository.findByIdAndMerchantIdForUpdate`) to serialize concurrent payment attempts against
 the same order; rejects with `404 Not Found` (`ResourceNotFoundException`) if `orderId` doesn't
-exist or doesn't belong to the caller's merchant, and is *meant* to reject with `409 Conflict`
+exist or doesn't belong to the caller's merchant, and with `409 Conflict`
 (`BusinessRuleViolationException`, code `ORDER_NOT_PAYABLE`) unless the order is `CREATED` or
-`ATTEMPTED` — but currently returns an unhandled `500` instead, see [Known
-gaps](gaps.md) item 23. On success: sets the order
+`ATTEMPTED`. On success: sets the order
 to `ATTEMPTED` and increments its `attempts`, creates a `Payment` row (`status = CREATED`, a fresh
 random `idempotencyKey` — not yet enforced, see [Known gaps](gaps.md)),
 fires `AUTHORIZE_ATTEMPT` through `PaymentTransitionService` (`CREATED` → `AUTHORIZING`), and
@@ -255,8 +252,8 @@ routes the request through `PaymentGatewayRouter` to the method's `PaymentAdapte
 `PaymentResult` is then applied to the `Payment`: `Pending` sets `processorReference` (status stays
 `AUTHORIZING` — nothing advances it further yet, so `POST .../capture` always rejects for now, see
 [Known gaps](gaps.md)); `Failure` fires `AUTHORIZE_FAIL` (`status =
-FAILED`, plus `errorCode`/`errorDescription` — no longer mirrored onto the transition log's
-`reason`, see item 24); `Success` is treated as an invalid synchronous state
+FAILED`, plus `errorCode`/`errorDescription`, also recorded as the transition log's `reason`);
+`Success` is treated as an invalid synchronous state
 and discarded (`return null`) — currently unreachable dead code, since no processor produces
 `Success` today (see below). On success, publishes a `PAYMENT_CREATED` event to the outbox. Each processor's mock logic recognizes several distinct test
 scenarios — modeled on how real gateway sandboxes (Stripe/Razorpay-style test cards, NPCI-style
@@ -318,11 +315,11 @@ merchant. Fires `CAPTURE_REQUEST` through `PaymentTransitionService` (`AUTHORIZE
 `PaymentGatewayRouter.capture(method, paymentId)` and applies the result via the same service:
 `Success` fires `CAPTURE_SUCCESS` (`status = CAPTURED`, sets `capturedAt`); `Failure` fires
 `CAPTURE_FAIL` (reverts to `status = AUTHORIZED`, retryable, with `errorCode`/`errorDescription`,
-though no longer recorded as the transition log's `reason` — see [Known
-gaps](gaps.md) item 24); `Pending` and a `null` result (adapter not
-implemented) currently do nothing at all — no transition, no field update — a regression also
-covered in item 24 (previously `Pending` fired `CAPTURE_PENDING` and `null` set
-`status = AUTHORIZED` directly). On success, publishes a `PAYMENT_STATUS_CHANGED` event to the
+also recorded as the transition log's `reason`); `Pending` fires `CAPTURE_PENDING` (a
+self-transition — stays `CAPTURING`, since a retry while the original attempt is still genuinely in
+flight risks a double capture); a `null` result (adapter not implemented) sets `status =
+AUTHORIZED` directly, without going through the transition service, since that's not a real domain
+event. On success, publishes a `PAYMENT_STATUS_CHANGED` event to the
 outbox. In practice: no payment currently ever reaches
 `AUTHORIZED` through any live path — nothing fires `AUTHORIZE_SUCCESS` anywhere yet, since every
 processor's happy path returns `Pending` (which just sets `processorReference` and leaves the
