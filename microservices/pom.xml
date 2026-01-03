@@ -9,5 +9,6 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>common-lib</module>
     </modules>
 </project>
