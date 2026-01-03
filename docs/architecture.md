@@ -65,6 +65,9 @@ today's producer (`OutboxPoller`) and consumer (`WebhookKafkaConsumer`) just hap
 same JVM. It's recorded here as the destination the conventions above were protecting the option to
 reach.
 
+The split is built under `microservices/` (Maven aggregator, one module per service) — module-by-module
+progress is tracked in [Microservices](microservices.md).
+
 ```mermaid
 flowchart LR
     subgraph clients["External Clients"]

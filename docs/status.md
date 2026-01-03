@@ -2,15 +2,16 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2025-12-16._
+_Last updated: 2026-01-03._
 
-**Phase 1 of 2 — monolith.** The whole system is being built as a single Spring Boot application first;
-the microservices split is a deliberate later phase. See
-[Build strategy](architecture.md#build-strategy-monolith-first) for why.
+**Phase 2 of 2 — microservices split, in progress.** Phase 1 (the monolith) is frozen; the split is
+being built under `microservices/` — see [Microservices](microservices.md) for per-module progress.
+The table below is the final phase 1 (monolith) state. See
+[Build strategy](architecture.md#build-strategy-monolith-first) for why it was built monolith-first.
 
 | Area | Status |
 |---|---|
-| Architecture | Monolith (phase 1) — single app, single database |
+| Architecture | Monolith (phase 1) frozen; microservices split (phase 2) started under `microservices/` — see [Microservices](microservices.md) |
 | Domain entities | 17 built — all 15 originally planned entities, plus `RefreshToken` (added 2025-12-08) and `OutboxEvent` (added 2025-12-16), neither in the original v1 design |
 | Domain enums | Complete for the merchant, payment, vault, and operations domains |
 | Repositories | Started — `merchant` (`AppUserRepository`, `RefreshTokenRepository`, `MerchantRepository`, `ApiKeyRepository`, `CustomerRepository`, `WebhookConfigRepository`), `payment` (`OrderRepository`, `PaymentRepository`, `PaymentTransitionLogRepository`, `OutboxEventRepository`), `vault` (`VaultCardRepository`, `CardTokenRepository`), and `operations` (`WebhookEventRepository`, `DlqEventRepository`) domains |
