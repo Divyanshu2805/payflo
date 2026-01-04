@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-03._
+_Last updated: 2026-01-04._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -17,7 +17,7 @@ independently buildable and deployable.
 
 | Module | Port | Status |
 |---|---|---|
-| `common-lib` | — | In progress — shared `BaseEntity`, `Money`, and the 16 domain enums |
+| `common-lib` | — | In progress — base types, enums, shared exception handling |
 | `discovery-service` | 8761 | Not started |
 | `config-service` | 8888 | Not started |
 | `merchant-service` | 8081 | Not started |
@@ -48,3 +48,10 @@ extracted equivalent of the monolith's `common` package. Package root
   `PaymentEvent`, `OrderStatus`, `RefundStatus`, `SettlementStatus`, `WebhookEventStatus`,
   `EventAggregateType`, `OutboxStatus`, ...) so every service speaks the same status strings — see
   [Domain Vocabulary](domain-vocabulary.md).
+- `exception` — the monolith's exception hierarchy (`ResourceNotFoundException`,
+  `DuplicateResourceException`, `InvalidStateTransitionException`,
+  `BusinessRuleViolationException`, `IdempotencyConflictException`, `RateLimitException`) plus a
+  single `GlobalExceptionHandler` and the shared `ErrorResponse` body. It's registered through
+  `SharedExceptionAutoConfiguration` in `META-INF/spring/...AutoConfiguration.imports`, so any
+  service that depends on `common-lib` gets identical error shapes and status codes without
+  component-scanning the library's packages.
