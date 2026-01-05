@@ -1,1 +1,3 @@
 com.project.payflo.common_lib.exception.SharedExceptionAutoConfiguration
+com.project.payflo.common_lib.web.SharedWebFilterAutoConfiguration
+com.project.payflo.common_lib.audit.SharedAuditAutoConfiguration

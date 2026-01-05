@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-04._
+_Last updated: 2026-01-05._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -17,7 +17,7 @@ independently buildable and deployable.
 
 | Module | Port | Status |
 |---|---|---|
-| `common-lib` | — | In progress — base types, enums, shared exception handling |
+| `common-lib` | — | In progress — base types, enums, exceptions, merchant context propagation |
 | `discovery-service` | 8761 | Not started |
 | `config-service` | 8888 | Not started |
 | `merchant-service` | 8081 | Not started |
@@ -55,3 +55,12 @@ extracted equivalent of the monolith's `common` package. Package root
   `SharedExceptionAutoConfiguration` in `META-INF/spring/...AutoConfiguration.imports`, so any
   service that depends on `common-lib` gets identical error shapes and status codes without
   component-scanning the library's packages.
+- `context` / `web` — `MerchantContext` (request-scoped merchant id / API key id) and
+  `MerchantContextFilter`. In the monolith, the security filters resolved the caller's merchant
+  in-process; after the split, **authentication happens once at the API gateway**, which forwards the
+  resolved identity as `X-Merchant-Id` / `X-Key-Id` headers. `MerchantContextFilter` reads those
+  headers back into `MerchantContext` on every downstream service, so controllers keep calling
+  `merchantContext.getMerchantId()` exactly as before. Controlled by
+  `app.security.trust-inbound-headers` (default `true`); the gateway itself sets it to `false`.
+- `audit` — `AuditorAwareImpl` for `createdBy`/`updatedBy`, reading `MerchantContext` (API key id,
+  then `merchant_id: <uuid>`, then `SYSTEM` outside a request) — same rules as the monolith.
