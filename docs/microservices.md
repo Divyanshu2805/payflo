@@ -17,7 +17,7 @@ independently buildable and deployable.
 
 | Module | Port | Status |
 |---|---|---|
-| `common-lib` | — | In progress — base types, enums, exceptions, merchant context, encryption/signing, rate limiting |
+| `common-lib` | — | In progress — adds idempotency filter and API key cache |
 | `discovery-service` | 8761 | Not started |
 | `config-service` | 8888 | Not started |
 | `merchant-service` | 8081 | Not started |
@@ -72,3 +72,8 @@ extracted equivalent of the monolith's `common` package. Package root
 - `ratelimit` — the four Redis-backed `RateLimiter` implementations from the monolith (fixed
   window, sliding window, sliding window via Lua, token bucket via Lua), one active at a time via
   `app.rate-limit.method`. In phase 2 only the API gateway enforces rate limits.
+- `idempotency` — `IdempotencyFilter` + `RedisIdempotencyStore` (an `Idempotency-Key` on a write
+  replays the stored response for 24h). Exposed as a bean; each service that wants it registers the
+  filter itself (payment-service does).
+- `cache` — `ApiKeyCache` / `RedisApiKeyCache`, so the gateway can authenticate API keys without a
+  round trip to merchant-service on every request (5 minute TTL).
