@@ -2,3 +2,4 @@ com.project.payflo.common_lib.exception.SharedExceptionAutoConfiguration
 com.project.payflo.common_lib.web.SharedWebFilterAutoConfiguration
 com.project.payflo.common_lib.audit.SharedAuditAutoConfiguration
 com.project.payflo.common_lib.util.SharedSecurityAutoConfiguration
+com.project.payflo.common_lib.idempotency.SharedResilienceAutoConfiguration
