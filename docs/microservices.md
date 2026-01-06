@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-05._
+_Last updated: 2026-01-06._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -17,7 +17,7 @@ independently buildable and deployable.
 
 | Module | Port | Status |
 |---|---|---|
-| `common-lib` | — | In progress — base types, enums, exceptions, merchant context propagation |
+| `common-lib` | — | In progress — base types, enums, exceptions, merchant context, encryption/signing |
 | `discovery-service` | 8761 | Not started |
 | `config-service` | 8888 | Not started |
 | `merchant-service` | 8081 | Not started |
@@ -64,3 +64,8 @@ extracted equivalent of the monolith's `common` package. Package root
   `app.security.trust-inbound-headers` (default `true`); the gateway itself sets it to `false`.
 - `audit` — `AuditorAwareImpl` for `createdBy`/`updatedBy`, reading `MerchantContext` (API key id,
   then `merchant_id: <uuid>`, then `SYSTEM` outside a request) — same rules as the monolith.
+- `config/AesEncryptionConfig` + `util` — AES-256-GCM master-key encryptor, `RandomizerUtil`
+  (`SecureRandom`-backed keys/secrets), `SignerUtil` (HMAC-SHA256 for webhook signatures).
+  `SharedSecurityAutoConfiguration` only creates the encryptor beans a service actually configures
+  a key for — `vault.master-key` (vault-service) and `webhook.secret-encryption-key`
+  (merchant-service) — so no service holds a key it doesn't need.
