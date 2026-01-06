@@ -17,7 +17,7 @@ independently buildable and deployable.
 
 | Module | Port | Status |
 |---|---|---|
-| `common-lib` | — | In progress — base types, enums, exceptions, merchant context, encryption/signing |
+| `common-lib` | — | In progress — base types, enums, exceptions, merchant context, encryption/signing, rate limiting |
 | `discovery-service` | 8761 | Not started |
 | `config-service` | 8888 | Not started |
 | `merchant-service` | 8081 | Not started |
@@ -69,3 +69,6 @@ extracted equivalent of the monolith's `common` package. Package root
   `SharedSecurityAutoConfiguration` only creates the encryptor beans a service actually configures
   a key for — `vault.master-key` (vault-service) and `webhook.secret-encryption-key`
   (merchant-service) — so no service holds a key it doesn't need.
+- `ratelimit` — the four Redis-backed `RateLimiter` implementations from the monolith (fixed
+  window, sliding window, sliding window via Lua, token bucket via Lua), one active at a time via
+  `app.rate-limit.method`. In phase 2 only the API gateway enforces rate limits.
