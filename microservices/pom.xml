@@ -10,5 +10,6 @@
 
     <modules>
         <module>common-lib</module>
+        <module>discovery-service</module>
     </modules>
 </project>

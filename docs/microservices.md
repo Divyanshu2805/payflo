@@ -18,7 +18,7 @@ independently buildable and deployable.
 | Module | Port | Status |
 |---|---|---|
 | `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
-| `discovery-service` | 8761 | Not started |
+| `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Not started |
 | `merchant-service` | 8081 | Not started |
 | `vault-service` | 8083 | Not started |
@@ -84,3 +84,10 @@ extracted equivalent of the monolith's `common` package. Package root
   `PaymentProcessorResponse` (payment → vault), `PaymentSettlementView` / `SettlementBankDetails`
   (operations → payment/merchant), `WebhookTarget` (operations → merchant). Keeping them in one
   library means a contract change is a compile error on both sides, not a runtime surprise.
+
+## discovery-service
+
+A Netflix Eureka server (`@EnableEurekaServer`, port `8761`). Every other service registers with
+it as a Eureka client and resolves its peers by name (`lb://merchant-service`, Feign
+`@FeignClient(name = "vault-service")`, ...), so no service hardcodes another's host or port. It
+doesn't register with itself (`register-with-eureka: false`, `fetch-registry: false`).
