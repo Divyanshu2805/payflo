@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-06._
+_Last updated: 2026-01-07._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -17,7 +17,7 @@ independently buildable and deployable.
 
 | Module | Port | Status |
 |---|---|---|
-| `common-lib` | — | In progress — adds idempotency filter and API key cache |
+| `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
 | `discovery-service` | 8761 | Not started |
 | `config-service` | 8888 | Not started |
 | `merchant-service` | 8081 | Not started |
@@ -77,3 +77,10 @@ extracted equivalent of the monolith's `common` package. Package root
   filter itself (payment-service does).
 - `cache` — `ApiKeyCache` / `RedisApiKeyCache`, so the gateway can authenticate API keys without a
   round trip to merchant-service on every request (5 minute TTL).
+- `config/KafkaProperties` — `app.kafka.topics.*`, one topic per `EventAggregateType`
+  (`payments.events`, `orders.events`, `refunds.events`, `settlements.events`).
+- `dto` — the contracts for service-to-service calls: `FindOrCreateCustomerRequest`
+  (payment → merchant), `VaultChargeRequest` / `PaymentProcessorRequest` /
+  `PaymentProcessorResponse` (payment → vault), `PaymentSettlementView` / `SettlementBankDetails`
+  (operations → payment/merchant), `WebhookTarget` (operations → merchant). Keeping them in one
+  library means a contract change is a compile error on both sides, not a runtime surprise.
