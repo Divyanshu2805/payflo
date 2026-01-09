@@ -1,0 +1,26 @@
+# Shared by every service that imports config from config-service.
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+  threads:
+    virtual:
+      enabled: true
+
+jwt:
+  secret-key: ${JWT_SECRET:dont-use-in-prod-a9asd7fulasjdfaklsdfu98q3uhjdiosh897as9d8f7ua9osufdjilasdjf}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
