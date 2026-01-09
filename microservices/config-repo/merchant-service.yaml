@@ -1,0 +1,20 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: ${MERCHANT_DB_URL:jdbc:postgresql://localhost:5432/payflo_merchant}
+    username: ${DB_USER:user}
+    password: ${DB_PASS:password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  refresh-token-expiry-days: 7
+
+webhook:
+  secret-encryption-key: ${WEBHOOK_SECRET_KEY:arXfSlAXS4TRCw5tlKCFSwjG+D4C4ESUV47We3pw2eI=}

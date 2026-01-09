@@ -20,7 +20,7 @@ independently buildable and deployable.
 | `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
 | `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
-| `merchant-service` | 8081 | Not started |
+| `merchant-service` | 8081 | In progress — entities and repositories |
 | `vault-service` | 8083 | Not started |
 | `payment-service` | 8082 | Not started |
 | `operations-service` | 8084 | Not started |
@@ -103,3 +103,11 @@ credentials. Each service's own `application.yaml` holds only its name and
 (port, datasource, Kafka, Redis, secrets-with-dev-defaults) lives in `config-repo/<service>.yaml`,
 with `config-repo/application.yaml` shared by all of them (Eureka URL, Redis, JWT key, actuator
 exposure).
+
+## merchant-service
+
+Owns merchants, dashboard users, API keys, customers, and webhook configs — the monolith's
+`merchant` domain — with its own database (`payflo_merchant`, `MERCHANT_DB_URL`). Port `8081`.
+
+- Entities carried over unchanged in shape: `Merchant`, `AppUser`, `ApiKey`, `Customer`,
+  `MerchantWebhookConfig`, each with a plain `JpaRepository`.
