@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-07._
+_Last updated: 2026-01-09._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -19,7 +19,7 @@ independently buildable and deployable.
 |---|---|---|
 | `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
 | `discovery-service` | 8761 | Done — Eureka server |
-| `config-service` | 8888 | Not started |
+| `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Not started |
 | `vault-service` | 8083 | Not started |
 | `payment-service` | 8082 | Not started |
@@ -91,3 +91,15 @@ A Netflix Eureka server (`@EnableEurekaServer`, port `8761`). Every other servic
 it as a Eureka client and resolves its peers by name (`lb://merchant-service`, Feign
 `@FeignClient(name = "vault-service")`, ...), so no service hardcodes another's host or port. It
 doesn't register with itself (`register-with-eureka: false`, `fetch-registry: false`).
+
+## config-service
+
+A Spring Cloud Config server (`@EnableConfigServer`, port `8888`) using the **native** backend: it
+serves YAML straight from [`microservices/config-repo/`](../microservices/config-repo)
+(`CONFIG_REPO_PATH`, default `file:../config-repo` relative to the service's working directory), so
+config is versioned in this repo alongside the code instead of a separate Git repo with its own
+credentials. Each service's own `application.yaml` holds only its name and
+`spring.config.import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}`; everything else
+(port, datasource, Kafka, Redis, secrets-with-dev-defaults) lives in `config-repo/<service>.yaml`,
+with `config-repo/application.yaml` shared by all of them (Eureka URL, Redis, JWT key, actuator
+exposure).
