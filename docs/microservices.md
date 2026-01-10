@@ -20,7 +20,7 @@ independently buildable and deployable.
 | `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
 | `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
-| `merchant-service` | 8081 | In progress — entities, signup/login |
+| `merchant-service` | 8081 | In progress — entities, signup/login, API keys |
 | `vault-service` | 8083 | Not started |
 | `payment-service` | 8082 | Not started |
 | `operations-service` | 8084 | Not started |
@@ -120,3 +120,7 @@ Owns merchants, dashboard users, API keys, customers, and webhook configs — th
 - `security/WebSecurityConfig` is now just a `PasswordEncoder` bean plus the shared
   `IdempotencyFilter` registration — no `SecurityFilterChain`, because authentication is the
   gateway's job and merchant-service trusts the gateway-set identity headers.
+- `/v1/merchants/api-keys` (`ApiKeyController`) — generate (`POST`, secret returned once), list
+  (`GET`), revoke (`DELETE`), rotate (`POST /{keyId}/rotate`, 24h grace period on the previous
+  secret). Key ids are `fp_<environment>_<random>`. Merchant is taken from `MerchantContext`
+  (gateway-set `X-Merchant-Id`), never from the path.
