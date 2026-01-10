@@ -20,7 +20,7 @@ independently buildable and deployable.
 | `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
 | `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
-| `merchant-service` | 8081 | In progress — entities, signup/login, API keys |
+| `merchant-service` | 8081 | In progress — entities, signup/login, API keys, webhook configs |
 | `vault-service` | 8083 | Not started |
 | `payment-service` | 8082 | Not started |
 | `operations-service` | 8084 | Not started |
@@ -124,3 +124,6 @@ Owns merchants, dashboard users, API keys, customers, and webhook configs — th
   (`GET`), revoke (`DELETE`), rotate (`POST /{keyId}/rotate`, 24h grace period on the previous
   secret). Key ids are `fp_<environment>_<random>`. Merchant is taken from `MerchantContext`
   (gateway-set `X-Merchant-Id`), never from the path.
+- `/v1/merchants/webhooks` (`WebhookConfigController`) — webhook config CRUD, same contract as the
+  monolith: target URL, server-generated signing secret (returned once, AES-encrypted at rest with
+  `webhook.secret-encryption-key`), optional event-type filter.
