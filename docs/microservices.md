@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-09._
+_Last updated: 2026-01-10._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -20,7 +20,7 @@ independently buildable and deployable.
 | `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
 | `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
-| `merchant-service` | 8081 | In progress — entities and repositories |
+| `merchant-service` | 8081 | In progress — entities, signup/login |
 | `vault-service` | 8083 | Not started |
 | `payment-service` | 8082 | Not started |
 | `operations-service` | 8084 | Not started |
@@ -111,3 +111,12 @@ Owns merchants, dashboard users, API keys, customers, and webhook configs — th
 
 - Entities carried over unchanged in shape: `Merchant`, `AppUser`, `ApiKey`, `Customer`,
   `MerchantWebhookConfig`, each with a plain `JpaRepository`.
+- `POST /v1/auth/signup` / `POST /v1/auth/login` (`AuthController`) — bcrypt-hashed password,
+  `JwtUtil.generateAccessToken` issues an HMAC-signed JWT (100-minute expiry) carrying
+  `merchant_id` and `role` claims. merchant-service **issues** tokens but doesn't validate them on
+  incoming requests any more — that moved to the API gateway, which shares the same `jwt.secret-key`
+  through config-service. The monolith's refresh-token flow (`/v1/auth/refresh`, `/v1/auth/logout`)
+  wasn't carried over yet.
+- `security/WebSecurityConfig` is now just a `PasswordEncoder` bean plus the shared
+  `IdempotencyFilter` registration — no `SecurityFilterChain`, because authentication is the
+  gateway's job and merchant-service trusts the gateway-set identity headers.
