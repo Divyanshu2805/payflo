@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-10._
+_Last updated: 2026-01-11._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -20,7 +20,7 @@ independently buildable and deployable.
 | `common-lib` | — | Done — shared types, auto-configured cross-cutting concerns, inter-service DTOs |
 | `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
-| `merchant-service` | 8081 | In progress — entities, signup/login, API keys, webhook configs |
+| `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Not started |
 | `payment-service` | 8082 | Not started |
 | `operations-service` | 8084 | Not started |
@@ -127,3 +127,13 @@ Owns merchants, dashboard users, API keys, customers, and webhook configs — th
 - `/v1/merchants/webhooks` (`WebhookConfigController`) — webhook config CRUD, same contract as the
   monolith: target URL, server-generated signing secret (returned once, AES-encrypted at rest with
   `webhook.secret-encryption-key`), optional event-type filter.
+- **Internal API** (`/internal/**`) — not routed by the gateway; only reachable service-to-service
+  through Eureka:
+  - `GET /internal/api-keys/{keyId}` — API key lookup for the gateway's Basic-auth check (cache miss
+    path).
+  - `POST /internal/customers/find-or-create` — used by payment-service when an order carries a
+    `customer` block (replaces the monolith's in-process `CustomerService.findOrCreate` call).
+  - `GET /internal/merchants/{merchantId}/webhook-targets?eventType=...` — subscribed targets with
+    decrypted secrets, for operations-service's webhook delivery.
+  - `GET /internal/merchants/active-ids`, `GET /internal/merchants/{merchantId}/settlement-bank-details`
+    — for operations-service's nightly settlement.
