@@ -21,7 +21,7 @@ independently buildable and deployable.
 | `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
-| `vault-service` | 8083 | Not started |
+| `vault-service` | 8083 | In progress — card entities and envelope-encryption config |
 | `payment-service` | 8082 | Not started |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
@@ -137,3 +137,14 @@ Owns merchants, dashboard users, API keys, customers, and webhook configs — th
     decrypted secrets, for operations-service's webhook delivery.
   - `GET /internal/merchants/active-ids`, `GET /internal/merchants/{merchantId}/settlement-bank-details`
     — for operations-service's nightly settlement.
+
+## vault-service
+
+The PCI-scoped service: the only one that ever sees a raw card number, with its own database
+(`payflo_vault`, `VAULT_DB_URL`) and the only one configured with `vault.master-key`. Port `8083`.
+
+- `VaultCard` (encrypted PAN + wrapped per-card data key) and `CardToken` (the opaque token handed
+  back to merchants), with `customer`/`merchant` stored as plain UUIDs — no FK into
+  merchant-service's database.
+- `config/VaultEncryptionConfig` — per-card AES-256-GCM data key, wrapped by the shared master-key
+  encryptor from `common-lib`.
