@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-11._
+_Last updated: 2026-01-13._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -121,7 +121,7 @@ Owns merchants, dashboard users, API keys, customers, and webhook configs — th
   `IdempotencyFilter` registration — no `SecurityFilterChain`, because authentication is the
   gateway's job and merchant-service trusts the gateway-set identity headers.
 - `/v1/merchants/api-keys` (`ApiKeyController`) — generate (`POST`, secret returned once), list
-  (`GET`), revoke (`DELETE`), rotate (`POST /{keyId}/rotate`, 24h grace period on the previous
+  (`GET`), revoke (`DELETE /{keyId}`), rotate (`POST /{keyId}/rotate`, 24h grace period on the previous
   secret). Key ids are `fp_<environment>_<random>`. Merchant is taken from `MerchantContext`
   (gateway-set `X-Merchant-Id`), never from the path.
 - `/v1/merchants/webhooks` (`WebhookConfigController`) — webhook config CRUD, same contract as the
