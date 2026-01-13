@@ -33,7 +33,7 @@ public class ApiKeyController {
         return ResponseEntity.ok(apiKeyService.listByMerchant(merchantContext.getMerchantId()));
     }
 
-    @DeleteMapping("/keyId")
+    @DeleteMapping("/{keyId}")
     public ResponseEntity<Void> revoke(@PathVariable UUID keyId) {
         apiKeyService.revoke(merchantContext.getMerchantId(), keyId);
         return ResponseEntity.noContent().build();
