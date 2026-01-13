@@ -1,0 +1,18 @@
+server:
+  port: 8083
+
+spring:
+  datasource:
+    url: ${VAULT_DB_URL:jdbc:postgresql://localhost:5432/payflo_vault}
+    username: ${DB_USER:user}
+    password: ${DB_PASS:password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+vault:
+  master-key: ${VAULT_MASTER_KEY:arXfSlAXS4TRCw5tlKCFSwjG+D4C4ESUV47We3pw2eI=}
+
