@@ -21,7 +21,7 @@ independently buildable and deployable.
 | `discovery-service` | 8761 | Done — Eureka server |
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
-| `vault-service` | 8083 | In progress — tokenization |
+| `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Not started |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
@@ -153,3 +153,8 @@ The PCI-scoped service: the only one that ever sees a raw card number, with its 
   four, and expiry. CVV is validated but never stored.
 - `processor/CardPaymentProcessor` — the mock card acquirer (test-PAN scenarios, same as the
   monolith's), moved here so a decrypted PAN never leaves vault-service.
+- `POST /internal/vault/charge` (`InternalVaultController`) — payment-service sends a token + amount
+  (`VaultChargeRequest`); vault-service decrypts the card and charges it through
+  `CardPaymentProcessor`, returning a `PaymentProcessorResponse`. The processor runs behind a
+  Resilience4j **thread-pool bulkhead** (`vault-card-processor`, 10–20 threads, queue 50) so a slow
+  acquirer can't exhaust vault-service's request threads.
