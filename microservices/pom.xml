@@ -14,5 +14,6 @@
         <module>config-service</module>
         <module>merchant-service</module>
         <module>vault-service</module>
+        <module>payment-service</module>
     </modules>
 </project>

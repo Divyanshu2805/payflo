@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-14._
+_Last updated: 2026-01-15._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | Not started |
+| `payment-service` | 8082 | In progress — order/payment entities and repositories |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -158,3 +158,13 @@ The PCI-scoped service: the only one that ever sees a raw card number, with its 
   `CardPaymentProcessor`, returning a `PaymentProcessorResponse`. The processor runs behind a
   Resilience4j **thread-pool bulkhead** (`vault-card-processor`, 10–20 threads, queue 50) so a slow
   acquirer can't exhaust vault-service's request threads.
+
+## payment-service
+
+Owns orders, payments, refunds, and the payment state machine — the monolith's `payment` domain —
+with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
+
+- Entities: `OrderRecord`, `Payment`, `Refund`, `PaymentTransitionLog`, `OutboxEvent`.
+  `merchantId`/`customerId` stay plain UUIDs (merchant and customer rows live in merchant-service's
+  database now, so a FK was never an option). `OrderRepository`/`PaymentRepository` add
+  `...ForUpdate` finders (pessimistic write lock) used by the payment saga below.
