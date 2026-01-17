@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-15._
+_Last updated: 2026-01-17._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — order/payment entities and repositories |
+| `payment-service` | 8082 | In progress — entities, payment state machine |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -168,3 +168,6 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   `merchantId`/`customerId` stay plain UUIDs (merchant and customer rows live in merchant-service's
   database now, so a FK was never an option). `OrderRepository`/`PaymentRepository` add
   `...ForUpdate` finders (pessimistic write lock) used by the payment saga below.
+- `statemachine` — `PaymentStateMachine` (validated `PaymentStatus` × `PaymentEvent` transition
+  table, `InvalidStateTransitionException` → `409`) and `PaymentTransitionService` (applies a
+  transition and writes a `PaymentTransitionLog` row), unchanged from the monolith.
