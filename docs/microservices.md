@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — entities, payment state machine |
+| `payment-service` | 8082 | In progress — entities, state machine, transactional outbox |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -171,3 +171,10 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
 - `statemachine` — `PaymentStateMachine` (validated `PaymentStatus` × `PaymentEvent` transition
   table, `InvalidStateTransitionException` → `409`) and `PaymentTransitionService` (applies a
   transition and writes a `PaymentTransitionLog` row), unchanged from the monolith.
+- `outbox` — the transactional outbox, now doing the job it was built for: `OutboxEventPublisher`
+  writes a `PENDING` row in the same transaction as the domain change, `OutboxPoller` publishes
+  pending rows to `app.kafka.topics.<aggregate>` and `OutboxResultHandler` marks them
+  `PUBLISHED`/`FAILED`. This is how payment-service talks to operations-service — never a direct
+  call. With more than one instance of a service running, the poller must only run on one of them at
+  a time, so it's wrapped in a **ShedLock** `@SchedulerLock` (`config/SchedularLockConfig`, Redis
+  lock provider).
