@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — entities, state machine, transactional outbox |
+| `payment-service` | 8082 | In progress — entities, state machine, outbox, order creation |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -178,3 +178,12 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   call. With more than one instance of a service running, the poller must only run on one of them at
   a time, so it's wrapped in a **ShedLock** `@SchedulerLock` (`config/SchedularLockConfig`, Redis
   lock provider).
+- `POST /v1/orders` (`OrderController`) — if the request carries a `customer` block, the customer is
+  resolved first via `CustomerServiceClient` (Feign → merchant-service
+  `/internal/customers/find-or-create`, wrapped in a Resilience4j circuit breaker + retry). Only
+  after that remote call succeeds does `OrderPersistenceService.persist` open the transaction that
+  saves the order and its `ORDER_CREATED` outbox row — keeping a network call out of the DB
+  transaction so a slow merchant-service can't hold a connection and row locks open.
+- The shared `IdempotencyFilter` is registered here (`config/WebSecurityConfig`), so a retried
+  `POST /v1/orders` or `POST /v1/payments` with the same `Idempotency-Key` replays the first
+  response.
