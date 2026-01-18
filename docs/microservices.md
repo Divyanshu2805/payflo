@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — entities, state machine, outbox, order creation |
+| `payment-service` | 8082 | In progress — entities, state machine, outbox, orders, processor strategies |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -189,3 +189,6 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   response.
 - `OrderMapper` maps the entity's `orderStatus` onto the response's `status` explicitly — without the
   `@Mapping`, MapStruct silently leaves it `null` (the same bug the monolith hit and fixed).
+- `processor` — `PaymentProcessor` strategy per `PaymentMethod` (`CardPaymentProcessor`,
+  `UpiPaymentProcessor`, `NetBankingPaymentProcessor`) selected by `PaymentProcessorRouter`, with
+  the same mock-acquirer test scenarios as the monolith. `WALLET` isn't carried over to phase 2.
