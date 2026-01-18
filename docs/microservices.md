@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-17._
+_Last updated: 2026-01-18._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -72,7 +72,7 @@ extracted equivalent of the monolith's `common` package. Package root
 - `ratelimit` — the four Redis-backed `RateLimiter` implementations from the monolith (fixed
   window, sliding window, sliding window via Lua, token bucket via Lua), one active at a time via
   `app.rate-limit.method`. In phase 2 only the API gateway enforces rate limits.
-- `idempotency` — `IdempotencyFilter` + `RedisIdempotencyStore` (an `Idempotency-Key` on a write
+- `idempotency` — `IdempotencyFilter` + `RedisIdempotencyStore` (an `X-Idempotency-Key` header on a write
   replays the stored response for 24h). Exposed as a bean; each service that wants it registers the
   filter itself (payment-service does).
 - `cache` — `ApiKeyCache` / `RedisApiKeyCache`, so the gateway can authenticate API keys without a
@@ -185,5 +185,7 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   saves the order and its `ORDER_CREATED` outbox row — keeping a network call out of the DB
   transaction so a slow merchant-service can't hold a connection and row locks open.
 - The shared `IdempotencyFilter` is registered here (`config/WebSecurityConfig`), so a retried
-  `POST /v1/orders` or `POST /v1/payments` with the same `Idempotency-Key` replays the first
+  `POST /v1/orders` or `POST /v1/payments` with the same `X-Idempotency-Key` replays the first
   response.
+- `OrderMapper` maps the entity's `orderStatus` onto the response's `status` explicitly — without the
+  `@Mapping`, MapStruct silently leaves it `null` (the same bug the monolith hit and fixed).
