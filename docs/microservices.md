@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-18._
+_Last updated: 2026-01-20._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — entities, state machine, outbox, orders, processor strategies |
+| `payment-service` | 8082 | In progress — entities, state machine, outbox, orders, processors, gateway adapters |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -191,4 +191,10 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   `@Mapping`, MapStruct silently leaves it `null` (the same bug the monolith hit and fixed).
 - `processor` — `PaymentProcessor` strategy per `PaymentMethod` (`CardPaymentProcessor`,
   `UpiPaymentProcessor`, `NetBankingPaymentProcessor`) selected by `PaymentProcessorRouter`, with
-  the same mock-acquirer test scenarios as the monolith. `WALLET` isn't carried over to phase 2.
+  the same mock-acquirer test scenarios as the monolith. `WALLET` stays in the shared enum but has no processor or adapter registered in phase 2 yet.
+- `gateway` — the `PaymentAdapter` layer routed by `PaymentGatewayRouter`. `UpiPaymentAdapter` and
+  `NetBankingAdapter` call the local processors; **`CardPaymentAdapter` calls vault-service**
+  (`VaultServiceClient` → `POST /internal/vault/charge`) with only the card token, so payment-service
+  stays out of PCI scope. The vault call is wrapped in a Resilience4j circuit breaker + retry
+  (`vault-service` instance in `config-repo/payment-service.yaml`: 50% failure threshold over a
+  20-call window, 10s open, 3 retries with exponential backoff).
