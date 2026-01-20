@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — entities, state machine, outbox, orders, processors, gateway adapters |
+| `payment-service` | 8082 | In progress — full order/payment lifecycle |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -198,3 +198,16 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   stays out of PCI scope. The vault call is wrapped in a Resilience4j circuit breaker + retry
   (`vault-service` instance in `config-repo/payment-service.yaml`: 50% failure threshold over a
   20-call window, 10s open, 3 retries with exponential backoff).
+- `POST /v1/payments` / `POST /v1/payments/{paymentId}/capture` (`PaymentController`) — payment
+  initiation is split into a small **saga** (`saga/PaymentAuthorizationRecorder`) so no remote call
+  runs inside a database transaction:
+  1. `recordPayment` — one transaction: lock the order (`SELECT ... FOR UPDATE`), check it's
+     payable, create the `Payment`, fire `AUTHORIZE_ATTEMPT`.
+  2. Call the gateway adapter (possibly a network hop to vault-service) with no transaction open.
+  3. `applyGatewayResult` — second transaction: record the processor reference or the failure, and
+     write the `PAYMENT_CREATED` outbox event.
+  4. If step 2 throws (vault down, circuit open), `compensateAuthorizationFailure` moves the payment
+     to `FAILED` and emits `PAYMENT_AUTHORIZATION_COMPENSATED` instead of leaving it stuck in
+     `AUTHORIZING`.
+  A repeat call with the same idempotency key returns the existing attempt
+  (`findExistingAttempt`) rather than creating a second payment.
