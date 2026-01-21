@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-20._
+_Last updated: 2026-01-21._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — full order/payment lifecycle |
+| `payment-service` | 8082 | In progress — full order/payment lifecycle with simulated bank callbacks |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -211,3 +211,10 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
      `AUTHORIZING`.
   A repeat call with the same idempotency key returns the existing attempt
   (`findExistingAttempt`) rather than creating a second payment.
+- `simulator/BankCallbackSimulator` — **scheduled** in phase 2 (`@Scheduled`, every
+  `payment.simulator.poll-interval-ms`, ShedLock-guarded so only one instance runs it): picks up
+  payments sitting in `AUTHORIZING` past their simulated bank delay, resolves them per the
+  per-method success rate in `payment.simulator.methods.*` (and the global `chaos-mode`), and on
+  approval auto-captures them. This closes the monolith's
+  [gap 9](gaps.md) — payments now actually reach `AUTHORIZED`/`CAPTURED` end to end, and the order
+  moves to `PAID`.
