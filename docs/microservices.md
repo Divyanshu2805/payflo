@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-21._
+_Last updated: 2026-01-22._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -84,6 +84,10 @@ extracted equivalent of the monolith's `common` package. Package root
   `PaymentProcessorResponse` (payment → vault), `PaymentSettlementView` / `SettlementBankDetails`
   (operations → payment/merchant), `WebhookTarget` (operations → merchant). Keeping them in one
   library means a contract change is a compile error on both sides, not a runtime surprise.
+  `PaymentProcessorResponse` is a sealed interface, so it carries a Jackson type discriminator
+  (`@JsonTypeInfo` on a `type` property: `PENDING` / `SUCCESS` / `FAILURE`) — without it, Jackson can't
+  pick a concrete record when reading vault-service's reply, and every card payment failed with
+  `PAYMENT_GATEWAY_ROUTER_UNREACHABLE` (caught by the saga's compensation step).
 
 ## discovery-service
 
