@@ -22,7 +22,7 @@ independently buildable and deployable.
 | `config-service` | 8888 | Done — Spring Cloud Config server over `microservices/config-repo` |
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
-| `payment-service` | 8082 | In progress — full order/payment lifecycle with simulated bank callbacks |
+| `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
 | `operations-service` | 8084 | Not started |
 | `api-gateway-service` | 8080 | Not started |
 
@@ -222,3 +222,7 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   approval auto-captures them. This closes the monolith's
   [gap 9](gaps.md) — payments now actually reach `AUTHORIZED`/`CAPTURED` end to end, and the order
   moves to `PAID`.
+- Internal settlement API (`InternalSettlementController`, backed by `PaymentLookupService`) —
+  `GET /internal/payments/unsettled-captured?merchantId=...` returns captured, not-yet-settled
+  payments as `PaymentSettlementView`s, and `POST /internal/payments/mark-settled` flags a batch as
+  settled once the payout succeeds. operations-service's settlement engine is the only caller.
