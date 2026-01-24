@@ -2,6 +2,11 @@
 
 [← Back to docs index](README.md)
 
+> **Phase 2 (microservices).** The endpoints below document the monolith's contract. In the
+> microservices split every public route is served through the API gateway and dispatched to the
+> owning service — see [Phase 2 API surface](#phase-2-api-surface) at the end of this page for
+> what's carried over, what changed, and the internal service-to-service endpoints.
+
 **Rate limiting.** Every endpoint on the API-key chain (`/v1/orders/**`, `/v1/payments/**`,
 `/v1/vault/**`) is limited per API key. A successful call carries `X-RateLimit-Limit` and
 `X-RateLimit-Remaining` response headers; an over-limit call returns `429` with the standard error
@@ -408,3 +413,35 @@ Deletes a webhook config. Requires a valid JWT.
 
 **Behavior:** rejects with `404 Not Found` (`ResourceNotFoundException`) if `id` doesn't exist or
 doesn't belong to the caller's merchant.
+
+## Phase 2 API surface
+
+In the microservices split, clients call the API gateway only; it authenticates the request and
+forwards it to the owning service (resolved through Eureka). Request/response bodies are unchanged
+from the sections above unless noted.
+
+| Route | Owning service | Auth at gateway | Notes |
+|---|---|---|---|
+| `POST /v1/auth/signup`, `POST /v1/auth/login` | merchant-service | Public | `/v1/auth/refresh` and `/v1/auth/logout` not carried over yet |
+| `/v1/merchants/api-keys/**` | merchant-service | JWT | Key ids now prefixed `fp_<env>_` |
+| `/v1/merchants/webhooks/**` | merchant-service | JWT | Unchanged |
+| `POST /v1/orders` | payment-service | API key or JWT | Customer resolved via merchant-service over Feign |
+| `POST /v1/payments`, `POST /v1/payments/{paymentId}/capture` | payment-service | API key or JWT | Initiation runs as a saga; `CARD` charges go through vault-service |
+| `POST /v1/vault/tokenize` | vault-service | API key or JWT | Unchanged |
+
+`GET /v1/orders/{orderId}`, `POST /v1/orders/{orderId}/cancel`, and `GET /v1/orders/{orderId}/payments`
+exist in the monolith only; they haven't been ported to payment-service yet.
+
+**Internal endpoints** (`/internal/**`) are never routed by the gateway — they're reachable only
+service-to-service via Eureka and exchange the shared DTOs from `common-lib`:
+
+| Endpoint | Service | Caller |
+|---|---|---|
+| `GET /internal/api-keys/{keyId}` | merchant-service | api-gateway-service (API key cache miss) |
+| `POST /internal/customers/find-or-create` | merchant-service | payment-service (order creation) |
+| `GET /internal/merchants/{merchantId}/webhook-targets?eventType=` | merchant-service | operations-service (webhook fan-out) |
+| `GET /internal/merchants/active-ids` | merchant-service | operations-service (settlement) |
+| `GET /internal/merchants/{merchantId}/settlement-bank-details` | merchant-service | operations-service (settlement) |
+| `POST /internal/vault/charge` | vault-service | payment-service (`CardPaymentAdapter`) |
+| `GET /internal/payments/unsettled-captured?merchantId=` | payment-service | operations-service (settlement) |
+| `POST /internal/payments/mark-settled` | payment-service | operations-service (settlement) |
