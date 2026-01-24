@@ -23,7 +23,7 @@ independently buildable and deployable.
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
-| `operations-service` | 8084 | Not started |
+| `operations-service` | 8084 | In progress — settlement, webhook, DLQ, and outbox entities |
 | `api-gateway-service` | 8080 | Not started |
 
 ## Layout
@@ -226,3 +226,15 @@ with its own database (`payflo_payment`, `PAYMENT_DB_URL`). Port `8082`.
   `GET /internal/payments/unsettled-captured?merchantId=...` returns captured, not-yet-settled
   payments as `PaymentSettlementView`s, and `POST /internal/payments/mark-settled` flags a batch as
   settled once the payout succeeds. operations-service's settlement engine is the only caller.
+
+## operations-service
+
+The asynchronous back office: webhook delivery and nightly settlement, with its own database
+(`payflo_operations`, `OPERATIONS_DB_URL`). Port `8084`. Unlike the other business services it
+has almost no public API — it's driven by Kafka events and schedules.
+
+- Entities: `WebhookEvent`, `DlqEvent`, `Settlement`, `SettlementPayment` (composite
+  `SettlementPaymentId` of settlement id + payment id — the payment id is a plain UUID pointing into
+  payment-service's database), and its own `OutboxEvent`.
+- `@EnableScheduling` + `@EnableSchedulerLock` with the same Redis-backed ShedLock provider as
+  payment-service, so every scheduled job here runs on exactly one instance.
