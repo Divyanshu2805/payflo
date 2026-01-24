@@ -23,7 +23,7 @@ independently buildable and deployable.
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
-| `operations-service` | 8084 | In progress — settlement, webhook, DLQ, and outbox entities |
+| `operations-service` | 8084 | In progress — entities, outbox, Feign clients |
 | `api-gateway-service` | 8080 | Not started |
 
 ## Layout
@@ -238,3 +238,8 @@ has almost no public API — it's driven by Kafka events and schedules.
   payment-service's database), and its own `OutboxEvent`.
 - `@EnableScheduling` + `@EnableSchedulerLock` with the same Redis-backed ShedLock provider as
   payment-service, so every scheduled job here runs on exactly one instance.
+- `outbox` — a second copy of the transactional outbox (settlement events are this service's to
+  publish), same publisher/poller/result-handler shape as payment-service's.
+- `client` — `MerchantServiceClient` (webhook targets, active merchant ids, settlement bank details)
+  and `PaymentServiceClient` (unsettled captured payments, mark-settled), both Feign clients resolved
+  through Eureka.
