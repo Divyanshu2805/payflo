@@ -1,0 +1,79 @@
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: ${OPERATIONS_DB_URL:jdbc:postgresql://localhost:5432/payflo_operations}
+    username: ${DB_USER:user}
+    password: ${DB_PASS:password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:29092}
+    listener:
+      ack-mode: manual
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: operations-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.project.payflo.*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: java.util.LinkedHashMap
+
+app:
+  kafka:
+    topics:
+      payment: payments.events
+      order: orders.events
+      refund: refunds.events
+      settlement: settlements.events
+      payments: payments.events
+      orders: orders.events
+      refunds: refunds.events
+      settlements: settlements.events
+  webhook:
+    delivery:
+      redis-key: webhook-retry
+      poll-batch-size: 100
+
+webhook:
+  delivery:
+    signature-header: X-PayFlo-Signature
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+    instances:
+      merchant-service:
+        base-config: default
+      payment-service:
+        base-config: default
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 200ms
+    instances:
+      merchant-service:
+        base-config: default
+      payment-service:
+        base-config: default
