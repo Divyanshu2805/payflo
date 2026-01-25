@@ -23,7 +23,7 @@ independently buildable and deployable.
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
-| `operations-service` | 8084 | In progress — entities, outbox, clients, webhook delivery |
+| `operations-service` | 8084 | In progress — webhooks, nightly settlement |
 | `api-gateway-service` | 8080 | Not started |
 
 ## Layout
@@ -254,3 +254,13 @@ has almost no public API — it's driven by Kafka events and schedules.
   ShedLock-guarded.
 - `POST /webhook/success` (`DummyMerchantWebhookController`) — a stand-in merchant endpoint that
   always answers `204`, for exercising delivery locally.
+- `settlement` — **nightly settlement, new in phase 2** (never built in the monolith):
+  - `SettlementEngine` runs at 23:00 (`@Scheduled(cron = "0 0 23 * * *")`, ShedLock, up to 2h),
+    fetches active merchant ids from merchant-service, and settles each merchant in parallel on
+    virtual threads.
+  - `SettlementTransactionExecutor.processForMerchant` pulls the merchant's captured-but-unsettled
+    payments from payment-service, computes gross, a 2% fee, 18% GST on the fee, and net, saves a
+    `Settlement` (`INITIATED`) with one `SettlementPayment` link per payment, then hands the net
+    amount to `BankTransferProcessor` with the merchant's bank details → `TRANSFER_PENDING`.
+  - `SettlementIntegrationGateway` wraps every call to payment-/merchant-service in a circuit
+    breaker + retry.
