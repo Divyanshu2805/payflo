@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-24._
+_Last updated: 2026-01-25._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -23,7 +23,7 @@ independently buildable and deployable.
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
-| `operations-service` | 8084 | In progress — entities, outbox, Feign clients |
+| `operations-service` | 8084 | In progress — entities, outbox, clients, webhook delivery |
 | `api-gateway-service` | 8080 | Not started |
 
 ## Layout
@@ -243,3 +243,14 @@ has almost no public API — it's driven by Kafka events and schedules.
 - `client` — `MerchantServiceClient` (webhook targets, active merchant ids, settlement bank details)
   and `PaymentServiceClient` (unsettled captured payments, mark-settled), both Feign clients resolved
   through Eureka.
+- `webhook` — the monolith's delivery pipeline, now fed across a real service boundary:
+  `WebhookKafkaConsumer` listens on `payments.events`/`orders.events`/`refunds.events`/
+  `settlements.events` (consumer group `operations-service`, manual ack), asks merchant-service for
+  the merchant's subscribed targets (`MerchantServiceClient`), and writes one HMAC-signed
+  `WebhookEvent` per target (`X-PayFlo-Signature`). `WebhookDeliveryScheduler` drains the Redis
+  sorted-set retry queue (`WebhookRetryQueue`) on virtual threads, `WebhookDeliverExecutor` POSTs
+  with a 3s connect / 5s read timeout and fixed backoff (1m → 24h over 7 attempts), and
+  `WebhookDlqRecorder` writes a `DlqEvent` once attempts run out. Both scheduler loops are
+  ShedLock-guarded.
+- `POST /webhook/success` (`DummyMerchantWebhookController`) — a stand-in merchant endpoint that
+  always answers `204`, for exercising delivery locally.
