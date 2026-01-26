@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-25._
+_Last updated: 2026-01-26._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -23,7 +23,7 @@ independently buildable and deployable.
 | `merchant-service` | 8081 | Done — public auth/API key/webhook APIs plus internal lookup APIs |
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
-| `operations-service` | 8084 | In progress — webhooks, nightly settlement |
+| `operations-service` | 8084 | Done — Kafka-driven webhooks, nightly settlement with simulated payout callbacks |
 | `api-gateway-service` | 8080 | Not started |
 
 ## Layout
@@ -264,3 +264,9 @@ has almost no public API — it's driven by Kafka events and schedules.
     amount to `BankTransferProcessor` with the merchant's bank details → `TRANSFER_PENDING`.
   - `SettlementIntegrationGateway` wraps every call to payment-/merchant-service in a circuit
     breaker + retry.
+  - `BankSettlementCallbackSimulator` (every 5s, ShedLock) stands in for the bank's payout
+    callback: it resolves `TRANSFER_PENDING` settlements through
+    `SettlementTransactionExecutor.resolveTransfer` — `PROCESSED` (marks the payments settled in
+    payment-service and publishes `SETTLEMENT_PROCESSED`) or `FAILED` with a reason
+    (`SETTLEMENT_FAILED`). Both events flow through the outbox to the same webhook pipeline, so
+    merchants get notified of payouts like any other event.
