@@ -24,7 +24,7 @@ independently buildable and deployable.
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
 | `operations-service` | 8084 | Done — Kafka-driven webhooks, nightly settlement with simulated payout callbacks |
-| `api-gateway-service` | 8080 | In progress — Eureka-based routing |
+| `api-gateway-service` | 8080 | Done — routing, centralized JWT/API-key auth, per-key rate limiting |
 
 ## Layout
 
@@ -285,3 +285,21 @@ Routes live in `config-repo/api-gateway-service.yaml` and resolve targets throug
 | `/webhook/**` | `lb://operations-service` |
 
 `/internal/**` is deliberately not routed.
+
+**Centralized authentication.** `GatewayAuthFilter` runs before routing on every request that isn't
+in `app.security.public-routes` (signup, login, `/webhook/**`, health):
+
+- `Authorization: Bearer <jwt>` → `JwtAuthHandler` verifies the token with the shared
+  `jwt.secret-key` (`JwtVerifier`) and forwards `X-Merchant-Id` + `X-User-Role`.
+- `Authorization: Basic base64(keyId:secret)` → `ApiKeyAuthHandler` looks the key up in the Redis
+  `ApiKeyCache`, falling back to merchant-service (`ApiKeyLookupClient` →
+  `GET /internal/api-keys/{keyId}`) on a miss, bcrypt-checks the secret (current or in-grace
+  previous), enforces the per-key rate limit (`200`/min, `X-RateLimit-*` headers, `429` +
+  `Retry-After` when exceeded), and forwards `X-Merchant-Id`, `X-Key-Id`, `X-Environment`.
+- Anything else → `401` with the standard `{errorCode, errorDescription}` body.
+
+Identity headers are applied through `HeaderAugmentingRequestWrapper`, which overrides whatever the
+client sent — a caller can't forge `X-Merchant-Id`. The gateway also runs with
+`app.security.trust-inbound-headers: false`, so its own `MerchantContextFilter` never reads
+client-supplied headers either. Downstream services only trust these headers because they're only
+reachable through the gateway; see [Known gaps](gaps.md) for what that assumption still needs.

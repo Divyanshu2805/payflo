@@ -24,3 +24,17 @@ spring:
               predicates:
                 - Path=/webhook/**
 
+app:
+  security:
+    # The gateway sets identity headers itself; never trust client-supplied ones.
+    trust-inbound-headers: false
+    public-routes:
+      - /v1/auth/signup
+      - /v1/auth/login
+      - /webhook/**
+      - /actuator/health
+  rate-limit:
+    method: fixed
+    use-case:
+      api-key:
+        requests-per-minute: 200
