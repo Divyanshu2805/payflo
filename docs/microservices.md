@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-26._
+_Last updated: 2026-01-27._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -24,7 +24,7 @@ independently buildable and deployable.
 | `vault-service` | 8083 | Done — tokenization plus internal, bulkhead-isolated charge API |
 | `payment-service` | 8082 | Done — orders, payments, saga, outbox, simulator, internal settlement API |
 | `operations-service` | 8084 | Done — Kafka-driven webhooks, nightly settlement with simulated payout callbacks |
-| `api-gateway-service` | 8080 | Not started |
+| `api-gateway-service` | 8080 | In progress — Eureka-based routing |
 
 ## Layout
 
@@ -270,3 +270,18 @@ has almost no public API — it's driven by Kafka events and schedules.
     payment-service and publishes `SETTLEMENT_PROCESSED`) or `FAILED` with a reason
     (`SETTLEMENT_FAILED`). Both events flow through the outbox to the same webhook pipeline, so
     merchants get notified of payouts like any other event.
+
+## api-gateway-service
+
+The single public entry point (port `8080`), built on Spring Cloud Gateway Server **Web MVC** (the
+servlet flavor, so it shares the Spring MVC stack and `common-lib` filters with every other service).
+Routes live in `config-repo/api-gateway-service.yaml` and resolve targets through Eureka:
+
+| Path | Routed to |
+|---|---|
+| `/v1/auth/**`, `/v1/merchants/**` | `lb://merchant-service` |
+| `/v1/orders/**`, `/v1/payments/**` | `lb://payment-service` |
+| `/v1/vault/**` | `lb://vault-service` |
+| `/webhook/**` | `lb://operations-service` |
+
+`/internal/**` is deliberately not routed.
