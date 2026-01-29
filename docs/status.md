@@ -6,7 +6,7 @@ _Last updated: 2026-01-29._
 
 **Phase 2 of 2 — microservices split, in progress.** Phase 1 (the monolith) is frozen; the split is
 being built under `microservices/` — see [Microservices](microservices.md) for per-module progress.
-The table below is the final phase 1 (monolith) state. See
+Phase 2 progress comes first below, followed by the final phase 1 (monolith) table. See
 [Build strategy](architecture.md#build-strategy-monolith-first) for why it was built monolith-first.
 
 ## Phase 2 — microservices

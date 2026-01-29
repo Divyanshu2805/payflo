@@ -24,6 +24,8 @@ functional and non-functional requirements in [docs/requirements.md](docs/requir
 - PostgreSQL
 - Redis (rate limiting, idempotency keys, API key cache, webhook retry queue)
 - Apache Kafka (transactional outbox for domain events, consumed for webhook delivery)
+- Spring Cloud (phase 2): Eureka, Config Server, Gateway, OpenFeign, Resilience4j
+- ShedLock (single-instance scheduled jobs)
 - Lombok, MapStruct, Jakarta Bean Validation
 - Maven
 
@@ -44,26 +46,33 @@ brings up all three (plus a Kafka control-center UI) for local development.
 ./mvnw.cmd test -Duser.timezone=Asia/Kolkata
 ```
 
+The microservices build lives in `microservices/` — see
+[docs/getting-started.md](docs/getting-started.md#running-the-microservices) for the startup order.
+
 ## Project Status
 
-**Phase 1 (monolith) is feature-frozen as of 2025-12-16.** The system was built as a single Spring
-Boot application first, on purpose — domain boundaries are cheap to move inside one codebase and
-expensive to move once they're network calls, so the package layout and the
-no-cross-domain-foreign-key convention exist to keep the split cheap. That split now begins; all
-new work targets the microservices architecture in
-[docs/architecture.md](docs/architecture.md#target).
+PayFlo was built in two phases. **Phase 1** was a single application, built first on purpose so the
+boundaries between its parts could be adjusted cheaply before they became network calls. It's now
+frozen and kept at the repo root for reference.
 
-Domain model (see the Entity Relationship Diagram in [docs/schema.md](docs/schema.md)) is
-fully implemented as JPA entities. The monolith's working API spans five domains — merchant (signup,
-login, API key management, webhook config), order and payment lifecycles (create/cancel/list,
-initiate/capture, card tokenization), all backed by real JWT authentication
-(`JwtAuthenticationFilter` resolves the caller's merchant on every request via `MerchantContext`).
-Order and payment writes publish domain events through a Kafka-backed transactional outbox, which a
-separate consumer turns into signed webhook deliveries with retries and a dead-letter queue.
-Settlement, refunds, and analytics were never started, and a handful of known gaps (idempotency
-enforcement, role/permission checks, rate-limiter edge cases, and more) remain open — see
-[docs/status.md](docs/status.md#phase-1--phase-2-handoff) for the full carried-forward list
-going into the split.
+**Phase 2** splits it into separate services under [`microservices/`](microservices), each with its
+own database:
+
+- **api-gateway** — the single front door: checks who's calling (dashboard login or API key),
+  enforces rate limits, and routes the request
+- **merchant-service** — merchant accounts, logins, API keys, customers, webhook settings
+- **payment-service** — orders and payments, from "Pay" to money captured
+- **vault-service** — the only place card numbers are ever stored or read, kept separate to limit
+  PCI scope
+- **operations-service** — tells merchants what happened (signed webhooks, with retries) and pays
+  them out nightly (settlement, with fees and GST)
+- plus **discovery**, **config**, and a shared **common-lib**
+
+A payment now flows end to end through the gateway — order, card or UPI payment, simulated bank
+approval, capture — and settlement, which the monolith never had, is built. Refunds and analytics
+aren't started, and containers, Kubernetes, and monitoring are deliberately deferred. See
+[docs/status.md](docs/status.md) for the detailed status and [docs/gaps.md](docs/gaps.md) for known
+gaps.
 
 ## Documentation
 

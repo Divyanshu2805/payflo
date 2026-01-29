@@ -10,3 +10,7 @@ a working API now covers merchant onboarding/auth, the order and payment lifecyc
 signed webhook delivery — see [Project Status](status.md) for exactly what's built vs. still
 planned, and the [Phase 1 → Phase 2 handoff](status.md#phase-1--phase-2-handoff) below the status table for what's
 being carried into the microservices split.
+
+The system is now being split into separate services (one each for merchants, payments, card
+storage, and back-office operations, behind a single gateway) — see
+[Microservices](microservices.md).
