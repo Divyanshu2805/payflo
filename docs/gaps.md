@@ -221,3 +221,50 @@ dropped vs. still planned:
     `settlement.events`). `WebhookDeliverExecutor`'s signature-header property is now
     `app.webhook.delivery.signature-header`, consistent with the rest of the webhook config
     namespace.
+
+## Phase 2 (microservices)
+
+How the phase 1 gaps above stand after the split, and new gaps the split itself introduced.
+
+**Carried-over gaps, changed by the split:**
+
+- Gap 8 (payment idempotency key never checked) — **partially resolved.** payment-service's
+  `PaymentAuthorizationRecorder.findExistingAttempt` returns the existing payment for a repeated
+  `merchantId` + idempotency key instead of creating a duplicate. A call without the header still
+  generates a random key.
+- Gap 9 (`BankCallbackSimulator` never scheduled) — **resolved in payment-service**: it's
+  `@Scheduled` and ShedLock-guarded, so payments reach `AUTHORIZED`/`CAPTURED` and orders reach
+  `PAID`.
+- Gaps 18–19 (refresh-token session cap / cleanup) — **moot for now**: the refresh-token flow
+  wasn't ported to merchant-service at all (see P2-2).
+- Gaps 10, 11, 14, 15, 17, 20, 21, 22 — **unchanged**, carried into `common-lib` / the owning
+  service as-is.
+
+**New in phase 2:**
+
+- **P2-1. Internal endpoints and identity headers rely on network isolation.** `/internal/**` has no
+  authentication, and every business service trusts `X-Merchant-Id`/`X-Key-Id` from any caller
+  (`app.security.trust-inbound-headers` defaults to `true`). That's only safe while the services are
+  unreachable except through the gateway — nothing enforces it yet (no mTLS, no service-to-service
+  token).
+- **P2-2. Monolith endpoints not ported yet.** `POST /v1/auth/refresh`, `POST /v1/auth/logout`,
+  `GET /v1/orders/{orderId}`, `POST /v1/orders/{orderId}/cancel`, and
+  `GET /v1/orders/{orderId}/payments` exist only in the monolith. `WALLET` stays in the shared
+  `PaymentMethod` enum with no adapter/processor behind it.
+- **P2-3. Two property namespaces for the same Kafka topics.** `OutboxPoller` resolves topics through
+  `KafkaProperties` (`app.kafka.topics.payment`/`.order`/...), while `WebhookKafkaConsumer` reads
+  `app.kafka.topics.payments`/`.orders`/... — the same mismatch class as resolved gap 25.
+  `config-repo/operations-service.yaml` sets both key sets to the same topic names so they agree,
+  but a single namespace would remove the trap.
+- **P2-4. Dev secrets and defaults in `config-repo`.** JWT key, vault master key, and webhook
+  encryption key fall back to hardcoded dev values committed in `config-repo/*.yaml` (overridable by
+  env var). Needs a real secret store before any shared environment.
+- **P2-5. Still no schema migrations**, now across four databases (`ddl-auto: update` everywhere).
+- **P2-6. No cross-service consistency check for settlement.** `SettlementTransactionExecutor`
+  saves the `Settlement` locally, then calls payment-service to mark payments settled only after the
+  payout succeeds; if that remote call fails after `PROCESSED` is committed, the payments stay
+  "unsettled" and would be picked up again next night. Needs an idempotent mark-settled retry or a
+  reconciliation job.
+- **P2-7. Not yet containerized or observable.** No Dockerfiles/Kubernetes manifests, no
+  distributed tracing, no metrics dashboards — deliberately deferred to a later step.
+

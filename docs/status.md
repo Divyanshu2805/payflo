@@ -2,12 +2,33 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-28._
+_Last updated: 2026-01-29._
 
 **Phase 2 of 2 — microservices split, in progress.** Phase 1 (the monolith) is frozen; the split is
 being built under `microservices/` — see [Microservices](microservices.md) for per-module progress.
 The table below is the final phase 1 (monolith) state. See
 [Build strategy](architecture.md#build-strategy-monolith-first) for why it was built monolith-first.
+
+## Phase 2 — microservices
+
+| Area | Status |
+|---|---|
+| Services | 8 modules under `microservices/`: `common-lib`, `discovery-service`, `config-service`, `merchant-service`, `vault-service`, `payment-service`, `operations-service`, `api-gateway-service` — see [Microservices](microservices.md) |
+| Infrastructure services | Eureka service discovery, Spring Cloud Config (native, in-repo `config-repo/`), Spring Cloud Gateway (Web MVC) |
+| Data | Database per service (`payflo_merchant`, `payflo_payment`, `payflo_vault`, `payflo_operations`); shared Redis and Kafka |
+| Auth | Centralized at the gateway (JWT for dashboard routes, API key via HTTP Basic for merchant backends, per-key rate limiting); identity forwarded as `X-Merchant-Id`/`X-Key-Id` headers |
+| Inter-service calls | OpenFeign through Eureka, with Resilience4j circuit breakers + retries (payment → vault/merchant, operations → merchant/payment) and a thread-pool bulkhead around card charging in vault-service |
+| Events | Transactional outbox in payment-service and operations-service → Kafka → operations-service webhook consumer |
+| Payments | Order creation, payment initiation as a saga with compensation, simulated bank authorization + auto-capture (payments now reach `CAPTURED` end to end) |
+| Settlement | Built — nightly per-merchant batch (2% fee + 18% GST), simulated payout callback, settlement webhooks |
+| Scheduling | ShedLock (Redis) on every scheduled job so each runs on one instance |
+| Refunds, analytics | Not started |
+| Containers, K8s, observability, load testing | Not started — deferred |
+| Verified | End-to-end through the gateway: signup → login → API key → order → UPI and card payments reaching `CAPTURED`, outbox events published |
+
+Open phase 2 gaps are listed under [Known gaps → Phase 2](gaps.md#phase-2-microservices).
+
+## Phase 1 — monolith (frozen)
 
 | Area | Status |
 |---|---|
