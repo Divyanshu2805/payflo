@@ -52,6 +52,44 @@ is now a snapshot of the final monolith state, not a moving description of curre
   [Phase 1 → Phase 2 handoff](status.md#phase-1--phase-2-handoff) for the complete carried-forward list.
 - Standard Spring Boot layout otherwise (`src/main/java`, `src/main/resources`, `src/test/java`).
 
+## Phase 2 as built
+
+What exists under `microservices/` today (the Target diagram below minus refunds, analytics, and the
+observability layer):
+
+```mermaid
+flowchart LR
+    client["Dashboard / Merchant backend"] -->|JWT or API key| gw["api-gateway-service :8080<br/>auth, rate limit, routing"]
+    gw -->|lb://| ms["merchant-service :8081"]
+    gw -->|lb://| ps["payment-service :8082"]
+    gw -->|lb://| vs["vault-service :8083"]
+    gw -->|lb://| os["operations-service :8084"]
+    ps -->|Feign: find-or-create customer| ms
+    ps -->|Feign: charge card token| vs
+    os -->|Feign: webhook targets, bank details| ms
+    os -->|Feign: unsettled payments, mark settled| ps
+    gw -->|Feign: API key lookup| ms
+    ps -->|outbox| kafka[["Kafka"]]
+    os -->|outbox| kafka
+    kafka --> os
+    disc["discovery-service :8761<br/>Eureka"] -.- gw
+    cfg["config-service :8888<br/>config-repo/"] -.- gw
+```
+
+- **Every service registers with Eureka and pulls its config from config-service** at startup;
+  nothing hardcodes a peer's host or port.
+- **Authentication happens once, at the gateway.** Downstream services receive the caller's identity
+  as `X-Merchant-Id`/`X-Key-Id` headers and rebuild `MerchantContext` from them (`common-lib`'s
+  `MerchantContextFilter`), so controller code is unchanged from the monolith.
+- **Synchronous calls go through Feign with Resilience4j**; anything that can be asynchronous goes
+  through the transactional outbox and Kafka.
+- **Remote calls are kept out of database transactions** where it matters most: order creation
+  resolves the customer before opening its transaction, and payment initiation is a
+  record → call → apply saga with a compensation step.
+
+See [Microservices](microservices.md) for per-service detail and
+[Known gaps → Phase 2](gaps.md#phase-2-microservices) for what's still open.
+
 ## Target
 
 The **phase-two** architecture, now being built. The `common`/`merchant`/`payment`/`vault`/

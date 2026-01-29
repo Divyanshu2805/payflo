@@ -260,11 +260,13 @@ How the phase 1 gaps above stand after the split, and new gaps the split itself 
   encryption key fall back to hardcoded dev values committed in `config-repo/*.yaml` (overridable by
   env var). Needs a real secret store before any shared environment.
 - **P2-5. Still no schema migrations**, now across four databases (`ddl-auto: update` everywhere).
-- **P2-6. No cross-service consistency check for settlement.** `SettlementTransactionExecutor`
-  saves the `Settlement` locally, then calls payment-service to mark payments settled only after the
-  payout succeeds; if that remote call fails after `PROCESSED` is committed, the payments stay
-  "unsettled" and would be picked up again next night. Needs an idempotent mark-settled retry or a
-  reconciliation job.
+- **P2-6. Remote calls inside settlement transactions.** `SettlementTransactionExecutor.processForMerchant`
+  and `.resolveTransfer` are `@Transactional` and call payment-/merchant-service over Feign inside
+  that transaction, holding a DB connection for the duration of the remote call. If payment-service
+  marks the payments settled but the local commit then fails, the settlement stays
+  `TRANSFER_PENDING` and the simulator resolves it again — safe only because
+  `POST /internal/payments/mark-settled` is effectively idempotent. The saga-style split used for
+  payment initiation would remove the window.
 - **P2-7. Not yet containerized or observable.** No Dockerfiles/Kubernetes manifests, no
   distributed tracing, no metrics dashboards — deliberately deferred to a later step.
 
