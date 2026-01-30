@@ -12,10 +12,12 @@ and settlement. Targets: 10k TPS, p99 < 1s, 99.99% availability, PCI DSS.
 - PostgreSQL, Redis, Kafka (local stack in `services.docker-compose.yaml`)
 - Lombok, MapStruct, Jakarta Validation, Spring Security, jjwt
 
-**Current phase:** the monolith (phase 1) is feature-frozen. New work targets the microservices
-split described in [docs/architecture.md](docs/architecture.md#target); scaffolding service-split
-infrastructure (API gateway, service discovery, config server, inter-service clients) is expected
-work. What's carried forward unfinished is in [docs/status.md](docs/status.md#phase-1--phase-2-handoff).
+**Current phase:** phase 2 — the microservices split under `microservices/` (8 Maven modules,
+aggregated by `microservices/pom.xml`). The monolith at the repo root (phase 1) is **frozen**:
+don't add features to it; it stays as the reference implementation. Per-service detail is in
+[docs/microservices.md](docs/microservices.md); open work in
+[docs/gaps.md](docs/gaps.md#phase-2-microservices). Containers/Kubernetes, observability, and load
+testing are deliberately deferred — don't add them unless asked.
 
 ## Commands
 
@@ -52,7 +54,41 @@ docker compose -f services.docker-compose.yaml up -d
 - Default local ports: Postgres `5432`, Redis `6380`, Kafka `29092`. Override via `DB_URL`/`DB_USER`/
   `DB_PASS`, `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`, `KAFKA_BROKERS`.
 
-## Architecture
+## Microservices (phase 2)
+
+```bash
+cd microservices && ./mvnw.cmd clean install -DskipTests
+```
+
+Start order: `discovery-service` (8761) → `config-service` (8888, run from its module dir so
+`../config-repo` resolves) → `merchant-service` (8081), `vault-service` (8083), `payment-service`
+(8082), `operations-service` (8084) → `api-gateway-service` (8080). Each business service has its
+own Postgres database (`payflo_merchant`/`_payment`/`_vault`/`_operations`) on the same local
+instance.
+
+- Packages: `com.project.payflo.<module>` (e.g. `payment_service`, `common_lib`). Each module is an
+  independent Spring Boot app with its own `pom.xml` (no shared parent); `common-lib` is a plain JAR.
+- **Config lives in `microservices/config-repo/<service>.yaml`** (served by config-service's native
+  backend); a service's own `application.yaml` only has its name and the `configserver:` import. Add
+  new properties to config-repo, not to the module.
+- `common-lib` wires cross-cutting beans through `META-INF/spring/...AutoConfiguration.imports`
+  (`Shared*AutoConfiguration`) — register new shared beans there rather than relying on component
+  scan.
+- **Auth is done only at the gateway** (`GatewayAuthFilter`: Bearer JWT or Basic API key, per-key rate
+  limit). It forwards `X-Merchant-Id`/`X-Key-Id`; `common-lib`'s `MerchantContextFilter` rebuilds
+  `MerchantContext` downstream. Services have no `SecurityFilterChain`. Controllers still read
+  `MerchantContext.getMerchantId()`.
+- Service-to-service: Feign clients by Eureka name, under `/internal/**` (never routed by the
+  gateway), wrapped in Resilience4j `@CircuitBreaker`/`@Retry` (instances configured in config-repo).
+  Contracts are DTOs in `common-lib/dto`; a sealed interface crossing Feign needs `@JsonTypeInfo`.
+- Keep remote calls out of `@Transactional` methods (see `OrderPersistenceService` and
+  `saga/PaymentAuthorizationRecorder` for the pattern).
+- Async between services only via the transactional outbox → Kafka. Every `@Scheduled` job needs a
+  ShedLock `@SchedulerLock`.
+- `BankCallbackSimulator` **is** scheduled in payment-service (unlike the monolith) — payments reach
+  `CAPTURED`.
+
+## Monolith architecture (phase 1, frozen)
 
 Packages under `com.project.payflo` are **domain-oriented**, each a future service boundary:
 
@@ -156,6 +192,7 @@ Update docs in the same commit as the change:
 - Structural or deployment change → `docs/architecture.md`
 - New dependency or infrastructure piece → `docs/tech-stack.md`
 - New or changed build/run/test command → `docs/getting-started.md`
+- Anything in `microservices/` → `docs/microservices.md` (per-service section + module status table)
 - A gap vs. requirements found or resolved → `docs/gaps.md`
 - Anything that changes what's built → `docs/status.md` (refresh its "Last updated" date)
 - Feature-level changes → `README.md`
