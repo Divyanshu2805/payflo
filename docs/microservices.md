@@ -317,3 +317,7 @@ changing how they run locally.
   `mvnw package` never builds or pushes an image; run `jib:dockerBuild` (local Docker) or
   `jib:build -Dimage.prefix=<registry-user>` (push) explicitly. config-service's image also bakes in
   `microservices/config-repo/` at `/config-repo`.
+- **Overridable Feign targets.** Each Feign client takes an optional base URL —
+  `MERCHANT_SERVICE_URI`, `PAYMENT_SERVICE_URI`, `VAULT_SERVICE_URI` (e.g.
+  `url = "${MERCHANT_SERVICE_URI:}"`). Unset (local runs), the client resolves the service by name
+  through Eureka as before; set (in-cluster), it calls the Kubernetes Service directly.
