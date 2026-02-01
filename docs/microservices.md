@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-01-30._
+_Last updated: 2026-02-01._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -303,3 +303,17 @@ client sent — a caller can't forge `X-Merchant-Id`. The gateway also runs with
 `app.security.trust-inbound-headers: false`, so its own `MerchantContextFilter` never reads
 client-supplied headers either. Downstream services only trust these headers because they're only
 reachable through the gateway; see [Known gaps](gaps.md) for what that assumption still needs.
+
+## Deployment (Kubernetes)
+
+Everything needed to run the services on Kubernetes, built on top of the modules above without
+changing how they run locally.
+
+- **Container images via Jib.** Every deployable module (all but `common-lib` and
+  `discovery-service`, which isn't used in-cluster) has `jib-maven-plugin` configured — no
+  Dockerfiles. Base image `eclipse-temurin:25-jre`, JVM sized from the container limit
+  (`-XX:MaxRAMPercentage=75`), image name `${image.prefix}/<module>:<version>` plus `latest`
+  (`image.prefix` defaults to `payflo`). Jib isn't bound to a lifecycle phase, so a normal
+  `mvnw package` never builds or pushes an image; run `jib:dockerBuild` (local Docker) or
+  `jib:build -Dimage.prefix=<registry-user>` (push) explicitly. config-service's image also bakes in
+  `microservices/config-repo/` at `/config-repo`.
