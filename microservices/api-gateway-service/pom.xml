@@ -27,6 +27,7 @@
 		<url/>
 	</scm>
 	<properties>
+		<image.prefix>payflo</image.prefix>
 		<java.version>25</java.version>
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
 	</properties>
@@ -126,6 +127,27 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.5.2</version>
+				<configuration>
+					<from>
+						<image>eclipse-temurin:25-jre</image>
+					</from>
+					<to>
+						<image>${image.prefix}/${project.artifactId}:${project.version}</image>
+						<tags>
+							<tag>latest</tag>
+						</tags>
+					</to>
+					<container>
+						<jvmFlags>
+							<jvmFlag>-XX:MaxRAMPercentage=75</jvmFlag>
+						</jvmFlags>
+					</container>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
