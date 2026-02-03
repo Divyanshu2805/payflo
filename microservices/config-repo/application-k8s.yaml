@@ -1,0 +1,17 @@
+# Overrides for the `k8s` profile (SPRING_PROFILES_ACTIVE=k8s, set by k8s/infra/configmap.yaml).
+# In-cluster, Kubernetes Services do discovery and load balancing, so Eureka is switched off and
+# Feign clients use the *_SERVICE_URI env vars from the same ConfigMap instead.
+eureka:
+  client:
+    enabled: false
+
+spring:
+  cloud:
+    discovery:
+      enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:kafka:9092}

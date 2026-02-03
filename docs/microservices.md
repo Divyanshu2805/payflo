@@ -325,3 +325,11 @@ changing how they run locally.
   and turns off Eureka/discovery. Its Deployment sets `SPRING_PROFILES_ACTIVE=native,k8s`
   explicitly: the shared ConfigMap's plain `k8s` would otherwise replace `native`, and the server
   would fail at startup looking for a Git URI.
+- **`config-repo/*-k8s.yaml` profile overrides**, served when a service runs with
+  `SPRING_PROFILES_ACTIVE=k8s`:
+  - `application-k8s.yaml` — Eureka off, Redis at `redis:6379`, Kafka at `kafka:9092`.
+  - `<service>-k8s.yaml` — each business service's datasource points at the in-cluster `postgres`
+    with its **own DB user** (`merchant_user`, `payment_user`, ...) and a password from the
+    `app-secrets` Secret (`MERCHANT_DB_PASSWORD`, ...).
+  - `api-gateway-service-k8s.yaml` — the same four routes, targeting `http://<service>` Kubernetes
+    Services instead of `lb://` Eureka names.
