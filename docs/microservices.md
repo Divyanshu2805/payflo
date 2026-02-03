@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-02-01._
+_Last updated: 2026-02-03._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -321,3 +321,7 @@ changing how they run locally.
   `MERCHANT_SERVICE_URI`, `PAYMENT_SERVICE_URI`, `VAULT_SERVICE_URI` (e.g.
   `url = "${MERCHANT_SERVICE_URI:}"`). Unset (local runs), the client resolves the service by name
   through Eureka as before; set (in-cluster), it calls the Kubernetes Service directly.
+- **config-service `k8s` profile.** Reads config from `file:/config-repo` inside its own image
+  and turns off Eureka/discovery. Its Deployment sets `SPRING_PROFILES_ACTIVE=native,k8s`
+  explicitly: the shared ConfigMap's plain `k8s` would otherwise replace `native`, and the server
+  would fail at startup looking for a Git URI.

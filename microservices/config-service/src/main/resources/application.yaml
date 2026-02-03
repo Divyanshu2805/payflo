@@ -21,3 +21,22 @@ management:
     web:
       exposure:
         include: health,info
+
+---
+# Kubernetes: config-repo is baked into the image at /config-repo (Jib extraDirectories), and
+# Kubernetes Services replace Eureka for discovery.
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  cloud:
+    discovery:
+      enabled: false
+    config:
+      server:
+        native:
+          search-locations: file:/config-repo
+
+eureka:
+  client:
+    enabled: false
