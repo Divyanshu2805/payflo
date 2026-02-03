@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-02-01._
+_Last updated: 2026-02-03._
 
 **Phase 2 of 2 — microservices split, in progress.** Phase 1 (the monolith) is frozen; the split is
 being built under `microservices/` — see [Microservices](microservices.md) for per-module progress.
