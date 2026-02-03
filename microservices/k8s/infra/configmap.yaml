@@ -1,0 +1,19 @@
+# Non-secret environment shared by every PayFlo service pod.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: payflo
+data:
+  SPRING_PROFILES_ACTIVE: "k8s"
+  CONFIG_SERVER_URL: "http://config-service.payflo.svc.cluster.local:8888"
+  SPRING_CLOUD_CONFIG_FAIL_FAST: "true"
+  SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: "20"
+  SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL: "3000"
+  KAFKA_BROKERS: "kafka:9092"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  MERCHANT_SERVICE_URI: "http://merchant-service"
+  PAYMENT_SERVICE_URI: "http://payment-service"
+  VAULT_SERVICE_URI: "http://vault-service"
+  OPERATIONS_SERVICE_URI: "http://operations-service"
