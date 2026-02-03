@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/payflo_payment
+    username: payment_user
+    password: ${PAYMENT_DB_PASSWORD}

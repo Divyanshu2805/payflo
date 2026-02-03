@@ -1,0 +1,24 @@
+# Same routes as api-gateway-service.yaml, but targeting Kubernetes Services directly instead of
+# Eureka (lb://) names.
+spring:
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: merchant-service
+              uri: ${MERCHANT_SERVICE_URI:http://merchant-service}
+              predicates:
+                - Path=/v1/auth/**,/v1/merchants/**
+            - id: payment-service
+              uri: ${PAYMENT_SERVICE_URI:http://payment-service}
+              predicates:
+                - Path=/v1/orders/**,/v1/payments/**
+            - id: vault-service
+              uri: ${VAULT_SERVICE_URI:http://vault-service}
+              predicates:
+                - Path=/v1/vault/**
+            - id: operations-service
+              uri: ${OPERATIONS_SERVICE_URI:http://operations-service}
+              predicates:
+                - Path=/webhook/**
