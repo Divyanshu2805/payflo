@@ -333,3 +333,10 @@ changing how they run locally.
     `app-secrets` Secret (`MERCHANT_DB_PASSWORD`, ...).
   - `api-gateway-service-k8s.yaml` — the same four routes, targeting `http://<service>` Kubernetes
     Services instead of `lb://` Eureka names.
+- **`microservices/k8s/`** — plain manifests assembled with Kustomize (`kubectl apply -k`):
+  - `infra/namespace.yaml` (`payflo`) and `infra/configmap.yaml` (`app-config`: active profile, config
+    server URL with fail-fast + retry, Kafka/Redis hosts, the `*_SERVICE_URI` Feign targets).
+  - `secrets.env.example` → copy to `secrets.env` (gitignored); Kustomize's `secretGenerator` turns it
+    into the `app-secrets` Secret (JWT key, vault master key, webhook encryption key, DB passwords).
+  - `kind-config.yaml` — a single-node local cluster named `payflo`, publishing the gateway's NodePort
+    `30080` on `localhost:8080`.
