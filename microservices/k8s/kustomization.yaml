@@ -5,6 +5,9 @@ resources:
   - infra/namespace.yaml
   - infra/configmap.yaml
   - stateful/postgres.yaml
+  - stateful/redis.yaml
+  - stateful/kafka.yaml
+  - stateful/kafka-ui.yaml
 
 secretGenerator:
   - name: app-secrets
