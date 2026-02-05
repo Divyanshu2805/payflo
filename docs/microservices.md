@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-02-03._
+_Last updated: 2026-02-05._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -340,3 +340,7 @@ changing how they run locally.
     into the `app-secrets` Secret (JWT key, vault master key, webhook encryption key, DB passwords).
   - `kind-config.yaml` — a single-node local cluster named `payflo`, publishing the gateway's NodePort
     `30080` on `localhost:8080`.
+- **`stateful/postgres.yaml`** — one Postgres 16 StatefulSet (10Gi PVC, `max_connections=300`) whose
+  init script (a ConfigMap mounted at `/docker-entrypoint-initdb.d`) creates the four service
+  databases (`payflo_merchant`, `payflo_payment`, `payflo_operations`, `payflo_vault`) and one user
+  per database with privileges only on its own — database-per-service with one server to run.
