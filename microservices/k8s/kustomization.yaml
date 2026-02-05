@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - infra/namespace.yaml
   - infra/configmap.yaml
+  - stateful/postgres.yaml
 
 secretGenerator:
   - name: app-secrets
