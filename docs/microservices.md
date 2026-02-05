@@ -344,3 +344,6 @@ changing how they run locally.
   init script (a ConfigMap mounted at `/docker-entrypoint-initdb.d`) creates the four service
   databases (`payflo_merchant`, `payflo_payment`, `payflo_operations`, `payflo_vault`) and one user
   per database with privileges only on its own — database-per-service with one server to run.
+- **`stateful/redis.yaml`** (Redis 7, 2Gi PVC), **`stateful/kafka.yaml`** (single-node KRaft broker —
+  `confluent-local` 7.5, 10Gi PVC, headless Service `kafka:9092`) and **`stateful/kafka-ui.yaml`**
+  (Kafka UI for browsing topics: `kubectl -n payflo port-forward svc/kafka-ui 8090`).
