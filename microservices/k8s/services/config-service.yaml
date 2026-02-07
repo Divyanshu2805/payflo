@@ -1,0 +1,72 @@
+# config-service: Spring Cloud Config server; serves the config-repo baked into its image.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+  namespace: payflo
+  labels:
+    app: config-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+    spec:
+      containers:
+        - name: config-service
+          image: payflo/config-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            # Env beats the image's application.yaml, so the shared k8s profile would otherwise
+            # replace `native` and the server would fall back to the (unconfigured) git backend.
+            - name: SPRING_PROFILES_ACTIVE
+              value: "native,k8s"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-service
+  namespace: payflo
+spec:
+  type: ClusterIP
+  selector:
+    app: config-service
+  ports:
+    - port: 8888
+      targetPort: 8888
