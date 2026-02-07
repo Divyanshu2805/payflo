@@ -356,3 +356,7 @@ changing how they run locally.
   - `merchant-service` gets `JWT_SECRET` (to sign tokens) and `WEBHOOK_SECRET_KEY`;
     `vault-service` is the only pod given `VAULT_MASTER_KEY`, keeping the PCI boundary visible in
     the manifests too.
+  - `payment-service` and `operations-service` get only their DB passwords.
+  - `api-gateway-service` gets `JWT_SECRET` (to verify tokens) and is the only `NodePort` Service
+    (`30080`) — every other Service is `ClusterIP`, so `/internal/**` endpoints aren't reachable from
+    outside the cluster.

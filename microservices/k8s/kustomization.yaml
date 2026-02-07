@@ -11,6 +11,9 @@ resources:
   - services/config-service.yaml
   - services/merchant-service.yaml
   - services/vault-service.yaml
+  - services/payment-service.yaml
+  - services/operations-service.yaml
+  - services/api-gateway-service.yaml
 
 secretGenerator:
   - name: app-secrets
