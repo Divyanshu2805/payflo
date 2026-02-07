@@ -353,3 +353,6 @@ changing how they run locally.
   `250m`/`512Mi` and limits `1` CPU/`1Gi`, and `/actuator/health` startup (up to 5 min), readiness,
   and liveness probes. `config-service` comes first — every other pod fails fast and retries until
   it's reachable.
+  - `merchant-service` gets `JWT_SECRET` (to sign tokens) and `WEBHOOK_SECRET_KEY`;
+    `vault-service` is the only pod given `VAULT_MASTER_KEY`, keeping the PCI boundary visible in
+    the manifests too.
