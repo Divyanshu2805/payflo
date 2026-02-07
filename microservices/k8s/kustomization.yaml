@@ -9,6 +9,8 @@ resources:
   - stateful/kafka.yaml
   - stateful/kafka-ui.yaml
   - services/config-service.yaml
+  - services/merchant-service.yaml
+  - services/vault-service.yaml
 
 secretGenerator:
   - name: app-secrets
