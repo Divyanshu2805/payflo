@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-02-05._
+_Last updated: 2026-02-07._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
@@ -347,3 +347,9 @@ changing how they run locally.
 - **`stateful/redis.yaml`** (Redis 7, 2Gi PVC), **`stateful/kafka.yaml`** (single-node KRaft broker —
   `confluent-local` 7.5, 10Gi PVC, headless Service `kafka:9092`) and **`stateful/kafka-ui.yaml`**
   (Kafka UI for browsing topics: `kubectl -n payflo port-forward svc/kafka-ui 8090`).
+- **`services/*.yaml`** — one Deployment + Service per application, all following the same shape:
+  image `payflo/<module>:latest` (`imagePullPolicy: IfNotPresent`, so images loaded into kind are
+  used as-is), env from the `app-config` ConfigMap plus only the secrets that service needs, requests
+  `250m`/`512Mi` and limits `1` CPU/`1Gi`, and `/actuator/health` startup (up to 5 min), readiness,
+  and liveness probes. `config-service` comes first — every other pod fails fast and retries until
+  it's reachable.

@@ -8,6 +8,7 @@ resources:
   - stateful/redis.yaml
   - stateful/kafka.yaml
   - stateful/kafka-ui.yaml
+  - services/config-service.yaml
 
 secretGenerator:
   - name: app-secrets
