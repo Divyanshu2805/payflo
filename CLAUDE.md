@@ -16,8 +16,9 @@ and settlement. Targets: 10k TPS, p99 < 1s, 99.99% availability, PCI DSS.
 aggregated by `microservices/pom.xml`). The monolith at the repo root (phase 1) is **frozen**:
 don't add features to it; it stays as the reference implementation. Per-service detail is in
 [docs/microservices.md](docs/microservices.md); open work in
-[docs/gaps.md](docs/gaps.md#phase-2-microservices). Containers/Kubernetes, observability, and load
-testing are deliberately deferred — don't add them unless asked.
+[docs/gaps.md](docs/gaps.md#phase-2-microservices). Kubernetes deployment lives in
+`microservices/k8s/` (Jib images, Kustomize, kind — see [docs/deployment.md](docs/deployment.md)).
+Observability and load testing are deliberately deferred — don't add them unless asked.
 
 ## Commands
 
@@ -85,6 +86,10 @@ instance.
   `saga/PaymentAuthorizationRecorder` for the pattern).
 - Async between services only via the transactional outbox → Kafka. Every `@Scheduled` job needs a
   ShedLock `@SchedulerLock`.
+- Kubernetes: `SPRING_PROFILES_ACTIVE=k8s` (from `k8s/infra/configmap.yaml`) switches Eureka off and
+  picks up `config-repo/*-k8s.yaml`; Feign clients take `*_SERVICE_URI` overrides. config-service must
+  run with `native,k8s`. Add any new env var to the ConfigMap (or `secrets.env.example` if secret)
+  and any new service to `k8s/services/` + `kustomization.yaml`.
 - `BankCallbackSimulator` **is** scheduled in payment-service (unlike the monolith) — payments reach
   `CAPTURED`.
 
