@@ -97,5 +97,7 @@ A quick end-to-end check through the gateway: `POST /v1/auth/signup` → `POST /
 The per-module `*ApplicationTests.contextLoads` tests boot the full context, including the
 `configserver:` import, so they need discovery-service, config-service, and the infra running.
 
-Containerization, Kubernetes manifests, load tests, and observability (tracing/metrics dashboards)
+To run the same services on Kubernetes instead, see [Deployment](deployment.md).
+
+Load tests and observability (tracing/metrics dashboards)
 are deliberately not part of the microservices build yet.

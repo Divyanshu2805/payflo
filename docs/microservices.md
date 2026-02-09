@@ -2,7 +2,7 @@
 
 [← Back to docs index](README.md)
 
-_Last updated: 2026-02-07._
+_Last updated: 2026-02-09._
 
 Phase 2 splits the frozen monolith into independently deployable Spring Boot services along the
 domain boundaries it was built around (`common`, `merchant`, `payment`, `vault`, `operations`). The
