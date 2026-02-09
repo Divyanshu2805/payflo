@@ -70,7 +70,8 @@ own database:
 
 A payment now flows end to end through the gateway — order, card or UPI payment, simulated bank
 approval, capture — and settlement, which the monolith never had, is built. Refunds and analytics
-aren't started, and containers, Kubernetes, and monitoring are deliberately deferred. See
+aren't started. The whole system can also be run on Kubernetes (a local kind cluster — see
+[docs/deployment.md](docs/deployment.md)); monitoring and load testing are still to come. See
 [docs/status.md](docs/status.md) for the detailed status and [docs/gaps.md](docs/gaps.md) for known
 gaps.
 

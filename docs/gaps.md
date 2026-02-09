@@ -267,6 +267,13 @@ How the phase 1 gaps above stand after the split, and new gaps the split itself 
   `TRANSFER_PENDING` and the simulator resolves it again — safe only because
   `POST /internal/payments/mark-settled` is effectively idempotent. The saga-style split used for
   payment initiation would remove the window.
-- **P2-7. Not yet containerized or observable.** No Dockerfiles/Kubernetes manifests, no
-  distributed tracing, no metrics dashboards — deliberately deferred to a later step.
+- **P2-7. Not observable yet.** ~~Not containerized~~ — **containerization resolved
+  (2026-02-09):** Jib images and Kubernetes manifests under `microservices/k8s/` (see
+  [Deployment](deployment.md)). Still open: no distributed tracing, metrics, or dashboards, no load
+  tests.
+- **P2-8. Kubernetes setup is local-only.** Single replica per service, NodePort instead of an
+  Ingress, no HPA, images loaded into kind rather than pushed to a registry by CI, and dev secret
+  values in `secrets.env.example`. P2-1 (trusted internal endpoints) is narrowed in-cluster — only
+  the gateway's Service is exposed outside — but there's still no NetworkPolicy stopping one pod
+  from calling another's `/internal/**`.
 

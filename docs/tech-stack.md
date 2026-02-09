@@ -9,6 +9,8 @@
 - **Eventing:** Apache Kafka via `spring-boot-starter-kafka` — transactional outbox for domain events, consumed for webhook delivery
 - **Build tool:** Maven
 - **Other libraries:** Lombok, MapStruct (entity↔DTO mapping), Jakarta Bean Validation
+- **Containers / orchestration:** Jib (`jib-maven-plugin`, base `eclipse-temurin:25-jre`), Kubernetes
+  manifests assembled with Kustomize, kind for the local cluster
 - **Microservices (phase 2):** Spring Cloud 2025.1 — Netflix Eureka (service discovery), Spring Cloud
   Config (native backend over the in-repo `microservices/config-repo`), Spring Cloud Gateway Server
   Web MVC (API gateway), OpenFeign (service-to-service HTTP, Apache HttpClient 5), Resilience4j

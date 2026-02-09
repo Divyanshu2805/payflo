@@ -90,6 +90,14 @@ flowchart LR
 See [Microservices](microservices.md) for per-service detail and
 [Known gaps → Phase 2](gaps.md#phase-2-microservices) for what's still open.
 
+### On Kubernetes
+
+The same topology runs in-cluster (namespace `payflo`, manifests in `microservices/k8s/`) with two
+substitutions: **Kubernetes Services replace Eureka** (the `k8s` profile disables it and Feign/gateway
+routes target `http://<service>` directly), and **one Postgres StatefulSet hosts all four service
+databases**, each with its own user. Only the gateway is exposed (NodePort `30080`); everything else
+is `ClusterIP`. See [Deployment](deployment.md).
+
 ## Target
 
 The **phase-two** architecture, now being built. The `common`/`merchant`/`payment`/`vault`/

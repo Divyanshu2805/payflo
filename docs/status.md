@@ -23,7 +23,8 @@ Phase 2 progress comes first below, followed by the final phase 1 (monolith) tab
 | Settlement | Built — nightly per-merchant batch (2% fee + 18% GST), simulated payout callback, settlement webhooks |
 | Scheduling | ShedLock (Redis) on every scheduled job so each runs on one instance |
 | Refunds, analytics | Not started |
-| Containers, K8s, observability, load testing | Not started — deferred |
+| Containers, K8s | Built — Jib images (no Dockerfiles); Kustomize manifests for Postgres (per-service DBs/users), Redis, Kafka, Kafka UI, config-service, and all five services, with a kind cluster config; verified end to end on kind — see [Deployment](deployment.md) |
+| Observability, load testing | Not started — deferred |
 | Verified | End-to-end through the gateway: signup → login → API key → order → UPI and card payments reaching `CAPTURED`, outbox events published |
 
 Open phase 2 gaps are listed under [Known gaps → Phase 2](gaps.md#phase-2-microservices).
