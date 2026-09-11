@@ -5,7 +5,7 @@ Project documentation, kept up to date with each commit. Intended as a reference
 | Doc | What's in it |
 |---|---|
 | [Overview](overview.md) | What PayFlo is and what it does |
-| [Getting Started](getting-started.md) | Build, run, and test commands |
+| [Getting Started](local-development/README.md) | Build, run, and test commands |
 | [Project Status](status.md) | What's built vs. not, and what's next |
 | [Requirements](requirements.md) | Functional and non-functional requirements |
 | [Tech Stack](tech-stack.md) | Languages, frameworks, and infrastructure |

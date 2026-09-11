@@ -1,18 +1,36 @@
 # Tech Stack
 
-[← Back to docs index](README.md)
+Versions are the ones pinned in the `pom.xml` files, `services.docker-compose.yaml` and the Kubernetes manifests.
 
-- **Language:** Java 25
-- **Framework:** Spring Boot 4.1.0
-- **Persistence:** Spring Data JPA, PostgreSQL (local dev via `application.yaml`, schema auto-created)
-- **Cache / rate limiting:** Redis via Spring Data Redis (`StringRedisTemplate`, Lua scripts for the atomic limiters)
-- **Eventing:** Apache Kafka via `spring-boot-starter-kafka` — transactional outbox for domain events, consumed for webhook delivery
-- **Build tool:** Maven
-- **Other libraries:** Lombok, MapStruct (entity↔DTO mapping), Jakarta Bean Validation
-- **Containers / orchestration:** Jib (`jib-maven-plugin`, base `eclipse-temurin:25-jre`), Kubernetes
-  manifests assembled with Kustomize, kind for the local cluster
-- **Microservices (phase 2):** Spring Cloud 2025.1 — Netflix Eureka (service discovery), Spring Cloud
-  Config (native backend over the in-repo `microservices/config-repo`), Spring Cloud Gateway Server
-  Web MVC (API gateway), OpenFeign (service-to-service HTTP, Apache HttpClient 5), Resilience4j
-  (circuit breaker, retry, thread-pool bulkhead), ShedLock with a Redis provider (single-instance
-  scheduled jobs), jjwt at the gateway for JWT verification
+## Backend
+
+| Technology | Version | Used for |
+|---|---|---|
+| Java | 25 | Every service; virtual threads for webhook delivery and settlement |
+| Spring Boot | 4.1 | Web MVC, Data JPA, Validation, Actuator, Kafka, Data Redis |
+| Spring Security Crypto | — | bcrypt for passwords and API-key secrets, AES-256-GCM for card data and webhook secrets — there is no Spring Security filter chain anywhere |
+| Spring Cloud | 2025.1.2 | Gateway Server Web MVC, Netflix Eureka, Config Server (native backend), OpenFeign (Apache HttpClient 5) |
+| Resilience4j | via Spring Cloud | Circuit breakers and retries on every Feign client; a thread-pool bulkhead around card charging |
+| PostgreSQL | 18 locally, 16 on Kubernetes | One database per service |
+| Hibernate | via Spring Data JPA | Schema managed with `ddl-auto: update` — no migration tool yet |
+| Spring Data Redis | — | API-key cache, rate-limit counters, idempotency keys, the webhook retry queue, ShedLock |
+| Apache Kafka | Confluent local 7.5 (KRaft) | Domain events published through the transactional outbox |
+| ShedLock | 6.9 (Redis provider) | Every `@Scheduled` job runs on one instance only |
+| jjwt | 0.12.6 | Issuing JWTs in merchant-service, verifying them at the gateway |
+| Lombok, MapStruct | MapStruct 1.6.3 | Boilerplate and entity ↔ DTO mapping |
+| Jakarta Bean Validation | — | Request DTO validation, including `@LuhnCheck` on card numbers |
+| Maven | Wrapper (`mvnw`) | An aggregator build over eight modules |
+
+## Infrastructure
+
+| Technology | Used for |
+|---|---|
+| Docker Compose | Local PostgreSQL, Redis, Kafka and Confluent Control Center |
+| Jib | Container images for every deployable module, without Dockerfiles |
+| Kubernetes — kind | The whole system in a local cluster |
+| Kustomize | Assembling the manifests and generating the Secret from `secrets.env` |
+| Kafka UI | Browsing topics in the cluster |
+
+## Documentation
+
+Diagrams are generated SVG and PNG from Python (`docs/assets/diagrams/src/`), rendered with headless Chrome or Edge.
