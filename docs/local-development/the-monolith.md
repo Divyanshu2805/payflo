@@ -1,6 +1,6 @@
 # The Monolith
 
-PayFlo was first built as a single Spring Boot application, which still lives at the repository root (`src/`, `pom.xml`, package `com.project.payflo`). It was **frozen** when the microservices split began and is kept as the reference implementation the services were extracted from — see [decision 0001](../architecture.md). Don't add features to it.
+PayFlo was first built as a single Spring Boot application, which still lives at the repository root (`src/`, `pom.xml`, package `com.project.payflo`). It was **frozen** when the microservices split began and is kept as the reference implementation the services were extracted from — see [decision 0001](../architecture/decisions/0001-monolith-first-then-split.md). Don't add features to it.
 
 ## Running it
 

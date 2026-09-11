@@ -5,15 +5,15 @@
 _Last updated: 2026-02-09._
 
 **Phase 2 of 2 — microservices split, in progress.** Phase 1 (the monolith) is frozen; the split is
-being built under `microservices/` — see [Microservices](microservices.md) for per-module progress.
+being built under `microservices/` — see [Microservices](architecture/module-map.md) for per-module progress.
 Phase 2 progress comes first below, followed by the final phase 1 (monolith) table. See
-[Build strategy](architecture.md#build-strategy-monolith-first) for why it was built monolith-first.
+[Build strategy](architecture/README.md) for why it was built monolith-first.
 
 ## Phase 2 — microservices
 
 | Area | Status |
 |---|---|
-| Services | 8 modules under `microservices/`: `common-lib`, `discovery-service`, `config-service`, `merchant-service`, `vault-service`, `payment-service`, `operations-service`, `api-gateway-service` — see [Microservices](microservices.md) |
+| Services | 8 modules under `microservices/`: `common-lib`, `discovery-service`, `config-service`, `merchant-service`, `vault-service`, `payment-service`, `operations-service`, `api-gateway-service` — see [Microservices](architecture/module-map.md) |
 | Infrastructure services | Eureka service discovery, Spring Cloud Config (native, in-repo `config-repo/`), Spring Cloud Gateway (Web MVC) |
 | Data | Database per service (`payflo_merchant`, `payflo_payment`, `payflo_vault`, `payflo_operations`); shared Redis and Kafka |
 | Auth | Centralized at the gateway (JWT for dashboard routes, API key via HTTP Basic for merchant backends, per-key rate limiting); identity forwarded as `X-Merchant-Id`/`X-Key-Id` headers |
@@ -33,7 +33,7 @@ Open phase 2 gaps are listed under [Known gaps → Phase 2](gaps.md#phase-2-micr
 
 | Area | Status |
 |---|---|
-| Architecture | Monolith (phase 1) frozen; microservices split (phase 2) started under `microservices/` — see [Microservices](microservices.md) |
+| Architecture | Monolith (phase 1) frozen; microservices split (phase 2) started under `microservices/` — see [Microservices](architecture/module-map.md) |
 | Domain entities | 17 built — all 15 originally planned entities, plus `RefreshToken` (added 2025-12-08) and `OutboxEvent` (added 2025-12-16), neither in the original v1 design |
 | Domain enums | Complete for the merchant, payment, vault, and operations domains |
 | Repositories | Started — `merchant` (`AppUserRepository`, `RefreshTokenRepository`, `MerchantRepository`, `ApiKeyRepository`, `CustomerRepository`, `WebhookConfigRepository`), `payment` (`OrderRepository`, `PaymentRepository`, `PaymentTransitionLogRepository`, `OutboxEventRepository`), `vault` (`VaultCardRepository`, `CardTokenRepository`), and `operations` (`WebhookEventRepository`, `DlqEventRepository`) domains |
@@ -57,7 +57,7 @@ Open phase 2 gaps are listed under [Known gaps → Phase 2](gaps.md#phase-2-micr
 
 _As of 2025-12-16, phase 1 (monolith) is considered feature-frozen — no new functional work is
 planned against it. All work from here targets the microservices split described in
-[Target](architecture.md#target); this section is what's being carried forward unfinished, so the split work
+[Target](architecture/README.md); this section is what's being carried forward unfinished, so the split work
 starts from an accurate list rather than rediscovering these gaps mid-migration._
 
 **Not built at all** — will need their own service (or be folded into an existing one) during the

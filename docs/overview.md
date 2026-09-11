@@ -13,4 +13,4 @@ being carried into the microservices split.
 
 The system is now being split into separate services (one each for merchants, payments, card
 storage, and back-office operations, behind a single gateway) — see
-[Microservices](microservices.md).
+[Microservices](architecture/module-map.md).

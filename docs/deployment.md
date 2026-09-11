@@ -4,7 +4,7 @@
 
 How to run the PayFlo microservices on a local [kind](https://kind.sigs.k8s.io/) cluster. Everything
 lives under `microservices/k8s/`; how each piece is built is described in
-[Microservices → Deployment](microservices.md#deployment-kubernetes).
+[Microservices → Deployment](architecture/module-map.md).
 
 Requires Docker, kind, kubectl, and JDK 25.
 
