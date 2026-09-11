@@ -15,7 +15,7 @@ Clients talk to one origin, the gateway. The services talk to each other in two 
 | `/v1/vault/**` | `lb://vault-service` |
 | `/webhook/**` | `lb://operations-service` |
 
-- **Authentication happens here, once.** `GatewayAuthFilter` runs before routing on every request not listed in `app.security.public-routes`, and forwards the caller's identity as headers. See the [authentication flow](README.md).
+- **Authentication happens here, once.** `GatewayAuthFilter` runs before routing on every request not listed in `app.security.public-routes`, and forwards the caller's identity as headers. See the [authentication flow](flows/authentication.md).
 - **`/internal/**` matches no route**, so it is never reachable through the gateway.
 - **There is no catch-all route.** A path no route owns is a 404 from the gateway itself.
 - On Kubernetes the same routes target `http://<service>` Kubernetes Services instead of `lb://` names (`api-gateway-service-k8s.yaml`).
@@ -43,7 +43,7 @@ The complete request and response shapes are in the [internal API reference](../
 
 Every Feign call is wrapped in a Resilience4j `@CircuitBreaker` and `@Retry`, with instances named after the target service in each caller's `config-repo` file. The default circuit breaker opens at a 50% failure rate over a 20-call window and stays open for 10 seconds; retries make 3 attempts with backoff.
 
-- **payment → vault** is the critical path of a card payment. If it fails, the [payment saga](README.md) compensates rather than leaving the payment in `AUTHORIZING`.
+- **payment → vault** is the critical path of a card payment. If it fails, the [payment saga](flows/payment.md) compensates rather than leaving the payment in `AUTHORIZING`.
 - **vault-service** runs the card processor behind a **thread-pool bulkhead** (`vault-card-processor`), so a slow acquirer can't exhaust its request threads.
 - **operations-service** calls through `SettlementIntegrationGateway`, one place that wraps every settlement-related call.
 

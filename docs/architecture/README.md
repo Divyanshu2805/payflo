@@ -8,10 +8,10 @@ If you are new to the codebase, read these in order:
 2. [Module map](module-map.md) — what lives in each module and package, and the layering rules inside a service.
 3. [Service communication](service-communication.md) — the gateway's route table, the internal API, and the events on Kafka.
 4. The four request flows that cover almost everything non-trivial:
-   - [Authentication](README.md) — credentials issued by merchant-service, verified once at the gateway.
-   - [Payment](README.md) — an order and a payment from request to `CAPTURED`.
-   - [Webhook delivery](README.md) — a domain event becoming signed, retried deliveries.
-   - [Settlement](README.md) — the nightly payout to each merchant.
+   - [Authentication](flows/authentication.md) — credentials issued by merchant-service, verified once at the gateway.
+   - [Payment](flows/payment.md) — an order and a payment from request to `CAPTURED`.
+   - [Webhook delivery](flows/webhook-delivery.md) — a domain event becoming signed, retried deliveries.
+   - [Settlement](flows/settlement.md) — the nightly payout to each merchant.
 
 ## Reference
 
