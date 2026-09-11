@@ -9,7 +9,7 @@ PayFlo handles other businesses' money and their customers' card numbers. This p
 | A merchant's staff, from a dashboard | `Authorization: Bearer <jwt>` — HMAC-signed, carries `merchant_id` and `role`, valid 100 minutes | `POST /v1/auth/login` (merchant-service), after a bcrypt password check | The gateway's `JwtAuthHandler`, with the shared `jwt.secret-key` |
 | A merchant's own backend | `Authorization: Basic base64(keyId:secret)` — an API key, `fp_<environment>_<random>` | `POST /v1/merchants/api-keys`; the secret is shown once and stored only as a bcrypt hash | The gateway's `ApiKeyAuthHandler`: Redis cache, then merchant-service on a miss; the current secret, or the previous one during the 24-hour post-rotation grace period |
 
-Both credentials resolve to the same thing — a merchant id — and every endpoint accepts either. See the [authentication flow](README.md) and [decision 0003](decisions/0003-authenticate-once-at-the-gateway.md).
+Both credentials resolve to the same thing — a merchant id — and every endpoint accepts either. See the [authentication flow](flows/authentication.md) and [decision 0003](decisions/0003-authenticate-once-at-the-gateway.md).
 
 ## Authentication happens once, at the gateway
 
