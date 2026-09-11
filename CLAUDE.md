@@ -15,7 +15,7 @@ and settlement. Targets: 10k TPS, p99 < 1s, 99.99% availability, PCI DSS.
 **Current phase:** phase 2 — the microservices split under `microservices/` (8 Maven modules,
 aggregated by `microservices/pom.xml`). The monolith at the repo root (phase 1) is **frozen**:
 don't add features to it; it stays as the reference implementation. Per-service detail is in
-[docs/microservices.md](docs/microservices.md); open work in
+[docs/microservices.md](docs/architecture/module-map.md); open work in
 [docs/gaps.md](docs/gaps.md#phase-2-microservices). Kubernetes deployment lives in
 `microservices/k8s/` (Jib images, Kustomize, kind — see [docs/deployment.md](docs/deployment.md)).
 Observability and load testing are deliberately deferred — don't add them unless asked.
