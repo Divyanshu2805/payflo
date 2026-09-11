@@ -47,7 +47,7 @@ brings up all three (plus a Kafka control-center UI) for local development.
 ```
 
 The microservices build lives in `microservices/` — see
-[docs/getting-started.md](docs/getting-started.md#running-the-microservices) for the startup order.
+[docs/getting-started.md](docs/local-development/README.md) for the startup order.
 
 ## Project Status
 
