@@ -35,7 +35,7 @@ Each value can be overridden with the environment variable named in its placehol
 | `VAULT_MASTER_KEY` | a development-only value | vault-service only |
 | `WEBHOOK_SECRET_KEY` | a development-only value | merchant-service only — encrypts webhook signing secrets |
 
-The development defaults for the three secrets are committed on purpose so the stack starts with no setup. Never use them for anything shared; see [known gaps](../gaps.md).
+The development defaults for the three secrets are committed on purpose so the stack starts with no setup. Never use them for anything shared; see [known gaps](../known-gaps/not-yet-built.md#security).
 
 ## Settings worth knowing
 

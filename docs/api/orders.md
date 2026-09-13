@@ -18,7 +18,7 @@ The customer is resolved **before** the order's transaction opens, so a slow mer
 
 ## Not available
 
-Reading an order (`GET /v1/orders/{id}`), cancelling one (`POST …/cancel`) and listing its payments (`GET …/payments`) exist in the monolith, and payment-service's `OrderService` already implements all three — but no controller routes them yet. See [known gaps](../gaps.md).
+Reading an order (`GET /v1/orders/{id}`), cancelling one (`POST …/cancel`) and listing its payments (`GET …/payments`) exist in the monolith, and payment-service's `OrderService` already implements all three — but no controller routes them yet. See [known gaps](../known-gaps/not-yet-built.md#ported-from-the-monolith).
 
 ## Related
 

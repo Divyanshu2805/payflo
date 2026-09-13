@@ -72,7 +72,7 @@ A payment now flows end to end through the gateway — order, card or UPI paymen
 approval, capture — and settlement, which the monolith never had, is built. Refunds and analytics
 aren't started. The whole system can also be run on Kubernetes (a local kind cluster — see
 [docs/deployment.md](docs/deployment.md)); monitoring and load testing are still to come. See
-[docs/status.md](docs/status.md) for the detailed status and [docs/gaps.md](docs/gaps.md) for known
+[docs/status.md](docs/known-gaps/README.md) for the detailed status and [docs/gaps.md](docs/known-gaps/README.md) for known
 gaps.
 
 ## Documentation

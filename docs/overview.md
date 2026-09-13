@@ -7,8 +7,8 @@ all the plumbing themselves. It handles taking the payment, keeping a record of 
 storing card details safely, letting the business's own systems know when something happens, and paying
 the business out on a regular schedule. The entity/domain layer is fully built (see Entities below), and
 a working API now covers merchant onboarding/auth, the order and payment lifecycle, card vaulting, and
-signed webhook delivery — see [Project Status](status.md) for exactly what's built vs. still
-planned, and the [Phase 1 → Phase 2 handoff](status.md#phase-1--phase-2-handoff) below the status table for what's
+signed webhook delivery — see [Project Status](known-gaps/README.md) for exactly what's built vs. still
+planned, and the [Phase 1 → Phase 2 handoff](known-gaps/README.md) below the status table for what's
 being carried into the microservices split.
 
 The system is now being split into separate services (one each for merchants, payments, card

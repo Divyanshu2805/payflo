@@ -33,4 +33,4 @@ There is no migration tool. Each service runs Hibernate with `ddl-auto: update`,
 3. **Never join another service's data.** A new reference to a merchant, customer or payment is a plain id.
 4. **Update these pages and the ER diagram** in the same change.
 
-Moving to Flyway or Liquibase is tracked in [known gaps](../gaps.md).
+Moving to Flyway or Liquibase is tracked in [known gaps](../known-gaps/not-yet-built.md#platform).

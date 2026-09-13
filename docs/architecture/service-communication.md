@@ -37,7 +37,7 @@ Each business service exposes `/internal/**` for the others. Callers use typed F
 
 The complete request and response shapes are in the [internal API reference](../api/internal.md).
 
-**Authentication.** None. These endpoints trust that only other services can reach them — true locally only by convention, and on Kubernetes because every Service except the gateway is `ClusterIP`. See the [security model](security-model.md#internal-api) and [known gaps](../gaps.md).
+**Authentication.** None. These endpoints trust that only other services can reach them — true locally only by convention, and on Kubernetes because every Service except the gateway is `ClusterIP`. See the [security model](security-model.md#internal-api) and [known gaps](../known-gaps/not-yet-built.md#security).
 
 ### Resilience
 
@@ -71,4 +71,4 @@ The consumer group is `operations-service`, with manual acknowledgement. Events 
 
 - **A cross-service reference is a plain id column, never a foreign key** — see [cross-service references](../schema/cross-service-references.md).
 - **An internal endpoint enforces no merchant scoping of its own.** The caller has already resolved the merchant it is acting for.
-- **Consistency across services is best-effort.** There are no distributed transactions; the saga and the outbox make the common paths safe. See [constraints](../gaps.md).
+- **Consistency across services is best-effort.** There are no distributed transactions; the saga and the outbox make the common paths safe. See [constraints](../known-gaps/constraints-and-trade-offs.md).

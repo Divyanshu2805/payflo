@@ -28,7 +28,7 @@
 
 - **Symptom:** under load or when a peer is slow, the connection pool is exhausted and unrelated requests time out.
 - **Cause:** a `@Transactional` method that calls another service holds a database connection, and any row locks, for the whole call.
-- **Fix:** resolve remote data before the transaction opens, or split the work into a saga — see [decision 0006](../../architecture/decisions/0006-payment-initiation-as-a-saga.md). Settlement still does this; see [known gaps](../../gaps.md).
+- **Fix:** resolve remote data before the transaction opens, or split the work into a saga — see [decision 0006](../../architecture/decisions/0006-payment-initiation-as-a-saga.md). Settlement still does this; see [known gaps](../../known-gaps/not-yet-built.md#settlement).
 
 ## Two property names for the same Kafka topic
 

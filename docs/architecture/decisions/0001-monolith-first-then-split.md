@@ -19,6 +19,6 @@ Once the monolith covered onboarding, credentials, orders, payments, vaulting an
 ## Consequences
 
 - The split was mostly mechanical: each domain package became a service with little redesign, and the no-FK convention meant no schema had to be untangled.
-- The monolith stays in the repository as a frozen reference. Nothing new is built there, and a few of its endpoints (refresh tokens, order reads and cancel) haven't been ported — see [known gaps](../../gaps.md).
+- The monolith stays in the repository as a frozen reference. Nothing new is built there, and a few of its endpoints (refresh tokens, order reads and cancel) haven't been ported — see [known gaps](../../known-gaps/not-yet-built.md#ported-from-the-monolith).
 - Settlement was never built in the monolith; it was built directly in operations-service.
 - In-process calls became network calls, which brought the need for [the saga](0006-payment-initiation-as-a-saga.md), [the outbox](0005-transactional-outbox-for-events.md) and resilience wrappers.

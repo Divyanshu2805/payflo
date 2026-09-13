@@ -16,5 +16,5 @@ merchant-service still **issues** credentials (signup, login, API keys) but neve
 
 - One place to change how callers are authenticated and throttled; the services stay free of credential handling.
 - Every endpoint accepts either credential type — the monolith's split between JWT routes and API-key routes is gone.
-- Business services trust the identity headers, which is safe only while nothing but the gateway can reach them. That holds on Kubernetes (every other Service is `ClusterIP`) but is not enforced by any credential or network policy — see [known gaps](../../gaps.md).
+- Business services trust the identity headers, which is safe only while nothing but the gateway can reach them. That holds on Kubernetes (every other Service is `ClusterIP`) but is not enforced by any credential or network policy — see [known gaps](../../known-gaps/not-yet-built.md#security).
 - The gateway needs Redis and merchant-service to authenticate API keys; a cache hit avoids the network call.

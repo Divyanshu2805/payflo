@@ -41,7 +41,7 @@ Every entity extends `BaseEntity`, whose `created_at`/`updated_at` are filled by
 
 ## Schema management
 
-Each service's tables are created and altered by Hibernate (`ddl-auto: update`). There is no migration tool, no version history and no rollback; a removed column is never dropped. See [schema conventions](../schema/conventions.md) and [known gaps](../gaps.md).
+Each service's tables are created and altered by Hibernate (`ddl-auto: update`). There is no migration tool, no version history and no rollback; a removed column is never dropped. See [schema conventions](../schema/conventions.md) and [known gaps](../known-gaps/not-yet-built.md#platform).
 
 ## Configuration
 

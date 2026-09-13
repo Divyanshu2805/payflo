@@ -17,4 +17,4 @@ Card data lives only in vault-service and its database, `payflo_vault`:
 
 - payment-service, and everything upstream of it, never sees a card number.
 - A card payment is a network hop to vault-service, so payment initiation became [a saga](0006-payment-initiation-as-a-saga.md) that compensates if vault-service is unavailable.
-- vault-service is the one place that must be hardened most: the master key needs a real secret store before any shared environment — see [known gaps](../../gaps.md).
+- vault-service is the one place that must be hardened most: the master key needs a real secret store before any shared environment — see [known gaps](../../known-gaps/not-yet-built.md#security).

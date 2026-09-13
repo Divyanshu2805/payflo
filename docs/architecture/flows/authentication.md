@@ -7,7 +7,7 @@ How a merchant gets credentials, and how every other service trusts a request wi
 ## Getting credentials
 
 1. **Sign up.** `POST /v1/auth/signup` is a public route. `AuthController` → `AuthServiceImpl.signup` rejects a duplicate email (`409 DUPLICATE_MERCHANT_EMAIL`), then creates the `Merchant` (status forced to `PENDING_KYC`) and its first `AppUser` (role `OWNER`, password bcrypt-hashed) in one transaction.
-2. **Log in.** `POST /v1/auth/login` is public too. The password is checked with bcrypt. A wrong password is `400 INVALID_CREDENTIALS`, but an unknown email is `404 USER_NOT_FOUND` — so the response reveals whether an email is registered ([known gaps](../../gaps.md)). On success `JwtUtil.generateAccessToken` returns an HMAC-signed JWT carrying `merchant_id` and `role`, valid for 100 minutes. There is no refresh token in the microservices — log in again.
+2. **Log in.** `POST /v1/auth/login` is public too. The password is checked with bcrypt. A wrong password is `400 INVALID_CREDENTIALS`, but an unknown email is `404 USER_NOT_FOUND` — so the response reveals whether an email is registered ([known gaps](../../known-gaps/not-yet-built.md#security)). On success `JwtUtil.generateAccessToken` returns an HMAC-signed JWT carrying `merchant_id` and `role`, valid for 100 minutes. There is no refresh token in the microservices — log in again.
 3. **Create an API key.** With the JWT, `POST /v1/merchants/api-keys { environment }` returns a `keyId` (`fp_test_…` or `fp_live_…`) and a secret. The secret is generated with `SecureRandom`, returned **once**, and stored only as a bcrypt hash.
 
 ## Every later request
@@ -33,7 +33,7 @@ The yielded headers are applied with `HeaderAugmentingRequestWrapper`, so a clie
 - `POST /v1/merchants/api-keys/{keyId}/rotate` moves the current hash to `previous_key_secret_hash`, stores a new one and opens a 24-hour grace period, so an integration keeps working while it switches secrets.
 - `DELETE /v1/merchants/api-keys/{keyId}` sets `enabled = false`.
 
-Both evict the key from the gateway's Redis cache, so the next request reloads it from merchant-service and the change applies immediately. Rotating a key that is already revoked is rejected — today as an unmapped exception, so a `500` ([known gaps](../../gaps.md)).
+Both evict the key from the gateway's Redis cache, so the next request reloads it from merchant-service and the change applies immediately. Rotating a key that is already revoked is rejected — today as an unmapped exception, so a `500` ([known gaps](../../known-gaps/not-yet-built.md#api)).
 
 ## Related
 

@@ -21,4 +21,4 @@ A repeated request with the same `X-Idempotency-Key` returns the existing attemp
 
 - Database connections are never held across a network call on the payment path.
 - Between steps 1 and 3 the payment is visibly `AUTHORIZING`; a crash in that window leaves it there until the bank callback simulator resolves it.
-- Settlement does not follow this pattern yet: it calls other services inside its transaction — see [known gaps](../../gaps.md).
+- Settlement does not follow this pattern yet: it calls other services inside its transaction — see [known gaps](../../known-gaps/not-yet-built.md#settlement).
