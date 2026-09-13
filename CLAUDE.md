@@ -21,7 +21,7 @@ These are authoritative and kept current:
 | Entities, tables, enums, state machines | [`docs/schema/`](docs/schema/README.md) |
 | Every endpoint, the mock acquirer, idempotency, the error model | [`docs/api/`](docs/api/README.md) |
 | Setup, configuration, troubleshooting, the monolith | [`docs/local-development/`](docs/local-development/README.md) |
-| Constraints, trade-offs, what isn't built yet | [`docs/known-gaps/`](docs/gaps.md) |
+| Constraints, trade-offs, what isn't built yet | [`docs/known-gaps/`](docs/known-gaps/README.md) |
 | Kubernetes manifests, images, cluster configuration | [`docs/deployment/`](docs/deployment.md) |
 | Design targets | [`docs/requirements.md`](docs/requirements.md) — check known gaps before assuming one is met |
 

@@ -1,10 +1,9 @@
 # Requirements
 
-[← Back to docs index](README.md)
-
-The design target — a plan, not a contract; items may be dropped or deferred as implementation proceeds.
-Nothing here has been individually checked off yet. See [Known gaps](gaps.md)
-for deviations found so far.
+What PayFlo is designed to do, and the targets it is designed for. This is the design target — a plan, not a
+contract: some items are built, some are partly built, and some aren't started. What isn't satisfied yet is
+tracked in [known gaps](known-gaps/README.md); what each built piece does is in the [architecture](architecture/README.md)
+and [API reference](api/README.md).
 
 ## Functional
 

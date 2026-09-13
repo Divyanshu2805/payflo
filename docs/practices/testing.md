@@ -7,7 +7,7 @@
 | Each microservice | `./mvnw -pl <module> test` from `microservices/` | One `*ApplicationTests.contextLoads` per module — the Spring context starts | discovery-service, config-service and PostgreSQL/Redis/Kafka running, since each context imports its configuration from config-service |
 | The monolith | `./mvnw test -Duser.timezone=Asia/Kolkata` from the root | `PayFloApplicationTests.contextLoads` | PostgreSQL; the time-zone flag ([the pitfall](gotchas/spring-and-jpa.md#postgresql-rejects-the-jvms-legacy-time-zone-name)) |
 
-There are **no unit tests or integration tests** of business logic yet — that is the largest gap in the codebase, tracked in [known gaps](../gaps.md).
+There are **no unit tests or integration tests** of business logic yet — that is the largest gap in the codebase, tracked in [known gaps](../known-gaps/not-yet-built.md#platform).
 
 ## What is verified by hand
 
@@ -20,7 +20,7 @@ Every change to a flow is verified end to end through the gateway, against the r
 | Compensation | Stop vault-service and pay by card: the payment ends `FAILED` with `PAYMENT_GATEWAY_ROUTER_UNREACHABLE` |
 | Events | `ORDER_CREATED`, `PAYMENT_CREATED` and `PAYMENT_STATUS_CHANGED` appear on their topics in Control Center or Kafka UI |
 | Webhooks | Register `…/webhook/success` as a target and watch `webhook_event` rows reach `DELIVERED`; register a URL that fails and watch `attempts` and `next_retry_at` advance |
-| Settlement | Call `SettlementEngine.run()` rather than waiting for 23:00, then check `settlement` and the payments' `SETTLED` status. Not yet verified end to end — see [known gaps](../gaps.md) |
+| Settlement | Call `SettlementEngine.run()` rather than waiting for 23:00, then check `settlement` and the payments' `SETTLED` status. Not yet verified end to end — see [known gaps](../known-gaps/not-yet-built.md#settlement) |
 | Kubernetes | The steps in [running on kind](../deployment.md) — last done on a fresh cluster: all pods healthy, signup through a card payment reaching `CAPTURED`, events published |
 
 A green `contextLoads` says nothing about any of these.

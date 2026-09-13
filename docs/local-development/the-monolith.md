@@ -42,4 +42,4 @@ It listens on `:8080`, so don't run it alongside the gateway.
 | Settlement | Not built | Built |
 | Kafka | Producer and consumer in the same JVM | Across service boundaries |
 
-The endpoints that exist only in the monolith are tracked in [known gaps](../gaps.md).
+The endpoints that exist only in the monolith are tracked in [known gaps](../known-gaps/not-yet-built.md#ported-from-the-monolith).

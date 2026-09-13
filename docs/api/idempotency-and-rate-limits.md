@@ -12,7 +12,7 @@ Any `POST`, `PUT` or `PATCH` to a business service may send an `X-Idempotency-Ke
 
 `POST /v1/payments` goes further: the same header becomes the payment's own `idempotency_key`, unique per merchant in the database, so even after the 24-hour window a retry returns the payment already created under that key rather than a second attempt.
 
-The key is not tied to the request body: reusing a key with a different payload replays the first response. See [known gaps](../gaps.md).
+The key is not tied to the request body: reusing a key with a different payload replays the first response. See [known gaps](../known-gaps/not-yet-built.md#api).
 
 ## Rate limits
 
@@ -27,4 +27,4 @@ Every API-key response carries:
 
 An over-limit request is `429 RATE_LIMIT_EXCEEDED` with `Retry-After` in seconds, and never reaches a service.
 
-The algorithm is chosen by `app.rate-limit.method` — `fixed` (fixed window, the default), `sliding` (sorted-set sliding window), `sliding-lua` (the same, atomically in Lua) or `bucket` (token bucket in Lua). They behave differently when Redis is down: the two Lua-based limiters let traffic through, the other two fail the request. See [known gaps](../gaps.md).
+The algorithm is chosen by `app.rate-limit.method` — `fixed` (fixed window, the default), `sliding` (sorted-set sliding window), `sliding-lua` (the same, atomically in Lua) or `bucket` (token bucket in Lua). They behave differently when Redis is down: the two Lua-based limiters let traffic through, the other two fail the request. See [known gaps](../known-gaps/not-yet-built.md#api).

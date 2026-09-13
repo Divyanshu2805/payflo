@@ -24,11 +24,11 @@ Failures are answered by the gateway directly, in the same `{ errorCode, errorDe
 
 ## Tenancy
 
-There is one tenant boundary: the merchant. Every query that reads merchant data is scoped by the `merchantId` from `MerchantContext` — `findByIdAndMerchantId`, `findByIdAndMerchantIdForUpdate` — so another merchant's order or payment is simply not found (`404`), never forbidden. There is no role or permission distinction within a merchant: any authenticated user or API key can do anything that merchant can. See [known gaps](../gaps.md).
+There is one tenant boundary: the merchant. Every query that reads merchant data is scoped by the `merchantId` from `MerchantContext` — `findByIdAndMerchantId`, `findByIdAndMerchantIdForUpdate` — so another merchant's order or payment is simply not found (`404`), never forbidden. There is no role or permission distinction within a merchant: any authenticated user or API key can do anything that merchant can. See [known gaps](../known-gaps/not-yet-built.md#security).
 
 ## Trusted identity headers
 
-Business services believe `X-Merchant-Id` because only the gateway can reach them. That holds on Kubernetes, where every Service except the gateway's is `ClusterIP`, and locally only by convention. The gateway overwrites the identity headers it sets, but it does not strip the others a client may send — see [known gaps](../gaps.md) for what that leaves open.
+Business services believe `X-Merchant-Id` because only the gateway can reach them. That holds on Kubernetes, where every Service except the gateway's is `ClusterIP`, and locally only by convention. The gateway overwrites the identity headers it sets, but it does not strip the others a client may send — see [known gaps](../known-gaps/not-yet-built.md#security) for what that leaves open.
 
 ## Internal API
 
@@ -57,7 +57,7 @@ Card data is confined to vault-service and its database — see [decision 0004](
 | Webhook signing secrets | AES-encrypted with `webhook.secret-encryption-key` (`WEBHOOK_SECRET_KEY`); decrypted only to sign a delivery |
 | Card numbers | Envelope-encrypted, above |
 
-The JWT key, vault master key and webhook encryption key have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`. A real deployment needs a secret store; see [known gaps](../gaps.md).
+The JWT key, vault master key and webhook encryption key have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`. A real deployment needs a secret store; see [known gaps](../known-gaps/not-yet-built.md#security).
 
 ## Webhook signatures
 

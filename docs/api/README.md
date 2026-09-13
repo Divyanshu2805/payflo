@@ -52,4 +52,4 @@ Either works on every endpoint. See [Authentication](authentication.md).
 - [Mock acquirer](mock-acquirer.md) — the test values that make a payment fail, and how the simulated bank decides.
 - [Idempotency and rate limits](idempotency-and-rate-limits.md).
 - [Errors](errors.md) — the error shape and every exception → status mapping.
-- [API behavior worth knowing](../gaps.md) — responses that are easy to mistake for bugs.
+- [API behavior worth knowing](../known-gaps/api-behavior.md) — responses that are easy to mistake for bugs.

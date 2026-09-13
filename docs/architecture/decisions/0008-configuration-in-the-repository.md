@@ -14,4 +14,4 @@ Every setting lives in `microservices/config-repo/`, versioned with the code, an
 
 - A configuration change is a reviewed commit, and one file shows everything a service is configured with.
 - config-service must be up before any other service starts; locally it must be started from its module directory so `../config-repo` resolves, and on Kubernetes the directory is baked into its image.
-- Development-only secret defaults are committed, which is convenient locally and unacceptable anywhere shared — see [known gaps](../../gaps.md).
+- Development-only secret defaults are committed, which is convenient locally and unacceptable anywhere shared — see [known gaps](../../known-gaps/not-yet-built.md#security).

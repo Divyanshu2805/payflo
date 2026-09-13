@@ -42,7 +42,7 @@ One merchant's payout from one nightly run.
 |---|---|
 | `merchant_id` | Plain id → merchant-service. |
 | `gross_amount_*` | The sum of the settled payments. |
-| `refund_amount_*` | Refunds to deduct — not computed yet (see [known gaps](../gaps.md)). |
+| `refund_amount_*` | Refunds to deduct — not computed yet (see [known gaps](../known-gaps/not-yet-built.md#settlement)). |
 | `fee_amount_*` | The platform fee, 2% of gross. |
 | `gst_amount_*` | GST, 18% of the fee. |
 | `net_amount_*` | What is paid out: gross − fee − GST. |

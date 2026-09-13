@@ -29,7 +29,7 @@ Both events go through operations-service's own outbox to `settlements.events`, 
 
 ## Limits today
 
-The simulator always reports success, refunds are not deducted (they aren't built), and a few issues found while documenting this flow — including the settlement row's non-null refund amount never being set — are listed in [known gaps](../../gaps.md).
+The simulator always reports success, refunds are not deducted (they aren't built), and a few issues found while documenting this flow — including the settlement row's non-null refund amount never being set — are listed in [known gaps](../../known-gaps/not-yet-built.md#settlement).
 
 ## Related
 

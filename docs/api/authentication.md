@@ -21,7 +21,7 @@ Both endpoints are public routes at the gateway. merchant-service issues the JWT
 
 ## Not available
 
-There is no refresh token and no logout: when the access token expires, log in again. The monolith's `POST /v1/auth/refresh` and `POST /v1/auth/logout` haven't been ported — see [known gaps](../gaps.md).
+There is no refresh token and no logout: when the access token expires, log in again. The monolith's `POST /v1/auth/refresh` and `POST /v1/auth/logout` haven't been ported — see [known gaps](../known-gaps/not-yet-built.md#ported-from-the-monolith).
 
 ## Related
 
