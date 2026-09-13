@@ -14,7 +14,7 @@ Everything else — ports, datasources, Kafka, Redis, routes, resilience setting
 |---|---|
 | `application.yaml` | Every service: the Eureka URL, Redis, the JWT secret, virtual threads, actuator exposure |
 | `<service>.yaml` | One service: its port, datasource, Kafka topics, Feign/Resilience4j instances and domain settings |
-| `application-k8s.yaml`, `<service>-k8s.yaml` | The same, when a service runs with the `k8s` profile on Kubernetes — see [deployment configuration](../deployment.md) |
+| `application-k8s.yaml`, `<service>-k8s.yaml` | The same, when a service runs with the `k8s` profile on Kubernetes — see [deployment configuration](../deployment/configuration.md) |
 
 Add a new property to `config-repo`, never to a module's `application.yaml`.
 

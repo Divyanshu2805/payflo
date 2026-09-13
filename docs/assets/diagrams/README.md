@@ -9,7 +9,7 @@ The images used throughout the documentation. Each diagram exists as an SVG (the
 | `flow-authentication`, `flow-payment`, `flow-webhook-delivery`, `flow-settlement` | [request flows](../../architecture/README.md) |
 | `er-merchant`, `er-payment`, `er-vault`, `er-operations` | [data model](../../schema/README.md) |
 | `state-payment`, `state-settlement`, `state-delivery` | [enums and state machines](../../schema/enums.md) |
-| `deployment-topology` | [README](../../../README.md), [deployment](../../deployment.md) |
+| `deployment-topology` | [README](../../../README.md), [deployment](../../deployment/README.md) |
 
 ## Regenerating
 

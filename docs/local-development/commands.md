@@ -10,7 +10,7 @@ On Windows, use `mvnw.cmd` in place of `./mvnw`.
 | `../mvnw spring-boot:run` (from a module directory) | Run one service — see the [start order](setup.md#4-start-the-services-in-order) |
 | `./mvnw -pl common-lib,<module> compile` | Compile one service against `common-lib` from source |
 | `./mvnw -pl <module> test` | That module's tests — a `contextLoads` that needs discovery, config and the infrastructure running |
-| `./mvnw -DskipTests jib:dockerBuild -pl <module>` | Build a container image into the local Docker daemon ([container images](../deployment.md)) |
+| `./mvnw -DskipTests jib:dockerBuild -pl <module>` | Build a container image into the local Docker daemon ([container images](../deployment/container-images.md)) |
 
 ## Checking a running stack
 
