@@ -22,7 +22,7 @@ These are authoritative and kept current:
 | Every endpoint, the mock acquirer, idempotency, the error model | [`docs/api/`](docs/api/README.md) |
 | Setup, configuration, troubleshooting, the monolith | [`docs/local-development/`](docs/local-development/README.md) |
 | Constraints, trade-offs, what isn't built yet | [`docs/known-gaps/`](docs/known-gaps/README.md) |
-| Kubernetes manifests, images, cluster configuration | [`docs/deployment/`](docs/deployment.md) |
+| Kubernetes manifests, images, cluster configuration | [`docs/deployment/`](docs/deployment/README.md) |
 | Design targets | [`docs/requirements.md`](docs/requirements.md) — check known gaps before assuming one is met |
 
 If a change would make any of these inaccurate, **update that doc in the same change**. Diagrams are generated: edit the owning `d_*.py` in `docs/assets/diagrams/src/`, run `build.py` and `render.py`, and commit the regenerated SVG and PNG.

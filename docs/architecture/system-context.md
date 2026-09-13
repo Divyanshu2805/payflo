@@ -41,4 +41,4 @@ There is no real bank or card network. Three stand-ins make the flows run end to
 
 A raw card number never leaves vault-service: payment-service sends a token and an amount to `POST /internal/vault/charge`, and vault-service decrypts, charges and discards the number itself. Keeping card data in one service with its own database is what keeps PCI scope small — see [decision 0004](decisions/0004-isolate-card-data-in-vault-service.md).
 
-On Kubernetes the same services run in one namespace with Kubernetes Services in place of Eureka; see [Deployment](../deployment.md).
+On Kubernetes the same services run in one namespace with Kubernetes Services in place of Eureka; see [Deployment](../deployment/README.md).
