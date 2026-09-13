@@ -69,6 +69,6 @@ The consumer group is `operations-service`, with manual acknowledgement. Events 
 
 ## Consequences of database-per-service
 
-- **A cross-service reference is a plain id column, never a foreign key** — see [cross-service references](../schema.md).
+- **A cross-service reference is a plain id column, never a foreign key** — see [cross-service references](../schema/cross-service-references.md).
 - **An internal endpoint enforces no merchant scoping of its own.** The caller has already resolved the merchant it is acting for.
 - **Consistency across services is best-effort.** There are no distributed transactions; the saga and the outbox make the common paths safe. See [constraints](../gaps.md).

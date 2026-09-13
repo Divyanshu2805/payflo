@@ -7,8 +7,8 @@ The images used throughout the documentation. Each diagram exists as an SVG (the
 | `system-architecture` | [README](../../../README.md), [system context](../../architecture/system-context.md) |
 | `service-communication` | [service communication](../../architecture/service-communication.md) |
 | `flow-authentication`, `flow-payment`, `flow-webhook-delivery`, `flow-settlement` | [request flows](../../architecture/README.md) |
-| `er-merchant`, `er-payment`, `er-vault`, `er-operations` | [data model](../../schema.md) |
-| `state-payment`, `state-settlement`, `state-delivery` | [enums and state machines](../../schema.md) |
+| `er-merchant`, `er-payment`, `er-vault`, `er-operations` | [data model](../../schema/README.md) |
+| `state-payment`, `state-settlement`, `state-delivery` | [enums and state machines](../../schema/enums.md) |
 | `deployment-topology` | [README](../../../README.md), [deployment](../../deployment.md) |
 
 ## Regenerating

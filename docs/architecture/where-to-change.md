@@ -36,7 +36,7 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 | Add a public endpoint | The owning service's `controller/` and DTOs, the [API reference](../api.md) — and, if the path prefix is new, a route in `config-repo/api-gateway-service.yaml` **and** `api-gateway-service-k8s.yaml` |
 | Make an endpoint public (no credential) | `app.security.public-routes` in `config-repo/api-gateway-service.yaml` — think twice |
 | Add a service-to-service call | An `Internal*Controller` endpoint in the owner, a Feign client method in the caller's `client/` with Resilience4j annotations and a `config-repo` instance, a `common-lib` DTO if shared, and the table in [service communication](service-communication.md#internal-api) |
-| Add a column or table | The entity (Hibernate adds it on the next start), then the [data model](../schema.md) and the ER diagram |
+| Add a column or table | The entity (Hibernate adds it on the next start), then the [data model](../schema/README.md) and the ER diagram |
 | Change authentication | api-gateway `security/` (`GatewayAuthFilter`, `JwtAuthHandler`, `ApiKeyAuthHandler`); token issuing in merchant `security/JwtUtil.java` |
 | Change rate limits | `app.rate-limit.*` in `config-repo/api-gateway-service.yaml`; algorithms in `common-lib` `ratelimit/` |
 | Change the error shape or a status mapping | `common-lib` `exception/GlobalExceptionHandler.java` — every service picks it up |

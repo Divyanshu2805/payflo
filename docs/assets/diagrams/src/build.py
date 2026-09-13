@@ -4,7 +4,7 @@ Builds every documentation diagram into ./out as SVG; render.py then turns each 
 Handles: the list of diagrams and their output file names.
 """
 import os
-import d_architecture, d_platform, d_flows
+import d_architecture, d_platform, d_flows, d_er, d_states
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIAGRAMS = {
@@ -15,6 +15,13 @@ DIAGRAMS = {
     "flow-payment": d_flows.payment,
     "flow-webhook-delivery": d_flows.webhooks,
     "flow-settlement": d_flows.settlement,
+    "er-merchant": d_er.merchant,
+    "er-payment": d_er.payment,
+    "er-vault": d_er.vault,
+    "er-operations": d_er.operations,
+    "state-payment": d_states.payment,
+    "state-settlement": d_states.settlement,
+    "state-delivery": d_states.delivery,
 }
 
 if __name__ == "__main__":

@@ -134,7 +134,7 @@ Packages under `com.project.payflo` are **domain-oriented**, each a future servi
   (authorize, then auto-capture). **Its `@Scheduled` is commented out**, so payments stay in
   `AUTHORIZING` and `capture` returns `409`. Enabling it is a deliberate decision — ask first.
 - `PaymentStatus`/`PaymentEvent` in `common/enums` define the state machine; read them (and
-  [docs/domain-vocabulary.md](docs/domain-vocabulary.md)) before adding any status or event.
+  [docs/domain-vocabulary.md](docs/schema/enums.md)) before adding any status or event.
 
 ### Events and webhooks
 

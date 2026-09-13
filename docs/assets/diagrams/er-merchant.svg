@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="820" viewBox="0 0 1480 820"><defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/></filter><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.1" fill="#1a2232"/></pattern></defs><rect width="1480" height="820" rx="18" fill="#0b0f17"/><rect width="1480" height="820" fill="url(#dots)"/><text x="36" y="46" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#e6edf3">merchant-service database — payflo_merchant</text><text x="36" y="70" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#8b98a9">Merchants, dashboard users, API keys, customers and webhook configs · schema by Hibernate ddl-auto: update</text>
+<path d="M880.0,474.0 L880.0,560.0 L1100.0,560.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M940.0,220.0 L1100.0,220.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M620.0,474.0 L620.0,564.0 L360.0,564.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M560.0,209.0 L360.0,209.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
+<rect x="560" y="120" width="380" height="354" rx="11" fill="#121826" stroke="rgba(88,166,255,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<path d="M560,131 a11,11 0 0 1 11,-11 h358 a11,11 0 0 1 11,11 v27 h-380 z" fill="rgba(88,166,255,0.16)"/>
+<g transform="translate(572.0,130.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#58a6ff" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#58a6ff" stroke-width="1.8"/></g>
+<text x="598" y="144" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="13" font-weight="700" fill="#e6edf3">merchant</text>
+<rect x="574" y="163" width="18" height="14" rx="4" fill="rgba(227,179,65,0.18)"/>
+<text x="582.9" y="173" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#e3b341">PK</text>
+<text x="610" y="174" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">id</text>
+<text x="928" y="174" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="561" y="181" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="196" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">name</text>
+<text x="928" y="196" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(200)</text>
+<rect x="574" y="207" width="18" height="14" rx="4" fill="rgba(57,197,207,0.18)"/>
+<text x="582.9" y="217" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#39c5cf">UK</text>
+<text x="610" y="218" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">email</text>
+<text x="928" y="218" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="561" y="225" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="240" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">contact_number</text>
+<text x="928" y="240" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="610" y="262" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">business_type</text>
+<text x="928" y="262" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="561" y="269" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="284" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">business_name</text>
+<text x="928" y="284" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="610" y="306" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">website_url</text>
+<text x="928" y="306" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="561" y="313" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="328" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">status</text>
+<text x="928" y="328" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="610" y="350" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">gst_id</text>
+<text x="928" y="350" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="561" y="357" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="372" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">pan_id</text>
+<text x="928" y="372" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="610" y="394" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">settlement_bank_account</text>
+<text x="928" y="394" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="561" y="401" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="416" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">settlement_bank_ifsc</text>
+<text x="928" y="416" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="610" y="438" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">settlement_bank_account_holder_name</text>
+<text x="928" y="438" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="574" y="464" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">+ BaseEntity audit columns</text>
+<rect x="60" y="120" width="300" height="178" rx="11" fill="#121826" stroke="rgba(63,185,80,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<path d="M60,131 a11,11 0 0 1 11,-11 h278 a11,11 0 0 1 11,11 v27 h-300 z" fill="rgba(63,185,80,0.16)"/>
+<g transform="translate(72.0,130.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#3fb950" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#3fb950" stroke-width="1.8"/></g>
+<text x="98" y="144" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="13" font-weight="700" fill="#e6edf3">app_user</text>
+<rect x="74" y="163" width="18" height="14" rx="4" fill="rgba(227,179,65,0.18)"/>
+<text x="82.9" y="173" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#e3b341">PK</text>
+<text x="110" y="174" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">id</text>
+<text x="348" y="174" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="61" y="181" width="298" height="22" fill="#ffffff" opacity="0.025"/>
+<rect x="74" y="185" width="18" height="14" rx="4" fill="rgba(88,166,255,0.18)"/>
+<text x="82.9" y="195" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#58a6ff">FK</text>
+<text x="110" y="196" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">merchant_id</text>
+<text x="348" y="196" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="74" y="207" width="18" height="14" rx="4" fill="rgba(57,197,207,0.18)"/>
+<text x="82.9" y="217" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#39c5cf">UK</text>
+<text x="110" y="218" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">email</text>
+<text x="348" y="218" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="61" y="225" width="298" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="110" y="240" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">password_hash</text>
+<text x="348" y="240" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="110" y="262" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">role</text>
+<text x="348" y="262" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="74" y="288" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">+ BaseEntity audit columns</text>
+<rect x="60" y="420" width="300" height="288" rx="11" fill="#121826" stroke="rgba(240,136,62,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<path d="M60,431 a11,11 0 0 1 11,-11 h278 a11,11 0 0 1 11,11 v27 h-300 z" fill="rgba(240,136,62,0.16)"/>
+<g transform="translate(72.0,430.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#f0883e" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#f0883e" stroke-width="1.8"/></g>
+<text x="98" y="444" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="13" font-weight="700" fill="#e6edf3">api_key</text>
+<rect x="74" y="463" width="18" height="14" rx="4" fill="rgba(227,179,65,0.18)"/>
+<text x="82.9" y="473" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#e3b341">PK</text>
+<text x="110" y="474" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">id</text>
+<text x="348" y="474" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="61" y="481" width="298" height="22" fill="#ffffff" opacity="0.025"/>
+<rect x="74" y="485" width="18" height="14" rx="4" fill="rgba(88,166,255,0.18)"/>
+<text x="82.9" y="495" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#58a6ff">FK</text>
+<text x="110" y="496" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">merchant_id</text>
+<text x="348" y="496" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="74" y="507" width="18" height="14" rx="4" fill="rgba(57,197,207,0.18)"/>
+<text x="82.9" y="517" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#39c5cf">UK</text>
+<text x="110" y="518" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">key_id</text>
+<text x="348" y="518" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(50)</text>
+<rect x="61" y="525" width="298" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="110" y="540" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">key_secret_hash</text>
+<text x="348" y="540" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(200)</text>
+<text x="110" y="562" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">previous_key_secret_hash</text>
+<text x="348" y="562" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="61" y="569" width="298" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="110" y="584" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">environment</text>
+<text x="348" y="584" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(10)</text>
+<text x="110" y="606" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">enabled</text>
+<text x="348" y="606" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">boolean</text>
+<rect x="61" y="613" width="298" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="110" y="628" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">last_used_at</text>
+<text x="348" y="628" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">timestamp</text>
+<text x="110" y="650" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">rotated_at</text>
+<text x="348" y="650" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">timestamp</text>
+<rect x="61" y="657" width="298" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="110" y="672" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">grace_period_expires_at</text>
+<text x="348" y="672" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">timestamp</text>
+<text x="74" y="698" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">+ BaseEntity audit columns</text>
+<rect x="1100" y="120" width="320" height="200" rx="11" fill="#121826" stroke="rgba(188,140,255,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<path d="M1100,131 a11,11 0 0 1 11,-11 h298 a11,11 0 0 1 11,11 v27 h-320 z" fill="rgba(188,140,255,0.16)"/>
+<g transform="translate(1112.0,130.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#bc8cff" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#bc8cff" stroke-width="1.8"/></g>
+<text x="1138" y="144" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="13" font-weight="700" fill="#e6edf3">customer</text>
+<rect x="1114" y="163" width="18" height="14" rx="4" fill="rgba(227,179,65,0.18)"/>
+<text x="1122.9" y="173" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#e3b341">PK</text>
+<text x="1150" y="174" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">id</text>
+<text x="1408" y="174" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="1101" y="181" width="318" height="22" fill="#ffffff" opacity="0.025"/>
+<rect x="1114" y="185" width="18" height="14" rx="4" fill="rgba(88,166,255,0.18)"/>
+<text x="1122.9" y="195" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#58a6ff">FK</text>
+<text x="1150" y="196" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">merchant_id</text>
+<text x="1408" y="196" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<text x="1150" y="218" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">name</text>
+<text x="1408" y="218" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="1101" y="225" width="318" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="1150" y="240" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">email</text>
+<text x="1408" y="240" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="1150" y="262" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">phone</text>
+<text x="1408" y="262" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<rect x="1101" y="269" width="318" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="1150" y="284" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">deleted_at</text>
+<text x="1408" y="284" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">timestamp</text>
+<text x="1114" y="310" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">found or created by merchant + email</text>
+<rect x="1100" y="460" width="320" height="200" rx="11" fill="#121826" stroke="rgba(57,197,207,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<path d="M1100,471 a11,11 0 0 1 11,-11 h298 a11,11 0 0 1 11,11 v27 h-320 z" fill="rgba(57,197,207,0.16)"/>
+<g transform="translate(1112.0,470.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#39c5cf" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#39c5cf" stroke-width="1.8"/></g>
+<text x="1138" y="484" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="13" font-weight="700" fill="#e6edf3">merchant_webhook_config</text>
+<rect x="1114" y="503" width="18" height="14" rx="4" fill="rgba(227,179,65,0.18)"/>
+<text x="1122.9" y="513" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#e3b341">PK</text>
+<text x="1150" y="514" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">id</text>
+<text x="1408" y="514" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="1101" y="521" width="318" height="22" fill="#ffffff" opacity="0.025"/>
+<rect x="1114" y="525" width="18" height="14" rx="4" fill="rgba(88,166,255,0.18)"/>
+<text x="1122.9" y="535" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#58a6ff">FK</text>
+<text x="1150" y="536" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">merchant_id</text>
+<text x="1408" y="536" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<text x="1150" y="558" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">target_url</text>
+<text x="1408" y="558" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(500)</text>
+<rect x="1101" y="565" width="318" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="1150" y="580" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">webhook_secret</text>
+<text x="1408" y="580" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="1150" y="602" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">enabled</text>
+<text x="1408" y="602" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">boolean</text>
+<rect x="1101" y="609" width="318" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="1150" y="624" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">event_types</text>
+<text x="1408" y="624" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="1114" y="650" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">secret AES-encrypted at rest</text>
+<path d="M552.0,216.0 L552.0,202.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M547.0,216.0 L547.0,202.0" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M374.0,209.0 L360.0,201.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,209.0 L360.0,217.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,209.0 L360.0,209.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="382.0" cy="209.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
+<rect x="427.5" y="200.0" width="65.0" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
+<text x="460.0" y="212.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">has users</text>
+<path d="M627.0,482.0 L613.0,482.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M627.0,487.0 L613.0,487.0" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M374.0,564.0 L360.0,556.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,564.0 L360.0,572.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,564.0 L360.0,564.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="382.0" cy="564.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
+<rect x="470.3" y="555.0" width="59.4" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
+<text x="500.0" y="567.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">has keys</text>
+<path d="M948.0,213.0 L948.0,227.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M953.0,213.0 L953.0,227.0" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M1086.0,220.0 L1100.0,228.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,220.0 L1100.0,212.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,220.0 L1100.0,220.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="1078.0" cy="220.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
+<rect x="1004.5" y="211.0" width="31.0" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
+<text x="1020.0" y="223.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">has</text>
+<path d="M887.0,482.0 L873.0,482.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M887.0,487.0 L873.0,487.0" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M1086.0,560.0 L1100.0,568.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,560.0 L1100.0,552.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,560.0 L1100.0,560.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="1078.0" cy="560.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
+<rect x="944.6" y="551.0" width="70.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
+<text x="980.0" y="563.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">configures</text>
+<rect x="455.2" y="771.0" width="569.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
+<text x="740.0" y="783.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">customers, orders and cards elsewhere reference merchant.id as a plain uuid — no cross-database FK</text></svg>

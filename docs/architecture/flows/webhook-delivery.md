@@ -33,5 +33,5 @@ operations-service exposes `POST /webhook/success`, a stand-in merchant endpoint
 ## Related
 
 - [Webhook configs](../../api.md) — how merchants register endpoints.
-- [Delivery status](../../schema.md) and the [operations-service data model](../../schema.md).
+- [Delivery status](../../schema/enums.md#delivery-status) and the [operations-service data model](../../schema/operations-service.md).
 - [Service communication → events](../service-communication.md#events).

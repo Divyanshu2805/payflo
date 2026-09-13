@@ -45,5 +45,5 @@ The response is `201` with the payment, usually `AUTHORIZING`.
 ## Related
 
 - [Orders](../../api.md) and [payments](../../api.md) endpoints.
-- [The payment state machine](../../schema.md).
-- [payment-service data model](../../schema.md).
+- [The payment state machine](../../schema/enums.md#payment-state-machine).
+- [payment-service data model](../../schema/payment-service.md).

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560"><defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/></filter><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.1" fill="#1a2232"/></pattern><marker id="ae3b341" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#e3b341"/></marker><marker id="a3fb950" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#3fb950"/></marker><marker id="aff7b72" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#ff7b72"/></marker></defs><rect width="1400" height="560" rx="18" fill="#0b0f17"/><rect width="1400" height="560" fill="url(#dots)"/><text x="36" y="46" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#e6edf3">Settlement status — SettlementStatus</text><text x="36" y="70" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#8b98a9">One settlement per merchant per nightly run · moved by SettlementTransactionExecutor</text>
+<rect x="40" y="130" width="1320" height="330" rx="14" fill="rgba(63,185,80,0.055)" stroke="rgba(63,185,80,0.55)" stroke-width="1.4"/>
+<rect x="52" y="119" width="185" height="22" rx="6" fill="#0b0f17" stroke="rgba(63,185,80,0.7)" stroke-width="1.1"/>
+<g transform="translate(59.0,123.0) scale(0.5833)"><path d="M3 9.5L12 4l9 5.5z" fill="none" stroke="#3fb950" stroke-width="1.8" stroke-linejoin="round"/><path d="M5.5 10.5v7M9.8 10.5v7M14.2 10.5v7M18.5 10.5v7M3 20h18" stroke="#3fb950" stroke-width="1.8" stroke-linecap="round"/></g>
+<text x="80" y="134" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.9" fill="#3fb950">OPERATIONS-SERVICE</text>
+<path d="M200.0,318.0 L200.0,385.0 Q200.0,394.0 209.0,394.0 L820.0,394.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
+<path d="M700.0,294.0 L731.0,294.0 Q740.0,294.0 740.0,303.0 L740.0,365.0 Q740.0,374.0 749.0,374.0 L820.0,374.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
+<path d="M700.0,254.0 L751.0,254.0 Q760.0,254.0 760.0,245.0 L760.0,233.0 Q760.0,224.0 769.0,224.0 L820.0,224.0" fill="none" stroke="#3fb950" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a3fb950)"/>
+<path d="M320.0,274.0 L440.0,274.0" fill="none" stroke="#e3b341" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ae3b341)"/>
+<rect x="80" y="230" width="240" height="88" rx="11" fill="#121826" stroke="rgba(88,166,255,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="81" y="231" width="238" height="3" rx="1.5" fill="rgba(88,166,255,0.85)"/>
+<text x="200.0" y="260" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">INITIATED</text>
+<text x="200.0" y="276" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">amounts computed · links saved</text>
+<rect x="440" y="230" width="260" height="88" rx="11" fill="#121826" stroke="rgba(227,179,65,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="441" y="231" width="258" height="3" rx="1.5" fill="rgba(227,179,65,0.85)"/>
+<text x="570.0" y="260" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">TRANSFER_PENDING</text>
+<text x="570.0" y="276" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">bank transfer requested</text>
+<rect x="820" y="180" width="250" height="88" rx="11" fill="#121826" stroke="rgba(63,185,80,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="821" y="181" width="248" height="3" rx="1.5" fill="rgba(63,185,80,0.85)"/>
+<text x="945.0" y="210" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">PROCESSED</text>
+<text x="945.0" y="226" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">payments marked SETTLED</text>
+<rect x="1033.6" y="188" width="28.4" height="16" rx="8" fill="rgba(63,185,80,0.18)"/>
+<text x="1047.8" y="199.5" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#3fb950">END</text>
+<rect x="820" y="330" width="250" height="88" rx="11" fill="#121826" stroke="rgba(255,123,114,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="821" y="331" width="248" height="3" rx="1.5" fill="rgba(255,123,114,0.85)"/>
+<text x="945.0" y="360" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">FAILED</text>
+<text x="945.0" y="376" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">failure_reason set</text>
+<rect x="1033.6" y="338" width="28.4" height="16" rx="8" fill="rgba(255,123,114,0.18)"/>
+<text x="1047.8" y="349.5" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">END</text>
+<rect x="339.0" y="265.0" width="82.0" height="18" rx="9" fill="#0b0f17" stroke="rgba(227,179,65,0.35)" stroke-width="1"/>
+<text x="380.0" y="277.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#e3b341">bank accepts</text>
+<rect x="721.8" y="206.0" width="76.4" height="18" rx="9" fill="#0b0f17" stroke="rgba(63,185,80,0.35)" stroke-width="1"/>
+<text x="760.0" y="218.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#3fb950">callback OK</text>
+<rect x="693.3" y="371.0" width="93.4" height="18" rx="9" fill="#0b0f17" stroke="rgba(255,123,114,0.35)" stroke-width="1"/>
+<text x="740.0" y="383.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#ff7b72">callback error</text>
+<rect x="213.6" y="385.0" width="172.8" height="18" rx="9" fill="#0b0f17" stroke="rgba(255,123,114,0.35)" stroke-width="1"/>
+<text x="300.0" y="397.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#ff7b72">any exception during the run</text>
+<rect x="1110.6" y="215.0" width="138.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(63,185,80,0.35)" stroke-width="1"/>
+<text x="1180.0" y="227.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#3fb950">→ SETTLEMENT_PROCESSED</text>
+<rect x="1119.1" y="365.0" width="121.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(255,123,114,0.35)" stroke-width="1"/>
+<text x="1180.0" y="377.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#ff7b72">→ SETTLEMENT_FAILED</text>
+<text x="60" y="510" text-anchor="start" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#8b98a9">The callback simulator always reports success today, so the callback-error branch is never taken.</text></svg>
