@@ -26,5 +26,5 @@ If you are new to the codebase, read these in order:
 ## Related
 
 - [Data model](../schema/README.md) — entities and tables, per service, and the state machines.
-- [API reference](../api.md) — every public endpoint and the internal API.
+- [API reference](../api/README.md) — every public endpoint and the internal API.
 - [Known gaps](../gaps.md) — the constraints and trade-offs this design accepts today.

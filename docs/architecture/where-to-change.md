@@ -7,7 +7,7 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 | I want to… | Look at |
 |---|---|
 | Add a payment method | A new `PaymentAdapter` in payment `gateway/adapter/` and `PaymentProcessor` in `processor/strategy/`, registered in `config/PaymentAdapterConfig` and `config/PaymentProcessorConfig`; the `PaymentMethod` enum in `common-lib` |
-| Change a mock acquirer's test values | payment `processor/strategy/*PaymentProcessor.java`; for cards, vault `processor/CardPaymentProcessor.java` — and [the mock acquirer page](../api.md) |
+| Change a mock acquirer's test values | payment `processor/strategy/*PaymentProcessor.java`; for cards, vault `processor/CardPaymentProcessor.java` — and [the mock acquirer page](../api/mock-acquirer.md) |
 | Change how a payment moves between statuses | payment `statemachine/PaymentStateMachine.java` (the table) and `PaymentTransitionService.java`; never set `Payment.status` directly |
 | Change payment initiation | payment `saga/PaymentAuthorizationRecorder.java` (the two transactions and compensation) and `service/impl/PaymentServiceImpl.java` |
 | Change how authorizations resolve | payment `simulator/BankCallbackSimulator.java`; `payment.simulator.*` in `config-repo/payment-service.yaml` |
@@ -33,7 +33,7 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 
 | I want to… | Look at |
 |---|---|
-| Add a public endpoint | The owning service's `controller/` and DTOs, the [API reference](../api.md) — and, if the path prefix is new, a route in `config-repo/api-gateway-service.yaml` **and** `api-gateway-service-k8s.yaml` |
+| Add a public endpoint | The owning service's `controller/` and DTOs, the [API reference](../api/README.md) — and, if the path prefix is new, a route in `config-repo/api-gateway-service.yaml` **and** `api-gateway-service-k8s.yaml` |
 | Make an endpoint public (no credential) | `app.security.public-routes` in `config-repo/api-gateway-service.yaml` — think twice |
 | Add a service-to-service call | An `Internal*Controller` endpoint in the owner, a Feign client method in the caller's `client/` with Resilience4j annotations and a `config-repo` instance, a `common-lib` DTO if shared, and the table in [service communication](service-communication.md#internal-api) |
 | Add a column or table | The entity (Hibernate adds it on the next start), then the [data model](../schema/README.md) and the ER diagram |

@@ -35,7 +35,7 @@ Each business service exposes `/internal/**` for the others. Callers use typed F
 | `GET /internal/payments/unsettled-captured?merchantId=` | payment | operations | Captured payments not yet settled |
 | `POST /internal/payments/mark-settled` | payment | operations | Marking a batch `SETTLED` once the payout succeeds |
 
-The complete request and response shapes are in the [internal API reference](../api.md).
+The complete request and response shapes are in the [internal API reference](../api/internal.md).
 
 **Authentication.** None. These endpoints trust that only other services can reach them — true locally only by convention, and on Kubernetes because every Service except the gateway is `ClusterIP`. See the [security model](security-model.md#internal-api) and [known gaps](../gaps.md).
 

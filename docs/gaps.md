@@ -105,7 +105,7 @@ dropped vs. still planned:
     default entry point and returned a bare `403` with no body; `GlobalExceptionHandler` now maps
     any `AuthenticationException` to `401` with `INVALID_CREDENTIALS`. The returned JWT is now also
     validated on later requests (`JwtAuthenticationFilter`, see gap 13) — login is fully functional
-    end to end. See [APIs](api.md) for the full current behavior.
+    end to end. See [APIs](api/README.md) for the full current behavior.
 13. ~~`/v1/merchants/**` requires authentication with no way to provide it~~ — **resolved
     (2025-11-24):** `merchant/security/JwtAuthenticationFilter` — a `OncePerRequestFilter` on
     `jwtChain` — reads the `Authorization: Bearer <token>` header, verifies it via `JwtUtil`,

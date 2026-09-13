@@ -70,7 +70,7 @@ curl -s -u "$KEY_ID:$KEY_SECRET" localhost:8080/v1/payments -H 'Content-Type: ap
   -d '{"orderId":"<order id>","method":"UPI","methodDetails":{"vpa":"buyer@okaxis"}}'
 ```
 
-The payment comes back `AUTHORIZING`. Within a few seconds the bank callback simulator authorizes and captures it: the payment moves to `CAPTURED`, the order to `PAID`, and `PAYMENT_STATUS_CHANGED` is published to Kafka (visible in Control Center at <http://localhost:9021>). For a card payment, tokenize the card first — see [vault](../api.md) and the [mock acquirer](../api.md) test values.
+The payment comes back `AUTHORIZING`. Within a few seconds the bank callback simulator authorizes and captures it: the payment moves to `CAPTURED`, the order to `PAID`, and `PAYMENT_STATUS_CHANGED` is published to Kafka (visible in Control Center at <http://localhost:9021>). For a card payment, tokenize the card first — see [vault](../api/vault.md) and the [mock acquirer](../api/mock-acquirer.md) test values.
 
 ## Local URLs
 
