@@ -32,7 +32,7 @@ A plain JAR (the Spring Boot repackage step is skipped) that every service depen
 | Package | Owns |
 |---|---|
 | `entity` | `BaseEntity` (UUID id and the four JPA auditing columns) and the `Money` embeddable (`amountUnits` in the smallest currency unit + ISO currency). Nothing here is itself a table |
-| `enums` | The whole domain vocabulary — see [enums](../schema.md) |
+| `enums` | The whole domain vocabulary — see [enums](../schema/enums.md) |
 | `exception` | The exception types, the single `GlobalExceptionHandler` and the shared `ErrorResponse` body, so every service returns identical errors |
 | `context`, `web` | `MerchantContext` (request-scoped merchant id and API key id) and `MerchantContextFilter`, which rebuilds it from the gateway's identity headers |
 | `audit` | `AuditorAwareImpl`, filling `created_by` / `updated_by` from `MerchantContext` |
@@ -48,7 +48,7 @@ The four business services share one layering. Package names are relative to `co
 
 | Package | Owns | Must never |
 |---|---|---|
-| `entity` | JPA mappings extending `BaseEntity` — see the [data model](../schema.md) | Hold a JPA relation to another service's entity |
+| `entity` | JPA mappings extending `BaseEntity` — see the [data model](../schema/README.md) | Hold a JPA relation to another service's entity |
 | `repository` | Spring Data JPA interfaces with derived queries; `…ForUpdate` finders take a pessimistic lock | Decide anything |
 | `mapper` | Entity ↔ DTO conversion with MapStruct | Leave an "Unmapped target property" warning unfixed |
 | `service` / `service.impl` | Business logic — one interface and one implementation per concern | Call another service inside a `@Transactional` method |

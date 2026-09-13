@@ -12,8 +12,8 @@ Project documentation, kept up to date with each commit. Intended as a reference
 | [Architecture](architecture/README.md) | Current and target architecture |
 | [Microservices](architecture/module-map.md) | Phase 2 split: modules, ports, and per-service detail |
 | [Deployment](deployment.md) | Running the microservices on Kubernetes (kind) |
-| [Schema](schema.md) | Entities, ER diagram, and field-level details |
+| [Schema](schema/README.md) | Entities, ER diagram, and field-level details |
 | [Known Gaps](gaps.md) | Known gaps vs. requirements and the v1 design |
-| [Domain Vocabulary](domain-vocabulary.md) | Enums and the payment/refund state machines |
+| [Domain Vocabulary](schema/enums.md) | Enums and the payment/refund state machines |
 | [APIs](api.md) | REST endpoints: requests, responses, and errors |
 | [Practices](practices.md) | Engineering practices and patterns used |

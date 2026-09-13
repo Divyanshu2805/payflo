@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760"><defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/></filter><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.1" fill="#1a2232"/></pattern><marker id="a3fb950" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#3fb950"/></marker><marker id="ae3b341" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#e3b341"/></marker><marker id="aff7b72" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#ff7b72"/></marker></defs><rect width="1500" height="760" rx="18" fill="#0b0f17"/><rect width="1500" height="760" fill="url(#dots)"/><text x="36" y="46" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#e6edf3">Delivery status — WebhookEventStatus and OutboxStatus</text><text x="36" y="70" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#8b98a9">How a webhook delivery and an outbox row move from written to done</text>
+<rect x="40" y="130" width="1420" height="330" rx="14" fill="rgba(240,136,62,0.055)" stroke="rgba(240,136,62,0.55)" stroke-width="1.4"/>
+<rect x="52" y="119" width="313" height="22" rx="6" fill="#0b0f17" stroke="rgba(240,136,62,0.7)" stroke-width="1.1"/>
+<g transform="translate(59.0,123.0) scale(0.5833)"><circle cx="12" cy="6.5" r="2.6" fill="none" stroke="#f0883e" stroke-width="1.8"/><circle cx="5.5" cy="17.5" r="2.6" fill="none" stroke="#f0883e" stroke-width="1.8"/><circle cx="18.5" cy="17.5" r="2.6" fill="none" stroke="#f0883e" stroke-width="1.8"/><path d="M10.6 8.8L6.9 15M8.1 17.5h7.8M13.4 8.8l3.7 6.2" stroke="#f0883e" stroke-width="1.8" stroke-linecap="round"/></g>
+<text x="80" y="134" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.9" fill="#f0883e">WEBHOOK_EVENT · OPERATIONS-SERVICE</text>
+<rect x="40" y="510" width="1420" height="180" rx="14" fill="rgba(227,179,65,0.055)" stroke="rgba(227,179,65,0.55)" stroke-width="1.4"/>
+<rect x="52" y="499" width="466" height="22" rx="6" fill="#0b0f17" stroke="rgba(227,179,65,0.7)" stroke-width="1.1"/>
+<g transform="translate(59.0,503.0) scale(0.5833)"><rect x="2.5" y="4" width="19" height="4" rx="1.5" fill="none" stroke="#e3b341" stroke-width="1.8"/><rect x="2.5" y="10" width="19" height="4" rx="1.5" fill="none" stroke="#e3b341" stroke-width="1.8"/><rect x="2.5" y="16" width="19" height="4" rx="1.5" fill="none" stroke="#e3b341" stroke-width="1.8"/><path d="M6 6h2M6 12h5M6 18h8" stroke="#e3b341" stroke-width="1.8" stroke-linecap="round"/></g>
+<text x="80" y="514" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.9" fill="#e3b341">OUTBOX_EVENT · PAYMENT-SERVICE AND OPERATIONS-SERVICE</text>
+<path d="M210.0,658.0 L210.0,671.0 Q210.0,680.0 219.0,680.0 L1181.0,680.0 Q1190.0,680.0 1190.0,671.0 L1190.0,658.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
+<path d="M340.0,614.0 L560.0,614.0" fill="none" stroke="#3fb950" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a3fb950)"/>
+<path d="M680.0,418.0 L680.0,431.0 Q680.0,440.0 671.0,440.0 L599.0,440.0 Q590.0,440.0 590.0,431.0 L590.0,418.0" fill="none" stroke="#e3b341" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ae3b341)"/>
+<path d="M800.0,360.0 L1060.0,360.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
+<path d="M720.0,330.0 L720.0,309.0 Q720.0,300.0 720.0,300.0 L720.0,300.0 Q720.0,300.0 720.0,291.0 L720.0,268.0" fill="none" stroke="#3fb950" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a3fb950)"/>
+<path d="M310.0,304.0 L451.0,304.0 Q460.0,304.0 460.0,313.0 L460.0,365.0 Q460.0,374.0 469.0,374.0 L560.0,374.0" fill="none" stroke="#e3b341" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ae3b341)"/>
+<path d="M310.0,264.0 L431.0,264.0 Q440.0,264.0 440.0,255.0 L440.0,233.0 Q440.0,224.0 449.0,224.0 L560.0,224.0" fill="none" stroke="#3fb950" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a3fb950)"/>
+<rect x="80" y="240" width="230" height="88" rx="11" fill="#121826" stroke="rgba(88,166,255,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="81" y="241" width="228" height="3" rx="1.5" fill="rgba(88,166,255,0.85)"/>
+<text x="195.0" y="270" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">PENDING</text>
+<text x="195.0" y="286" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">signed, queued in Redis</text>
+<rect x="560" y="180" width="240" height="88" rx="11" fill="#121826" stroke="rgba(63,185,80,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="561" y="181" width="238" height="3" rx="1.5" fill="rgba(63,185,80,0.85)"/>
+<text x="680.0" y="210" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">DELIVERED</text>
+<text x="680.0" y="226" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">2xx from the merchant</text>
+<rect x="763.6" y="188" width="28.4" height="16" rx="8" fill="rgba(63,185,80,0.18)"/>
+<text x="777.8" y="199.5" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#3fb950">END</text>
+<rect x="560" y="330" width="240" height="88" rx="11" fill="#121826" stroke="rgba(227,179,65,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="561" y="331" width="238" height="3" rx="1.5" fill="rgba(227,179,65,0.85)"/>
+<text x="680.0" y="360" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">FAILED</text>
+<text x="680.0" y="376" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">next_retry_at scheduled</text>
+<rect x="1060" y="330" width="240" height="88" rx="11" fill="#121826" stroke="rgba(255,123,114,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="1061" y="331" width="238" height="3" rx="1.5" fill="rgba(255,123,114,0.85)"/>
+<text x="1180.0" y="360" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">DEAD</text>
+<text x="1180.0" y="376" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">DlqEvent written</text>
+<rect x="1263.6" y="338" width="28.4" height="16" rx="8" fill="rgba(255,123,114,0.18)"/>
+<text x="1277.8" y="349.5" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">END</text>
+<rect x="80" y="570" width="260" height="88" rx="11" fill="#121826" stroke="rgba(88,166,255,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="81" y="571" width="258" height="3" rx="1.5" fill="rgba(88,166,255,0.85)"/>
+<text x="210.0" y="600" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">PENDING</text>
+<text x="210.0" y="616" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">same transaction as the change</text>
+<rect x="560" y="570" width="240" height="88" rx="11" fill="#121826" stroke="rgba(63,185,80,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="561" y="571" width="238" height="3" rx="1.5" fill="rgba(63,185,80,0.85)"/>
+<text x="680.0" y="600" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">PUBLISHED</text>
+<text x="680.0" y="616" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">sent to *.events</text>
+<rect x="763.6" y="578" width="28.4" height="16" rx="8" fill="rgba(63,185,80,0.18)"/>
+<text x="777.8" y="589.5" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#3fb950">END</text>
+<rect x="1060" y="570" width="260" height="88" rx="11" fill="#121826" stroke="rgba(255,123,114,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="1061" y="571" width="258" height="3" rx="1.5" fill="rgba(255,123,114,0.85)"/>
+<text x="1190.0" y="600" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="600" fill="#e6edf3">FAILED</text>
+<text x="1190.0" y="616" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#8b98a9">3 attempts · no further retry</text>
+<rect x="1283.6" y="578" width="28.4" height="16" rx="8" fill="rgba(255,123,114,0.18)"/>
+<text x="1297.8" y="589.5" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">END</text>
+<rect x="424.5" y="206.0" width="31.0" height="18" rx="9" fill="#0b0f17" stroke="rgba(63,185,80,0.35)" stroke-width="1"/>
+<text x="440.0" y="218.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#3fb950">2xx</text>
+<rect x="410.5" y="371.0" width="99.1" height="18" rx="9" fill="#0b0f17" stroke="rgba(227,179,65,0.35)" stroke-width="1"/>
+<text x="460.0" y="383.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#e3b341">error / timeout</text>
+<rect x="753.3" y="291.0" width="93.4" height="18" rx="9" fill="#0b0f17" stroke="rgba(63,185,80,0.35)" stroke-width="1"/>
+<text x="800.0" y="303.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#3fb950">retry succeeds</text>
+<rect x="872.0" y="329.0" width="116.1" height="18" rx="9" fill="#0b0f17" stroke="rgba(255,123,114,0.35)" stroke-width="1"/>
+<text x="930.0" y="341.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#ff7b72">7th failed attempt</text>
+<rect x="720.6" y="431.0" width="138.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(227,179,65,0.35)" stroke-width="1"/>
+<text x="790.0" y="443.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#e3b341">retry fails · 1m → 24h</text>
+<rect x="392.0" y="605.0" width="116.1" height="18" rx="9" fill="#0b0f17" stroke="rgba(63,185,80,0.35)" stroke-width="1"/>
+<text x="450.0" y="617.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#3fb950">OutboxPoller · 5 s</text>
+<rect x="639.1" y="671.0" width="121.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(255,123,114,0.35)" stroke-width="1"/>
+<text x="700.0" y="683.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#ff7b72">third publish error</text></svg>
