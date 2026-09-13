@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Common problems and their fixes. Deeper explanations of the silent-failure traps are in [known pitfalls](../practices.md).
+Common problems and their fixes. Deeper explanations of the silent-failure traps are in [known pitfalls](../practices/gotchas/README.md).
 
 ## Start-up
 
@@ -8,7 +8,7 @@ Common problems and their fixes. Deeper explanations of the silent-failure traps
 |---|---|---|
 | A service exits with "Could not resolve placeholder" or fails to import `configserver:` | config-service isn't up yet, or can't find `config-repo` | Start config-service before the business services, **from its module directory** so `file:../config-repo` resolves; check `curl localhost:8888/<service>/default` |
 | config-service starts but serves empty property sources | Started from the wrong working directory | Start it from `microservices/config-service`, or set `CONFIG_REPO_PATH` to an absolute `file:` path |
-| `FATAL: invalid value for parameter "TimeZone": "Asia/Calcutta"` | The JVM sends the legacy zone name, which PostgreSQL rejects | Pass `-Duser.timezone=Asia/Kolkata` (see [the pitfall](../practices.md)) |
+| `FATAL: invalid value for parameter "TimeZone": "Asia/Calcutta"` | The JVM sends the legacy zone name, which PostgreSQL rejects | Pass `-Duser.timezone=Asia/Kolkata` (see [the pitfall](../practices/gotchas/spring-and-jpa.md#postgresql-rejects-the-jvms-legacy-time-zone-name)) |
 | `database "payflo_merchant" does not exist` | The per-service databases were never created | Run the `CREATE DATABASE` command from [setup](setup.md#2-create-the-four-databases) |
 | The gateway fails with `No qualifying bean of type 'RateLimiter'` | `app.rate-limit.method` is unset | Set it in `config-repo/api-gateway-service.yaml` (`fixed` by default) |
 | `NoClassDefFoundError` for a class you just added to `common-lib` | The service resolved an old `common-lib` jar from `~/.m2` | `./mvnw install` in `microservices/` again, or build as a reactor with `-pl common-lib,<module>` |

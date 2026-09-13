@@ -1,6 +1,6 @@
 # Security Model
 
-PayFlo handles other businesses' money and their customers' card numbers. This page describes the boundaries that keep merchants apart, keep card data contained, and keep credentials safe, and where each one is enforced. The rules contributors must not break are summarised in [security guardrails](../practices.md); how to report a vulnerability is in [`SECURITY.md`](../../SECURITY.md).
+PayFlo handles other businesses' money and their customers' card numbers. This page describes the boundaries that keep merchants apart, keep card data contained, and keep credentials safe, and where each one is enforced. The rules contributors must not break are summarised in [security guardrails](../practices/security-guardrails.md); how to report a vulnerability is in [`SECURITY.md`](../../SECURITY.md).
 
 ## Two kinds of caller
 

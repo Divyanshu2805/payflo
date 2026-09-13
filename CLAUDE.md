@@ -1,209 +1,102 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for AI coding agents working in this repository. It exists so an agent can be productive without re-deriving context each session. Keep it short, and **update it in the same change whenever a convention, command or lesson changes** — a stale working agreement is worse than none.
 
 ## Project overview
 
-PayFlo is a multi-tenant payments-processing backend: merchant onboarding, order/payment/refund
-lifecycles driven by state machines, card tokenization (vault), HMAC-signed webhooks with retry/DLQ,
-and settlement. Targets: 10k TPS, p99 < 1s, 99.99% availability, PCI DSS.
+PayFlo is a payment gateway backend: merchant onboarding and credentials, orders and payments driven by a validated state machine, a PCI-scoped card vault, HMAC-signed webhooks with retries and a dead-letter queue, and nightly settlement. The bank side (acquirer, authorization callback, payouts) is simulated, so every flow runs locally.
 
-- Java 25, Spring Boot 4.1.0, Maven (`com.project:payflo`)
-- PostgreSQL, Redis, Kafka (local stack in `services.docker-compose.yaml`)
-- Lombok, MapStruct, Jakarta Validation, Spring Security, jjwt
+- **The system is the microservices build in `microservices/`**: a Spring Cloud Gateway in front of `merchant-service`, `payment-service`, `vault-service` and `operations-service`, each with its own PostgreSQL database, plus `discovery-service` (Eureka), `config-service` (native, over `config-repo/`) and the shared `common-lib`. Java 25, Spring Boot 4.1, Spring Cloud 2025.1.
+- **The monolith at the repository root is frozen** — the phase 1 reference the services were extracted from. Don't add features to it. Don't assume which service owns a class, endpoint or table — check the docs below.
 
-**Current phase:** phase 2 — the microservices split under `microservices/` (8 Maven modules,
-aggregated by `microservices/pom.xml`). The monolith at the repo root (phase 1) is **frozen**:
-don't add features to it; it stays as the reference implementation. Per-service detail is in
-[docs/microservices.md](docs/architecture/module-map.md); open work in
-[docs/gaps.md](docs/gaps.md#phase-2-microservices). Kubernetes deployment lives in
-`microservices/k8s/` (Jib images, Kustomize, kind — see [docs/deployment.md](docs/deployment.md)).
-Observability and load testing are deliberately deferred — don't add them unless asked.
+## Read before acting
+
+These are authoritative and kept current:
+
+| Need | Read |
+|---|---|
+| Services, module map, request flows, "where do I change X" | [`docs/architecture/`](docs/architecture/README.md) |
+| Why the system is shaped as it is | [`docs/architecture/decisions/`](docs/architecture/decisions/README.md) |
+| Security boundaries and where they're enforced | [`docs/architecture/security-model.md`](docs/architecture/security-model.md) |
+| Entities, tables, enums, state machines | [`docs/schema/`](docs/schema/README.md) |
+| Every endpoint, the mock acquirer, idempotency, the error model | [`docs/api/`](docs/api/README.md) |
+| Setup, configuration, troubleshooting, the monolith | [`docs/local-development/`](docs/local-development/README.md) |
+| Constraints, trade-offs, what isn't built yet | [`docs/known-gaps/`](docs/gaps.md) |
+| Kubernetes manifests, images, cluster configuration | [`docs/deployment/`](docs/deployment.md) |
+| Design targets | [`docs/requirements.md`](docs/requirements.md) — check known gaps before assuming one is met |
+
+If a change would make any of these inaccurate, **update that doc in the same change**. Diagrams are generated: edit the owning `d_*.py` in `docs/assets/diagrams/src/`, run `build.py` and `render.py`, and commit the regenerated SVG and PNG.
+
+## Repository structure
+
+```
+microservices/
+  pom.xml               aggregator only — module list, no shared parent
+  common-lib/           shared entities, enums, exceptions + GlobalExceptionHandler, MerchantContext + filter,
+                        rate limiters, idempotency filter, API-key cache, Feign DTOs. NOT component-scanned:
+                        beans are registered in Shared*AutoConfiguration via META-INF/spring/…imports.
+  config-repo/          EVERY service setting: application.yaml (shared), <service>.yaml, *-k8s.yaml overrides.
+                        A module's own application.yaml holds only its name and the configserver: import.
+  api-gateway-service/  GatewayAuthFilter — the ONLY place requests are authenticated (Bearer JWT or Basic API key,
+                        per-key rate limit); forwards X-Merchant-Id / X-Key-Id. Routes live in config-repo.
+  merchant-service/     merchants, users, API keys, customers, webhook configs; issues JWTs
+  payment-service/      orders, payments, statemachine/, saga/, gateway/ (adapters), processor/, outbox/, simulator/
+  vault-service/        tokenization; the only service that decrypts cards (/internal/vault/charge)
+  operations-service/   webhook/ (Kafka consumer → Redis retry queue → DLQ), settlement/, its own outbox/
+  discovery-service/, config-service/
+  k8s/                  Kustomize manifests + kind-config.yaml; secrets.env is gitignored
+  inside each service (com.project.payflo.<module>): entity/ repository/ mapper/ service/ service/impl/
+  controller/ dto/ client/ config/
+src/, pom.xml           the frozen monolith (com.project.payflo)
+services.docker-compose.yaml   local PostgreSQL :5432, Redis :6380, Kafka :29092, Control Center :9021
+docs/                   documentation — start at docs/README.md
+```
 
 ## Commands
 
-On Windows use `mvnw.cmd`; on macOS/Linux use `./mvnw`.
-
 ```bash
-docker compose -f services.docker-compose.yaml up -d
+docker compose -f services.docker-compose.yaml up -d            # infrastructure (create the 4 databases once — see setup)
+cd microservices && ./mvnw clean install -DskipTests            # build every module, install common-lib
+cd microservices/<module> && ../mvnw spring-boot:run            # run one service FROM ITS MODULE DIRECTORY
+./mvnw -DskipTests jib:dockerBuild -pl <module>                 # container image (see docs/deployment)
+kubectl apply -k microservices/k8s                              # deploy to the kind cluster
 ```
 
-```bash
-./mvnw.cmd clean compile
-```
+On Windows, use `mvnw.cmd`. Start order: discovery → config → the four business services → gateway. config-service resolves `../config-repo` from its working directory, so it must be started from `microservices/config-service`. The monolith's tests need `-Duser.timezone=Asia/Kolkata`.
 
-```bash
-./mvnw.cmd spring-boot:run
-```
+## Rules that are easy to break
 
-```bash
-./mvnw.cmd test -Duser.timezone=Asia/Kolkata
-```
+- **Authentication belongs to the gateway.** No `SecurityFilterChain` in a business service; controllers read the merchant only from `MerchantContext`.
+- **No remote call inside `@Transactional`.** See `OrderPersistenceService` and `saga/PaymentAuthorizationRecorder`.
+- **Events only through the outbox**; every `@Scheduled` job has a ShedLock `@SchedulerLock`.
+- **Payment status changes only through `PaymentTransitionService`.**
+- **Card numbers never leave vault-service**; only vault-service is configured with `vault.master-key`.
+- **No cross-service foreign keys** — plain UUIDs.
+- **New settings go in `config-repo`**, with a `-k8s.yaml` override and a ConfigMap / `secrets.env.example` entry when they differ in-cluster. A new Feign client needs a `url = "${<X>_SERVICE_URI:}"` override for Kubernetes.
+- **A sealed type crossing Feign needs `@JsonTypeInfo`.**
 
-```bash
-./mvnw.cmd test -Duser.timezone=Asia/Kolkata -Dtest=PayFloApplicationTests#contextLoads
-```
+## Practices
 
-```bash
-./mvnw.cmd clean package
-```
+The following are imported in full.
 
-- Tests need a running PostgreSQL (`PayFloApplicationTests` is a full `@SpringBootTest`; no H2 or
-  Testcontainers fallback).
-- **`-Duser.timezone=Asia/Kolkata` is required** — without it Postgres rejects the JVM's legacy
-  `Asia/Calcutta` zone name.
-- Default local ports: Postgres `5432`, Redis `6380`, Kafka `29092`. Override via `DB_URL`/`DB_USER`/
-  `DB_PASS`, `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`, `KAFKA_BROKERS`.
+@docs/practices/security-guardrails.md
 
-## Microservices (phase 2)
+@docs/practices/coding-conventions.md
 
-```bash
-cd microservices && ./mvnw.cmd clean install -DskipTests
-```
+@docs/practices/testing.md
 
-Start order: `discovery-service` (8761) → `config-service` (8888, run from its module dir so
-`../config-repo` resolves) → `merchant-service` (8081), `vault-service` (8083), `payment-service`
-(8082), `operations-service` (8084) → `api-gateway-service` (8080). Each business service has its
-own Postgres database (`payflo_merchant`/`_payment`/`_vault`/`_operations`) on the same local
-instance.
+@docs/practices/definition-of-done.md
 
-- Packages: `com.project.payflo.<module>` (e.g. `payment_service`, `common_lib`). Each module is an
-  independent Spring Boot app with its own `pom.xml` (no shared parent); `common-lib` is a plain JAR.
-- **Config lives in `microservices/config-repo/<service>.yaml`** (served by config-service's native
-  backend); a service's own `application.yaml` only has its name and the `configserver:` import. Add
-  new properties to config-repo, not to the module.
-- `common-lib` wires cross-cutting beans through `META-INF/spring/...AutoConfiguration.imports`
-  (`Shared*AutoConfiguration`) — register new shared beans there rather than relying on component
-  scan.
-- **Auth is done only at the gateway** (`GatewayAuthFilter`: Bearer JWT or Basic API key, per-key rate
-  limit). It forwards `X-Merchant-Id`/`X-Key-Id`; `common-lib`'s `MerchantContextFilter` rebuilds
-  `MerchantContext` downstream. Services have no `SecurityFilterChain`. Controllers still read
-  `MerchantContext.getMerchantId()`.
-- Service-to-service: Feign clients by Eureka name, under `/internal/**` (never routed by the
-  gateway), wrapped in Resilience4j `@CircuitBreaker`/`@Retry` (instances configured in config-repo).
-  Contracts are DTOs in `common-lib/dto`; a sealed interface crossing Feign needs `@JsonTypeInfo`.
-- Keep remote calls out of `@Transactional` methods (see `OrderPersistenceService` and
-  `saga/PaymentAuthorizationRecorder` for the pattern).
-- Async between services only via the transactional outbox → Kafka. Every `@Scheduled` job needs a
-  ShedLock `@SchedulerLock`.
-- Kubernetes: `SPRING_PROFILES_ACTIVE=k8s` (from `k8s/infra/configmap.yaml`) switches Eureka off and
-  picks up `config-repo/*-k8s.yaml`; Feign clients take `*_SERVICE_URI` overrides. config-service must
-  run with `native,k8s`. Add any new env var to the ConfigMap (or `secrets.env.example` if secret)
-  and any new service to `k8s/services/` + `kustomization.yaml`.
-- `BankCallbackSimulator` **is** scheduled in payment-service (unlike the monolith) — payments reach
-  `CAPTURED`.
+## Known pitfalls
 
-## Monolith architecture (phase 1, frozen)
+Silent-failure traps this stack has hit, imported in full. Check here first when something "should work" but doesn't.
 
-Packages under `com.project.payflo` are **domain-oriented**, each a future service boundary:
+@docs/practices/gotchas/spring-and-jpa.md
 
-| Package | Owns |
-|---|---|
-| `common` | `BaseEntity`, `Money`, all enums, exceptions + `GlobalExceptionHandler`, config (AES, Redis), `rateLimit`, `idempotency`, `util` |
-| `merchant` | Merchant, AppUser, ApiKey, RefreshToken, Customer, MerchantWebhookConfig; auth, security filters, API-key cache |
-| `payment` | OrderRecord, Payment, Refund, PaymentTransitionLog, OutboxEvent; gateway adapters, processors, state machine, outbox, simulator |
-| `vault` | VaultCard, CardToken; card tokenization and AES-GCM encryption |
-| `operations` | Settlement, SettlementPayment, WebhookEvent, DlqEvent; webhook delivery pipeline |
-| `audit` | `AuditorAwareImpl` for `createdBy`/`updatedBy` |
+@docs/practices/gotchas/microservices.md
 
-### Security (two filter chains in `merchant/security/WebSecurityConfig`)
+@docs/practices/gotchas/kubernetes.md
 
-- `jwtChain` (`@Order(1)`): `/v1/auth/**`, `/v1/merchants/**`, `/v1/admin/**`, `/actuator/**`,
-  `/webhook/**`. `JwtAuthenticationFilter` reads `Authorization: Bearer`. Public: signup, login,
-  refresh, logout, `/webhook/**`.
-- `apiKeyChain` (`@Order(2)`): `/v1/orders/**`, `/v1/payments/**`, `/v1/vault/**`.
-  `ApiKeyAuthenticationFilter` reads `Authorization: Basic base64(keyId:secret)`, accepts the previous
-  secret during the 24h post-rotation grace period, and applies per-key rate limiting.
-- Both chains resolve the caller into `MerchantContext` (`@RequestScope`). Controllers read
-  `MerchantContext.getMerchantId()` — never take `merchantId` from the path or body.
-- Both chains must keep a `.securityMatcher(...)`; two unscoped `SecurityFilterChain` beans fail
-  startup.
-- Refresh tokens are random, SHA-256-hashed DB rows (single-use, rotated), not JWTs.
+## Commits
 
-### Payment flow
-
-- `PaymentGatewayRouter` picks a `PaymentAdapter` per `PaymentMethod` (card, netbanking, UPI,
-  wallet). Adapters call `PaymentProcessorRouter` → `PaymentProcessor.charge()`; card goes through
-  `VaultService.charge` first to decrypt the token.
-- Processors are mock acquirers: recognized test inputs return `FAILED` with an `errorCode`,
-  otherwise `Pending` → payment stays `AUTHORIZING`. They never return `Success`.
-- All status changes go through `payment/statemachine/PaymentTransitionService`, which validates
-  against `PaymentStateMachine`, writes a `PaymentTransitionLog`, and sets `Payment.status`. An
-  undefined transition throws `InvalidStateTransitionException` → `409`.
-- `BankCallbackSimulator` resolves `AUTHORIZING` payments via `PaymentService.resolveAuthorization`
-  (authorize, then auto-capture). **Its `@Scheduled` is commented out**, so payments stay in
-  `AUTHORIZING` and `capture` returns `409`. Enabling it is a deliberate decision — ask first.
-- `PaymentStatus`/`PaymentEvent` in `common/enums` define the state machine; read them (and
-  [docs/domain-vocabulary.md](docs/schema/enums.md)) before adding any status or event.
-
-### Events and webhooks
-
-- Transactional outbox: order/payment services insert a `PENDING` `OutboxEvent` in the same
-  transaction as the domain write; `OutboxPoller` (`@Scheduled`, 5s) publishes to Kafka topics under
-  `app.kafka.topics.*`. Never send to Kafka inline from a service.
-- `operations/webhook`: `WebhookKafkaConsumer` creates signed `WebhookEvent` rows per subscribed
-  target (via `merchant/api/MerchantWebhookApi` — the only `operations` → `merchant` dependency),
-  `WebhookDeliveryScheduler` drains a Redis sorted-set retry queue (1m → 24h, 7 attempts), and
-  `WebhookDlqRecorder` writes a `DlqEvent` when attempts run out.
-- `@EnableScheduling` on `PayFloApplication` is required for the outbox and webhook schedulers.
-
-### Redis
-
-Rate limiting (`common/rateLimit`), idempotency filter for POST/PUT/PATCH (`common/idempotency`),
-API-key cache (`merchant/cache`), webhook retry queue. **`app.rate-limit.method` must be set**
-(`fixed` by default) — without it no `RateLimiter` bean exists and `ApiKeyAuthenticationFilter`
-fails to construct.
-
-## Conventions
-
-### Entities
-
-- Extend `BaseEntity` (JPA auditing fills `createdAt`/`updatedAt`/`createdBy`/`updatedBy`); UUID ids
-  via `@GeneratedValue(strategy = GenerationType.UUID)`; `@Getter @Setter @AllArgsConstructor
-  @NoArgsConstructor @Builder`.
-- **Every field with a default value needs `@Builder.Default`**, or the builder yields `null`.
-  Don't ignore the compiler warning.
-- Enums: `@Enumerated(EnumType.STRING)` with an explicit column `length`.
-- Money: the `Money` embeddable (`long` smallest-unit amount + currency), never a bare numeric.
-- **No cross-domain foreign keys**: references across domains (e.g. `merchantId`, `paymentId`) are
-  plain UUIDs with no `@ManyToOne`.
-- Schema is managed by `ddl-auto: update` — not a migration tool.
-
-### Service / controller layer
-
-- DTOs are Java `record`s in `<domain>/dto/request` and `<domain>/dto/response`; validation
-  annotations on request fields, enforced with `@Valid`.
-- Mapping via MapStruct interfaces in `<domain>/mapper` (`componentModel = SPRING`). Fix every
-  "Unmapped target property" warning — mismatched names are silently left `null`.
-- Repositories: `JpaRepository<Entity, UUID>` with derived query methods.
-- Services: interface in `<domain>/service`, implementation in `<domain>/service/impl`,
-  `@RequiredArgsConstructor`, `@Transactional` business methods.
-- Controllers in `<domain>/controller`, routes under `/v1/...`.
-- Errors: throw a custom exception from `common/exception` (extends `RuntimeException`, carries an
-  `errorCode`) and map it in `GlobalExceptionHandler`. An unmapped exception surfaces as a `500`.
-- New domains get their own top-level package with the same subpackage layout; shared types go in
-  `common`.
-- `pom.xml` intentionally blanks `<name>`, `<description>`, `<url>`, `<licenses>`, `<developers>`,
-  `<scm>` — leave them.
-
-## Docs and commits
-
-Update docs in the same commit as the change:
-
-- New or changed endpoint → `docs/api.md`
-- New or changed entity or field → `docs/schema.md`
-- New enum value or state transition → `docs/domain-vocabulary.md`
-- New pattern or cross-cutting convention → `docs/practices.md`
-- Structural or deployment change → `docs/architecture.md`
-- New dependency or infrastructure piece → `docs/tech-stack.md`
-- New or changed build/run/test command → `docs/getting-started.md`
-- Anything in `microservices/` → `docs/microservices.md` (per-service section + module status table)
-- A gap vs. requirements found or resolved → `docs/gaps.md`
-- Anything that changes what's built → `docs/status.md` (refresh its "Last updated" date)
-- Feature-level changes → `README.md`
-
-Check [docs/gaps.md](docs/gaps.md) before assuming a requirement in
-[docs/requirements.md](docs/requirements.md) is satisfied.
-
-Commit messages are a single line in semantic-commit format (`feat:`, `fix:`, `docs:`, `chore:`,
-`refactor:`), with no Claude/AI mention or Co-Authored-By trailer.
+Commit messages are a single line in semantic-commit format (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, optionally scoped like `docs(api):`), with no mention of Claude or AI and no Co-Authored-By trailer.

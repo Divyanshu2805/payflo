@@ -19,4 +19,4 @@ Local development runs **seven processes** — discovery, config, the four busin
 | [Resetting local data](resetting-data.md) | Starting over from empty databases, cache and topics |
 | [The monolith](the-monolith.md) | Building, running and testing the frozen phase 1 application |
 
-To run the same services on Kubernetes instead, see [Deployment](../deployment.md). Tests are covered in [Testing](../practices.md).
+To run the same services on Kubernetes instead, see [Deployment](../deployment.md). Tests are covered in [Testing](../practices/testing.md).
