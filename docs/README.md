@@ -16,4 +16,4 @@ Project documentation, kept up to date with each commit. Intended as a reference
 | [Known Gaps](gaps.md) | Known gaps vs. requirements and the v1 design |
 | [Domain Vocabulary](schema/enums.md) | Enums and the payment/refund state machines |
 | [APIs](api/README.md) | REST endpoints: requests, responses, and errors |
-| [Practices](practices.md) | Engineering practices and patterns used |
+| [Practices](practices/README.md) | Engineering practices and patterns used |
