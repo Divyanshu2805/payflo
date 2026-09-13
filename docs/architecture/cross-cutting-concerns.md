@@ -4,11 +4,11 @@ Concerns that span every service. Security has its own page: see the [security m
 
 ## Errors
 
-Every error response has one shape — `ErrorResponse { errorCode, errorDescription, timestamp, fieldErrors? }` — produced in one place: `common-lib`'s `GlobalExceptionHandler`, registered in every service through `SharedExceptionAutoConfiguration`. Business-logic failures throw an existing typed exception from `common-lib`'s `exception` package, so they map to a specific status instead of a generic `500`. The gateway answers its own `401` and `429` in the same shape. Full table: [error reference](../api.md).
+Every error response has one shape — `ErrorResponse { errorCode, errorDescription, timestamp, fieldErrors? }` — produced in one place: `common-lib`'s `GlobalExceptionHandler`, registered in every service through `SharedExceptionAutoConfiguration`. Business-logic failures throw an existing typed exception from `common-lib`'s `exception` package, so they map to a specific status instead of a generic `500`. The gateway answers its own `401` and `429` in the same shape. Full table: [error reference](../api/errors.md).
 
 ## Idempotency
 
-A `POST`, `PUT` or `PATCH` carrying `X-Idempotency-Key` is made safe to retry by `common-lib`'s `IdempotencyFilter`, which every business service registers: the first request claims the key in Redis, a repeat within 24 hours gets the stored response replayed, and only successful responses are stored. `POST /v1/payments` also uses the same header as the payment's own idempotency key, so a retried payment returns the existing attempt instead of creating a second one. Details and limits: [idempotency and rate limits](../api.md).
+A `POST`, `PUT` or `PATCH` carrying `X-Idempotency-Key` is made safe to retry by `common-lib`'s `IdempotencyFilter`, which every business service registers: the first request claims the key in Redis, a repeat within 24 hours gets the stored response replayed, and only successful responses are stored. `POST /v1/payments` also uses the same header as the payment's own idempotency key, so a retried payment returns the existing attempt instead of creating a second one. Details and limits: [idempotency and rate limits](../api/idempotency-and-rate-limits.md).
 
 ## Rate limiting
 

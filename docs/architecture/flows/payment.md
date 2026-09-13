@@ -22,7 +22,7 @@ All paths below are under `payment-service/src/main/java/com/project/payflo/paym
    - `CardPaymentAdapter` → vault-service `POST /internal/vault/charge` with the token and amount only; vault-service decrypts the card and runs its mock acquirer behind a bulkhead.
    - `UpiPaymentAdapter`, `NetBankingAdapter` → the local `PaymentProcessor` for that method.
 
-   Every processor answers `Pending` (with a processor reference) or `Failure` (with an error code) — see [mock acquirer](../../api.md).
+   Every processor answers `Pending` (with a processor reference) or `Failure` (with an error code) — see [mock acquirer](../../api/mock-acquirer.md).
 4. **`applyGatewayResult` — transaction 2.** `Pending` records the processor reference and leaves the payment `AUTHORIZING`; `Failure` fires `AUTHORIZE_FAIL` → `FAILED` with the error code. Either way a `PAYMENT_CREATED` outbox row is written.
 5. **Compensation.** If step 3 throws — vault-service down, circuit open, a malformed request — `compensateAuthorizationFailure` fires `AUTHORIZE_FAIL` and writes `PAYMENT_AUTHORIZATION_COMPENSATED`, so the payment never sits in `AUTHORIZING` with no one coming to resolve it.
 
@@ -44,6 +44,6 @@ The response is `201` with the payment, usually `AUTHORIZING`.
 
 ## Related
 
-- [Orders](../../api.md) and [payments](../../api.md) endpoints.
+- [Orders](../../api/orders.md) and [payments](../../api/payments.md) endpoints.
 - [The payment state machine](../../schema/enums.md#payment-state-machine).
 - [payment-service data model](../../schema/payment-service.md).

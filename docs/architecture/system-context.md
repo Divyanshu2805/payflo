@@ -33,7 +33,7 @@ The four databases live on one PostgreSQL server. A service never reads another 
 
 There is no real bank or card network. Three stand-ins make the flows run end to end:
 
-- **Mock acquirer** — `PaymentProcessor` implementations (card in vault-service; UPI and net banking in payment-service) that fail for [specific test values](../api.md) and otherwise accept.
+- **Mock acquirer** — `PaymentProcessor` implementations (card in vault-service; UPI and net banking in payment-service) that fail for [specific test values](../api/mock-acquirer.md) and otherwise accept.
 - **Bank callback simulator** — `BankCallbackSimulator` in payment-service resolves `AUTHORIZING` payments after a per-method delay and success rate, then captures them.
 - **Payout rail** — `BankTransferProcessor` and `BankSettlementCallbackSimulator` in operations-service stand in for the bank that receives settlement transfers.
 

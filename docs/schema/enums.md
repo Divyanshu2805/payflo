@@ -21,7 +21,7 @@ Every enum lives in `common-lib`'s `enums` package, so all services speak the sa
 | `PaymentActor` | `CUSTOMER`, `MERCHANT`, `SYSTEM` | `payment_transition_log.actor` — always `SYSTEM` today |
 | `PaymentMethod` | `CARD`, `NETBANKING`, `UPI`, `WALLET` | `payment.method` — `WALLET` has no adapter |
 | `RefundStatus` | `PENDING`, `PROCESSING`, `PROCESSED`, `FAILED` | `refund.status` — unused, refunds aren't built |
-| `ChaosMode` | `NORMAL`, `SLOW`, `FAILURE`, `SUCCESS`, `TIMEOUT` | `payment.simulator.chaos-mode` — see [mock acquirer](../api.md) |
+| `ChaosMode` | `NORMAL`, `SLOW`, `FAILURE`, `SUCCESS`, `TIMEOUT` | `payment.simulator.chaos-mode` — see [mock acquirer](../api/mock-acquirer.md) |
 
 ## vault-service
 

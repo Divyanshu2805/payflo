@@ -37,6 +37,6 @@ Both evict the key from the gateway's Redis cache, so the next request reloads i
 
 ## Related
 
-- [Authentication](../../api.md) and [API keys](../../api.md) endpoints.
+- [Authentication](../../api/authentication.md) and [API keys](../../api/api-keys.md) endpoints.
 - [Security model](../security-model.md) — tenancy, trusted headers, the internal API.
 - [Decision 0003](../decisions/0003-authenticate-once-at-the-gateway.md) — why authentication is centralized.

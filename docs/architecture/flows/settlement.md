@@ -34,4 +34,4 @@ The simulator always reports success, refunds are not deducted (they aren't buil
 ## Related
 
 - [Settlement status](../../schema/enums.md#settlement-status) and the [operations-service data model](../../schema/operations-service.md).
-- [Internal API](../../api.md) — the three endpoints settlement calls.
+- [Internal API](../../api/internal.md) — the three endpoints settlement calls.
