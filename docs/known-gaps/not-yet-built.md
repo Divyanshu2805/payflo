@@ -32,7 +32,8 @@ Known missing features and open issues, grouped by area. Items marked *(from rea
 
 ## Settlement
 
-- **The settlement row's refund amount is never set, though its columns are `NOT NULL`**, so saving a settlement should fail and roll that merchant's run back. Settlement has not been verified end to end. *(from reading the code)*
+- **Only `ACTIVE` merchants are settled, but nothing makes a merchant `ACTIVE`** — without a KYC flow, settlement pays out no one unless a merchant is activated in the database.
+- **One merchant's failure aborts the night's batch.** `SettlementEngine` waits on every merchant's future and rethrows the first failure, so an exception in one merchant's run stops the remaining ones being awaited and fails the scheduled job.
 - **Remote calls run inside the settlement transaction.** `processForMerchant` and `resolveTransfer` call payment- and merchant-service while holding a database transaction — the pattern the payment saga avoids.
 - **`mark-settled` bypasses the state machine.** It sets `SETTLED` directly, without checking the payment is `CAPTURED` and without a transition-log row.
 - **The payout simulator always succeeds**, so the `FAILED` callback branch never runs and there is no chaos mode for payouts.

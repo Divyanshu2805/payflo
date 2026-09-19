@@ -29,7 +29,7 @@ Both events go through operations-service's own outbox to `settlements.events`, 
 
 ## Limits today
 
-The simulator always reports success, refunds are not deducted (they aren't built), and a few issues found while documenting this flow — including the settlement row's non-null refund amount never being set — are listed in [known gaps](../../known-gaps/not-yet-built.md#settlement).
+The simulator always reports success, and refunds are not deducted (they aren't built): a settlement records a zero refund amount. Only `ACTIVE` merchants are settled, and there is no KYC flow to make a merchant `ACTIVE`, so in practice a merchant has to be activated in the database before it's ever paid out. Other open issues are listed in [known gaps](../../known-gaps/not-yet-built.md#settlement).
 
 ## Related
 

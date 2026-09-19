@@ -20,7 +20,7 @@ Every change to a flow is verified end to end through the gateway, against the r
 | Compensation | Stop vault-service and pay by card: the payment ends `FAILED` with `PAYMENT_GATEWAY_ROUTER_UNREACHABLE` |
 | Events | `ORDER_CREATED`, `PAYMENT_CREATED` and `PAYMENT_STATUS_CHANGED` appear on their topics in Control Center or Kafka UI |
 | Webhooks | Register `…/webhook/success` as a target and watch `webhook_event` rows reach `DELIVERED`; register a URL that fails and watch `attempts` and `next_retry_at` advance |
-| Settlement | Call `SettlementEngine.run()` rather than waiting for 23:00, then check `settlement` and the payments' `SETTLED` status. Not yet verified end to end — see [known gaps](../known-gaps/not-yet-built.md#settlement) |
+| Settlement | Call `SettlementEngine.run()` rather than waiting for 23:00, then check `settlement` and the payments' `SETTLED` status. The merchant must be `ACTIVE` (`update merchant set status = 'ACTIVE'` in `payflo_merchant` — there's no KYC flow). Verified end to end: a run settles every captured payment, records gross/fee/GST/net, and the payout simulator moves it to `PROCESSED`. |
 | Kubernetes | The steps in [running on kind](../deployment/running-on-kind.md) — last done on a fresh cluster: all pods healthy, signup through a card payment reaching `CAPTURED`, events published |
 
 A green `contextLoads` says nothing about any of these.

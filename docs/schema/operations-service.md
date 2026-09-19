@@ -42,12 +42,12 @@ One merchant's payout from one nightly run.
 |---|---|
 | `merchant_id` | Plain id → merchant-service. |
 | `gross_amount_*` | The sum of the settled payments. |
-| `refund_amount_*` | Refunds to deduct — not computed yet (see [known gaps](../known-gaps/not-yet-built.md#settlement)). |
+| `refund_amount_*` | Refunds to deduct — always zero until refunds exist. |
 | `fee_amount_*` | The platform fee, 2% of gross. |
 | `gst_amount_*` | GST, 18% of the fee. |
 | `net_amount_*` | What is paid out: gross − fee − GST. |
 | `status` | `SettlementStatus` — see [settlement status](enums.md#settlement-status). |
-| `bank_reference` | The transfer reference returned by the (mock) bank. |
+| `bank_reference` | The transfer reference returned by the (mock) bank. Null until the payout is registered (`TRANSFER_PENDING`). |
 | `processed_at` | When the bank confirmed the payout. |
 | `failure_reason` | Why it failed, if it did. |
 
