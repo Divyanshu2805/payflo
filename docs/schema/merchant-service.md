@@ -40,7 +40,7 @@ Credentials for a merchant's own backend, rotatable without breaking an integrat
 | Field | Meaning |
 |---|---|
 | `merchant_id` | FK → `merchant`. Indexed with `environment` and `enabled`. |
-| `key_id` | The public half, unique — `fp_<environment>_<random>`, safe to display. |
+| `key_id` | The public half, unique — `pf_<environment>_<random>`, safe to display. |
 | `key_secret_hash` | bcrypt hash of the secret, which is shown once at creation and never again. |
 | `previous_key_secret_hash` | The prior hash after a rotation, accepted until `grace_period_expires_at`. |
 | `environment` | `TEST` or `LIVE`. |

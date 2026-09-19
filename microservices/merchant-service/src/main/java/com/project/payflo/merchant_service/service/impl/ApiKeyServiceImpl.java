@@ -40,7 +40,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         Merchant merchant = merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("merchant", merchantId));
 
-        String keyId = "fp_"+request.environment().name().toLowerCase()+"_"+ RandomizerUtil.randomBase64(24);
+        String keyId = "pf_"+request.environment().name().toLowerCase()+"_"+ RandomizerUtil.randomBase64(24);
         String rawSecret = RandomizerUtil.randomBase64(40);
 
         ApiKey apiKey = ApiKey.builder()

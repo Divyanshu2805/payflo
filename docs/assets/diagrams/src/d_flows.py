@@ -29,7 +29,7 @@ def auth():
     q.msg("cl", "gw", "POST /v1/merchants/api-keys")
     q.msg("gw", "gw", "JwtAuthHandler · verify with jwt.secret-key")
     q.msg("gw", "ms", "+ X-Merchant-Id · X-User-Role")
-    q.msg("ms", "cl", "keyId fp_<env>_… + secret, shown once", ret=True)
+    q.msg("ms", "cl", "keyId pf_<env>_… + secret, shown once", ret=True)
     q.frame_end()
     q.frame_start("alt", "Authorization: Basic keyId:secret", B)
     q.msg("cl", "gw", "POST /v1/orders")

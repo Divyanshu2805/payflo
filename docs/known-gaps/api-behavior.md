@@ -24,7 +24,7 @@ A JWT can create orders and an API key can manage webhook configs. The monolith 
 
 ## The API-key path takes the row id
 
-`DELETE /v1/merchants/api-keys/{id}` and `…/{id}/rotate` take the key's `id` (a UUID from the create or list response), not its `fp_…` `keyId`.
+`DELETE /v1/merchants/api-keys/{id}` and `…/{id}/rotate` take the key's `id` (a UUID from the create or list response), not its `pf_…` `keyId`.
 
 ## An idempotent retry replays the first response, whatever you send
 

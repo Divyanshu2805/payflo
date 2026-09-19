@@ -83,7 +83,7 @@
 <text x="685.0" y="633" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">+ X-Merchant-Id · X-User-Role</text>
 <circle cx="949.0" cy="688" r="9" fill="rgba(139,152,169,0.2)" stroke="#8b98a9" stroke-width="1"/><text x="949.0" y="691.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#8b98a9">10</text>
 <rect x="440.1" y="667.0" width="239.8" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
-<text x="560.0" y="679" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8b98a9">keyId fp_&lt;env&gt;_… + secret, shown once</text>
+<text x="560.0" y="679" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8b98a9">keyId pf_&lt;env&gt;_… + secret, shown once</text>
 <circle cx="171.0" cy="790" r="9" fill="rgba(88,166,255,0.2)" stroke="#58a6ff" stroke-width="1"/><text x="171.0" y="793.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#58a6ff">11</text>
 <rect x="258.4" y="769.0" width="103.2" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
 <text x="310.0" y="781" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">POST /v1/orders</text>

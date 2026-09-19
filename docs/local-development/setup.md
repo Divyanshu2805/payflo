@@ -57,7 +57,7 @@ TOKEN=$(curl -s localhost:8080/v1/auth/login -H 'Content-Type: application/json'
 
 curl -s localhost:8080/v1/merchants/api-keys -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{"environment":"TEST"}'
-# → { "keyId": "fp_test_…", "keySecret": "…" } — the secret is shown only now
+# → { "keyId": "pf_test_…", "keySecret": "…" } — the secret is shown only now
 ```
 
 Then, as the merchant's backend (`-u keyId:keySecret`):
