@@ -64,7 +64,8 @@ public class Settlement extends BaseEntity {
     @Column(nullable = false, length = 20)
     private SettlementStatus status;
 
-    @Column(nullable = false, length = 50)
+    // Only known once the payout is registered with the bank (TRANSFER_PENDING onwards).
+    @Column(length = 50)
     private String bankReference;
 
     private LocalDateTime processedAt;

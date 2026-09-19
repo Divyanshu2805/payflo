@@ -65,6 +65,8 @@ public class SettlementTransactionExecutor {
         Settlement settlement = Settlement.builder()
                 .merchantId(merchantId)
                 .grossAmount(gross)
+                // Refunds aren't built yet, so nothing is netted off; the column is NOT NULL.
+                .refundAmount(Money.of(0, gross.getCurrency()))
                 .feeAmount(feeAmount)
                 .gstAmount(gstAmount)
                 .netAmount(netAmount)
