@@ -2,9 +2,8 @@ package com.project.payflo.merchant_service.service.impl;
 
 import com.project.payflo.common_lib.enums.MerchantStatus;
 import com.project.payflo.common_lib.enums.UserRole;
-import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
+import com.project.payflo.common_lib.exception.InvalidCredentialsException;
 import com.project.payflo.common_lib.exception.DuplicateResourceException;
-import com.project.payflo.common_lib.exception.ResourceNotFoundException;
 import com.project.payflo.merchant_service.dto.request.LoginRequest;
 import com.project.payflo.merchant_service.dto.request.MerchantSignupRequest;
 import com.project.payflo.merchant_service.dto.response.LoginResponse;
@@ -61,10 +60,10 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse login(LoginRequest request) {
 
         AppUser appUser = appUserRepository.findByEmail(request.email())
-                .orElseThrow(() -> new ResourceNotFoundException("User", request.email()));
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(request.password(), appUser.getPasswordHash())) {
-            throw new BusinessRuleViolationException("INVALID_CREDENTIALS", "Invalid email or password");
+            throw new InvalidCredentialsException();
         }
 
         String token = jwtUtil.generateAccessToken(request.email(), appUser.getMerchant().getId(), appUser.getRole().toString());

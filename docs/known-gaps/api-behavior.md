@@ -16,7 +16,7 @@ The response to `POST /v1/payments` is usually `AUTHORIZING`; the simulated bank
 
 ## A business-rule violation is `400`, not `409`
 
-`ORDER_NOT_PAYABLE` and `INVALID_CREDENTIALS` are `400`. `409` is reserved for duplicates (`DUPLICATE_MERCHANT_EMAIL`, `ORDER_RECEIPT_DUPLICATE`, `DATA_INTEGRITY_VIOLATION`), an illegal state transition, and an idempotency key still in flight. (The monolith used `409` for business rules.)
+`ORDER_NOT_PAYABLE` is `400`. `409` is reserved for duplicates (`DUPLICATE_MERCHANT_EMAIL`, `ORDER_RECEIPT_DUPLICATE`, `DATA_INTEGRITY_VIOLATION`), an illegal state transition, and an idempotency key still in flight. (The monolith used `409` for business rules.)
 
 ## Both credentials work everywhere
 
