@@ -23,10 +23,11 @@ Every error response from every service has the same JSON shape, produced by one
 | Exception | Status | `errorCode` |
 |---|---|---|
 | `MethodArgumentNotValidException` | 400 | `VALIDATION_FAILED`, with `fieldErrors` |
-| `BusinessRuleViolationException` | 400 | Its own code — `ORDER_NOT_PAYABLE`, `INVALID_CREDENTIALS`, … |
+| `BusinessRuleViolationException` | 400 | Its own code — `ORDER_NOT_PAYABLE`, … |
+| `InvalidCredentialsException` | 401 | `INVALID_CREDENTIALS` — login with an unknown email or a wrong password (deliberately indistinguishable) |
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST_BODY` |
 | `MethodArgumentTypeMismatchException` | 400 | `INVALID_PARAMETER` — e.g. a path id that isn't a UUID |
-| `ResourceNotFoundException` | 404 | `<RESOURCE>_NOT_FOUND` — `ORDER_NOT_FOUND`, `PAYMENT_NOT_FOUND`, `APIKEY_NOT_FOUND`, `USER_NOT_FOUND`, … |
+| `ResourceNotFoundException` | 404 | `<RESOURCE>_NOT_FOUND` — `ORDER_NOT_FOUND`, `PAYMENT_NOT_FOUND`, `APIKEY_NOT_FOUND`, … |
 | `DuplicateResourceException` | 409 | Its own code — `DUPLICATE_MERCHANT_EMAIL`, `ORDER_RECEIPT_DUPLICATE` |
 | `InvalidStateTransitionException` | 409 | `INVALID_STATE_TRANSITION` |
 | `IdempotencyConflictException` | 409 | `IDEMPOTENCY_CONFLICT` — the same key is still being processed |

@@ -7,7 +7,7 @@ Both endpoints are public routes at the gateway. merchant-service issues the JWT
 | Method | Path | Request | Response | Notes |
 |---|---|---|---|---|
 | `POST` | `/v1/auth/signup` | `MerchantSignupRequest { name, email, password, businessName?, businessType? }` | `201` `MerchantResponse { id, name, email, businessName, businessType, merchantStatus }` | Creates the merchant (always `PENDING_KYC`) and its first user (`OWNER`) in one transaction. `409 DUPLICATE_MERCHANT_EMAIL` if the email is taken. |
-| `POST` | `/v1/auth/login` | `LoginRequest { email, password }` | `200` `LoginResponse { accessToken }` | A JWT carrying `merchant_id` and `role`, valid 100 minutes. Wrong password: `400 INVALID_CREDENTIALS`. Unknown email: `404 USER_NOT_FOUND`. |
+| `POST` | `/v1/auth/login` | `LoginRequest { email, password }` | `200` `LoginResponse { accessToken }` | A JWT carrying `merchant_id` and `role`, valid 100 minutes. A wrong password and an unknown email both return `401 INVALID_CREDENTIALS`, so the response never reveals whether an email is registered. |
 
 ## Validation
 
