@@ -8,9 +8,9 @@
 
 ## MapStruct silently leaves a mismatched field `null`
 
-- **Symptom:** a response field is always `null` although the entity has a value — e.g. an order's `status`.
+- **Symptom:** a response field is always `null` although the entity has a value — e.g. an order's `status` or a new merchant's `merchantStatus`.
 - **Cause:** MapStruct matches by name; the entity's `orderStatus` doesn't match the DTO's `status`, so nothing is mapped and only a warning is printed.
-- **Fix:** add an explicit `@Mapping(source = "orderStatus", target = "status")` (as `OrderMapper` does) and fix every "Unmapped target property" warning.
+- **Fix:** add an explicit `@Mapping` — `OrderMapper` maps `orderStatus` → `status` and `MerchantMapper` maps `status` → `merchantStatus` — and fix every "Unmapped target property" warning. Both mappers shipped without it and returned `null` until an end-to-end check caught it.
 
 ## PostgreSQL rejects the JVM's legacy time-zone name
 
