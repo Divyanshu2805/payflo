@@ -23,3 +23,4 @@ The gateway's Actuator lives on a separate port on purpose: the public listener 
 
 - [Tracing](tracing.md) — what is traced, following one request across services, sampling, logs.
 - [Metrics](metrics.md) — what is measured and the queries for throughput, latency percentiles and availability.
+- [Running Zipkin, Prometheus and Grafana](dashboards.md) — the local stack and the PayFlo dashboard.

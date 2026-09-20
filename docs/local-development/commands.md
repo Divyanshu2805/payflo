@@ -28,6 +28,7 @@ On Windows, use `mvnw.cmd` in place of `./mvnw`.
 |---|---|
 | `docker compose -f services.docker-compose.yaml up -d` | Start PostgreSQL, Redis, Kafka and Control Center |
 | `docker compose -f services.docker-compose.yaml down -v` | **Delete** all local data — read [resetting local data](resetting-data.md) first |
+| `docker compose -f microservices/observability/docker-compose.yaml up -d` | Start Zipkin (`:9411`), Prometheus (`:9090`) and Grafana (`:3000`) — see [observability](../observability/dashboards.md) |
 | `docker exec -it pgvector-payflo psql -U user -d payflo_payment` | A SQL shell on one service's database |
 | `docker exec -it redis redis-cli -p 6379` | The Redis CLI (`KEYS apikey:*`, `ZRANGE …` for the webhook retry queue) |
 
