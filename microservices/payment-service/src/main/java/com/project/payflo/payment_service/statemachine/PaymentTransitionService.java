@@ -7,6 +7,7 @@ import com.project.payflo.common_lib.enums.PaymentStatus;
 import com.project.payflo.payment_service.entity.Payment;
 import com.project.payflo.payment_service.entity.PaymentTransitionLog;
 import com.project.payflo.payment_service.repository.PaymentTransitionLogRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class PaymentTransitionService {
     private final PaymentTransitionLogRepository paymentTransitionLogRepository;
     private final PaymentStateMachine paymentStateMachine;
     private final MerchantContext merchantContext;
+    private final MeterRegistry meterRegistry;
 
     public PaymentStatus apply(Payment payment, PaymentEvent event) {
         PaymentStatus next = paymentStateMachine.transition(payment.getStatus(), event);
@@ -34,6 +36,10 @@ public class PaymentTransitionService {
                 .build();
         payment.setStatus(next);
         paymentTransitionLogRepository.save(log);
+        // One series per (from, event, to) edge of the state machine — bounded by the transition table.
+        meterRegistry.counter("payflo.payment.transitions",
+                "from", String.valueOf(log.getFromStatus()), "event", event.name(), "to", next.name())
+                .increment();
         return next;
     }
 

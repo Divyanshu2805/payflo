@@ -3,6 +3,7 @@ package com.project.payflo.operations_service.webhook;
 import com.project.payflo.common_lib.enums.WebhookEventStatus;
 import com.project.payflo.operations_service.entity.WebhookEvent;
 import com.project.payflo.operations_service.repository.WebhookEventRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,7 @@ public class WebhookDeliverExecutor {
     private final WebhookRetryQueue webhookRetryQueue;
     private final RestClient restClient;
     private final WebhookDlqRecorder webhookDlqRecorder;
+    private final MeterRegistry meterRegistry;
 
     private static final List<Duration> BACKOFF = List.of(
             Duration.ofMinutes(1), Duration.ofMinutes(5), Duration.ofMinutes(30),
@@ -74,6 +76,7 @@ public class WebhookDeliverExecutor {
                 event.setStatus(WebhookEventStatus.DELIVERED);
                 event.setDeliveredAt(LocalDateTime.now());
                 webhookEventRepository.save(event);
+                countDelivery("delivered");
                 log.info("Successfully called the merchant for webhook event: {}", webhookEventId);
                 return;
             }
@@ -93,6 +96,7 @@ public class WebhookDeliverExecutor {
         if (event.getAttempts() >= MAX_ATTEMPTS) {
             event.setStatus(WebhookEventStatus.DEAD);
             webhookDlqRecorder.recordAfterAttemptsExhausted(event, error);
+            countDelivery("dead");
             return;
         }
 
@@ -103,33 +107,13 @@ public class WebhookDeliverExecutor {
         webhookEventRepository.save(event);
 
         webhookRetryQueue.enqueue(event.getId(), nextRetryAt);
+        countDelivery("retry");
 
         log.error("Handling attempt failed for webhook event {} with attempts: {}, Next Retry at: {}",
                 event.getId(), event.getAttempts(), nextRetryAt);
     }
 
+    private void countDelivery(String outcome) {
+        meterRegistry.counter("payflo.webhook.deliveries", "outcome", outcome).increment();
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
