@@ -60,13 +60,14 @@ def service_communication():
 
 
 def deployment_topology():
-    s = Scene(1640, 960, "Kubernetes deployment topology",
+    s = Scene(1640, 1120, "Kubernetes deployment topology",
               "microservices/k8s applied with kubectl apply -k to a local kind cluster · namespace payflo")
-    s.group(40, 120, 250, 780, "Your machine", GR, "terminal")
-    s.group(330, 120, 1270, 780, "kind cluster · payflo", T, "kubernetes", sub="single node · kind-config.yaml")
+    s.group(40, 120, 250, 940, "Your machine", GR, "terminal")
+    s.group(330, 120, 1270, 940, "kind cluster · payflo", T, "kubernetes", sub="single node · kind-config.yaml")
     s.group(360, 180, 760, 520, "Applications", G, "box", sub="Deployments · Jib images payflo/<module>:latest")
     s.group(1160, 180, 410, 520, "Stateful", R, "db", sub="StatefulSets with PVCs")
     s.group(360, 760, 1210, 120, "Configuration", Y, "gear")
+    s.group(360, 910, 1210, 130, "Observability", P, "compass", sub="microservices/observability · included by the kustomization")
 
     br = s.node(60, 180, "curl / client", "browser", "localhost:8080", w=210, accent=B, icolor=B)
     jib = s.node(60, 420, "mvnw jib:dockerBuild", "apachemaven", "then kind load docker-image", w=210, accent=GR)
@@ -82,7 +83,7 @@ def deployment_topology():
     ps = s.node(390, 510, "payment-service", "springboot", "ClusterIP · DB password only", layout="row", w=330, accent=G)
     os_ = s.node(760, 510, "operations-service", "springboot", "ClusterIP · DB password only", layout="row", w=330,
                  accent=G)
-    s.pill(740, 640, "requests 250m / 512Mi · limits 1 CPU / 1Gi · health probes on /actuator/health", G)
+    s.pill(740, 640, "requests 250m / 512Mi · limits 1 CPU / 1Gi · probes on /actuator/health (gateway :9081)", G)
 
     pg = s.node(1190, 230, "postgres", "postgresql", "16 · 10Gi · 4 DBs, 1 user each", layout="row", w=350, accent=R)
     rd = s.node(1190, 350, "redis", "redis", "7 · 2Gi", layout="row", w=350, accent=R)
@@ -108,7 +109,16 @@ def deployment_topology():
     s.pill(1140, 690, "JDBC · Redis · Kafka", R)
     s.edge([cm.t(), (cm.cx, 700)], None, Y, dashed=True)
     s.edge([sc.t(), (sc.cx, 700)], None, Y, dashed=True)
-    s.legend(60, 932, [("solid", B, "only public entry point"), ("solid", G, "in-cluster HTTP"), ("solid", R, "data"),
+    zk = s.node(390, 965, "zipkin", "compass", "spans from every service · :9411", layout="row", w=350, accent=P,
+                icolor=P)
+    pr = s.node(780, 965, "prometheus", "clock", "scrapes /actuator/prometheus · :9090", layout="row", w=360, accent=P,
+                icolor=P)
+    gf = s.node(1180, 965, "grafana", "layers", "PayFlo Overview dashboard · :3000", layout="row", w=360, accent=P,
+                icolor=P)
+    s.edge([pr.r(), gf.l()], None, P, dashed=True)
+    pf = s.node(60, 965, "kubectl port-forward", "terminal", ":3000 · :9090 · :9411", w=210, accent=P, icolor=P)
+    s.edge([pf.r(), zk.l()], None, P, dashed=True)
+    s.legend(60, 1092, [("solid", B, "only public entry point"), ("solid", G, "in-cluster HTTP"), ("solid", R, "data"),
                         ("dashed", T, "config server"), ("dashed", Y, "env from ConfigMap / Secret"),
-                        ("dashed", GR, "build and deploy")])
+                        ("dashed", GR, "build and deploy"), ("dashed", P, "observability")])
     return s

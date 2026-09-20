@@ -75,3 +75,18 @@ spec:
     - port: 8080
       targetPort: 8080
       nodePort: 30080
+---
+# Actuator (health, prometheus) lives on the management port, outside the public NodePort, so
+# only in-cluster clients like Prometheus can reach it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-management
+  namespace: payflo
+spec:
+  type: ClusterIP
+  selector:
+    app: api-gateway-service
+  ports:
+    - port: 9081
+      targetPort: 9081

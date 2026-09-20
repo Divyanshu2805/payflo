@@ -14,6 +14,7 @@ resources:
   - services/payment-service.yaml
   - services/operations-service.yaml
   - services/api-gateway-service.yaml
+  - ../observability
 
 secretGenerator:
   - name: app-secrets

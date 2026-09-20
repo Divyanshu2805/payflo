@@ -1,0 +1,29 @@
+# Zipkin, Prometheus and Grafana for the Kubernetes deployment. Included from
+# ../k8s/kustomization.yaml; the Grafana datasource and dashboard files are the same ones the local
+# docker-compose stack mounts (the in-cluster Service names match the compose service names).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: payflo
+
+resources:
+  - k8s/zipkin.yaml
+  - k8s/prometheus.yaml
+  - k8s/grafana.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml=prometheus/prometheus-k8s.yml
+  - name: grafana-datasources
+    files:
+      - grafana/provisioning/datasources/datasources.yaml
+  - name: grafana-dashboard-provider
+    files:
+      - grafana/provisioning/dashboards/dashboards.yaml
+  - name: grafana-dashboards
+    files:
+      - grafana/dashboards/payflo-overview.json
+
+generatorOptions:
+  disableNameSuffixHash: true

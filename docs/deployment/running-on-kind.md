@@ -57,6 +57,12 @@ kubectl -n payflo port-forward svc/kafka-ui 8090:8090                   # browse
 ```
 
 ```bash
+kubectl -n payflo port-forward svc/grafana 3000:3000                    # the PayFlo dashboard at localhost:3000
+kubectl -n payflo port-forward svc/prometheus 9090:9090                 # Prometheus at localhost:9090 (Status → Targets)
+kubectl -n payflo port-forward svc/zipkin 9411:9411                     # traces at localhost:9411
+```
+
+```bash
 kubectl -n payflo exec -it postgres-0 -- psql -U postgres -d payflo_payment
 ```
 
