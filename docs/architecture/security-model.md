@@ -13,7 +13,7 @@ Both credentials resolve to the same thing — a merchant id — and every endpo
 
 ## Authentication happens once, at the gateway
 
-`GatewayAuthFilter` runs before routing on every request except `app.security.public-routes` (signup, login, `/webhook/**`, `/actuator/health`). No other service has a Spring Security filter chain. After a credential verifies, the gateway adds identity headers to the forwarded request:
+`GatewayAuthFilter` runs before routing on every request except `app.security.public-routes` (signup, login, `/webhook/**`). The gateway's own Actuator endpoints are on a separate management port (`9081`) that this filter — and, on Kubernetes, the public NodePort — doesn't cover. No other service has a Spring Security filter chain. After a credential verifies, the gateway adds identity headers to the forwarded request:
 
 - JWT: `X-Merchant-Id`, `X-User-Role`
 - API key: `X-Merchant-Id`, `X-Key-Id`, `X-Environment`

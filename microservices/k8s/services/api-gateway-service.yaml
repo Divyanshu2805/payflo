@@ -22,6 +22,9 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
+              name: http
+            - containerPort: 9081
+              name: management
           envFrom:
             - configMapRef:
                 name: app-config
@@ -41,20 +44,20 @@ spec:
           startupProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 9081
             periodSeconds: 10
             failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 9081
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 9081
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3

@@ -17,7 +17,8 @@ On Windows, use `mvnw.cmd` in place of `./mvnw`.
 | Command | Purpose |
 |---|---|
 | `curl localhost:8888/<service>/default` | The configuration config-service is serving to a service |
-| `curl localhost:808x/actuator/health` | A service's health (`8080` gateway, `8081`–`8084` business services) |
+| `curl localhost:808x/actuator/health` | A business service's health (`8081`–`8084`); the gateway's is on its management port, `localhost:9081/actuator/health` |
+| `curl localhost:8082/actuator/prometheus` | A service's metrics in Prometheus format ([metrics](../observability/metrics.md)) |
 | Eureka dashboard at <http://localhost:8761> | Which instances have registered |
 | Control Center at <http://localhost:9021> | Topics and messages on the local Kafka |
 

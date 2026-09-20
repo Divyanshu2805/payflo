@@ -49,7 +49,9 @@ Every setting lives in `microservices/config-repo/` and is served by config-serv
 
 ## Observability
 
-- Logs go to standard output; there is no log shipping, tracing or metrics pipeline yet.
-- Each service exposes Actuator's `health` and `info` endpoints; the Kubernetes probes use `/actuator/health`.
+- **Traces:** every service reports spans to Zipkin through Micrometer Tracing, and the context crosses every hop — gateway proxy, Feign, Kafka — so one request is one trace. See [tracing](../observability/tracing.md).
+- **Metrics:** every service exposes `/actuator/prometheus`, with latency histograms on `http.server.requests` so percentiles can be computed across instances. See [metrics](../observability/metrics.md).
+- **Logs** go to standard output and carry the trace and span id; there is no log shipping.
+- Each service exposes Actuator's `health`, `info` and `prometheus` endpoints — the gateway on its separate management port `9081`, outside its auth filter. The Kubernetes probes use `/actuator/health`.
 - Kafka topics can be browsed in Control Center locally or Kafka UI on Kubernetes.
 - Failed webhook deliveries are inspectable in `webhook_event` (last response code and body) and `dlq_event`; failed publishes in `outbox_event.last_error`.

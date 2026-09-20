@@ -14,8 +14,12 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   kafka:
     bootstrap-servers: ${KAFKA_BROKERS:localhost:29092}
+    # Carry trace context through Kafka headers (producer -> consumer spans in Zipkin).
+    template:
+      observation-enabled: true
     listener:
       ack-mode: manual
+      observation-enabled: true
     producer:
       acks: all
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

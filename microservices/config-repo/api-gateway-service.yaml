@@ -1,6 +1,12 @@
 server:
   port: 8080
 
+# Actuator (health, prometheus) on its own port, outside GatewayAuthFilter and the public
+# listener: Prometheus can scrape it, but it isn't reachable through the gateway's public port.
+management:
+  server:
+    port: ${MANAGEMENT_PORT:9081}
+
 spring:
   cloud:
     gateway:
@@ -32,7 +38,6 @@ app:
       - /v1/auth/signup
       - /v1/auth/login
       - /webhook/**
-      - /actuator/health
   rate-limit:
     method: fixed
     use-case:

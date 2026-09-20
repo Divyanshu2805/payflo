@@ -18,7 +18,7 @@ A path no route owns is a 404 from the gateway.
 
 ## Conventions
 
-**Authentication.** Every endpoint needs one of two credentials, except `POST /v1/auth/signup`, `POST /v1/auth/login`, `/webhook/**` and `/actuator/health`:
+**Authentication.** Every endpoint needs one of two credentials, except `POST /v1/auth/signup`, `POST /v1/auth/login` and `/webhook/**`:
 
 - `Authorization: Bearer <jwt>` — from `POST /v1/auth/login`, valid 100 minutes. For a merchant's staff.
 - `Authorization: Basic base64(keyId:secret)` — an API key from `POST /v1/merchants/api-keys`. For a merchant's own backend.
