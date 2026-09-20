@@ -33,6 +33,10 @@ Every panel is a PromQL query from [metrics](metrics.md), so anything on the das
 
 The dashboard is provisioned read-only: edit it in Grafana, export the JSON, and replace the file to keep a change.
 
+## On Kubernetes
+
+The same Zipkin, Prometheus and Grafana run in the cluster as part of `kubectl apply -k microservices/k8s`, with the same dashboard file. Reach them with port-forwards — see [running on kind](../deployment/running-on-kind.md#5-use-it) and [the manifests](../deployment/kubernetes.md#observability).
+
 ## Stop it
 
 ```bash

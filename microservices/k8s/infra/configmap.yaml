@@ -17,3 +17,5 @@ data:
   PAYMENT_SERVICE_URI: "http://payment-service"
   VAULT_SERVICE_URI: "http://vault-service"
   OPERATIONS_SERVICE_URI: "http://operations-service"
+  ZIPKIN_URL: "http://zipkin:9411/api/v2/spans"
+  TRACING_SAMPLING_PROBABILITY: "0.1"
