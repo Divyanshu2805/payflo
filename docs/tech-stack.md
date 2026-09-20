@@ -32,6 +32,9 @@ Versions are the ones pinned in the `pom.xml` files, `services.docker-compose.ya
 | Kubernetes — kind | The whole system in a local cluster |
 | Kustomize | Assembling the manifests and generating the Secret from `secrets.env` |
 | Kafka UI | Browsing topics in the cluster |
+| Zipkin 3.5 | Collecting and browsing traces |
+| Prometheus 3.5 | Scraping and storing metrics |
+| Grafana 12.1 | The provisioned PayFlo dashboard |
 
 ## Documentation
 

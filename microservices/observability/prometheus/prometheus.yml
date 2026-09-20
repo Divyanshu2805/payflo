@@ -1,0 +1,20 @@
+# Scrapes the services running on the host (./mvnw spring-boot:run or java -jar).
+# The gateway serves actuator on its management port (9081), not its public 8080.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: payflo
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:9081"]
+        labels: { service: api-gateway-service }
+      - targets: ["host.docker.internal:8081"]
+        labels: { service: merchant-service }
+      - targets: ["host.docker.internal:8082"]
+        labels: { service: payment-service }
+      - targets: ["host.docker.internal:8083"]
+        labels: { service: vault-service }
+      - targets: ["host.docker.internal:8084"]
+        labels: { service: operations-service }
