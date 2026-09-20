@@ -12,6 +12,16 @@ Every service exposes Micrometer metrics in Prometheus format at `/actuator/prom
 | `resilience4j_circuitbreaker_state` | Resilience4j | Which breakers are open |
 | `kafka_producer_*`, `kafka_consumer_*` | Kafka clients | Producer throughput, consumer lag |
 
+### PayFlo's own metrics
+
+| Metric | Service | Tags | Meaning |
+|---|---|---|---|
+| `payflo_payment_transitions_total` | payment | `from`, `event`, `to` | Every payment state-machine transition, counted in `PaymentTransitionService` — so `sum by (to) (rate(...))` is payments reaching each status per second. One series per edge of the [state machine](../schema/enums.md), so the label set is bounded |
+| `payflo_outbox_pending` | payment | — | Outbox rows written but not yet published to Kafka (`OutboxMetrics`). It should hover near zero; a value that keeps growing means the poller or Kafka can't keep up, and webhooks and settlement are falling behind real time |
+| `payflo_webhook_deliveries_total` | operations | `outcome` = `delivered`, `retry`, `dead` | Every webhook delivery attempt's result, counted in `WebhookDeliverExecutor`. `dead` means the event exhausted its attempts and went to the DLQ |
+
+These are the business-level signals the HTTP metrics can't show: a payment request can succeed while payments pile up in `AUTHORIZING`, or while events queue in the outbox.
+
 ### Latency histograms
 
 `config-repo/application.yaml` turns on histogram buckets for `http.server.requests` and adds service-level-objective buckets at 100 ms, 250 ms, 500 ms and **1 s**:
