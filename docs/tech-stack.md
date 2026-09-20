@@ -11,6 +11,8 @@ Versions are the ones pinned in the `pom.xml` files, `services.docker-compose.ya
 | Spring Security Crypto | — | bcrypt for passwords and API-key secrets, AES-256-GCM for card data and webhook secrets — there is no Spring Security filter chain anywhere |
 | Spring Cloud | 2025.1.2 | Gateway Server Web MVC, Netflix Eureka, Config Server (native backend), OpenFeign (Apache HttpClient 5) |
 | Resilience4j | via Spring Cloud | Circuit breakers and retries on every Feign client; a thread-pool bulkhead around card charging |
+| Micrometer Tracing | via Spring Boot (Brave bridge) | Traces across services — HTTP, Feign, Redis and Kafka hops — reported to Zipkin |
+| Micrometer | via Spring Boot | Metrics in Prometheus format at `/actuator/prometheus`, with latency histograms |
 | PostgreSQL | 18 locally, 16 on Kubernetes | One database per service |
 | Hibernate | via Spring Data JPA | Schema managed with `ddl-auto: update` — no migration tool yet |
 | Spring Data Redis | — | API-key cache, rate-limit counters, idempotency keys, the webhook retry queue, ShedLock |

@@ -36,7 +36,7 @@ Every application is one Deployment and one Service with the same shape:
 - image `payflo/<module>:latest` with `imagePullPolicy: IfNotPresent`, so images loaded into kind are used as-is;
 - environment from the `app-config` ConfigMap, plus **only the secrets that service needs** from `app-secrets`;
 - requests `250m` CPU / `512Mi`, limits `1` CPU / `1Gi`;
-- startup (up to 5 minutes), readiness and liveness probes on `/actuator/health`.
+- startup (up to 5 minutes), readiness and liveness probes on `/actuator/health` — for the gateway, on its management port `9081`, since its public port answers `401` to anything without credentials.
 
 | Service | Secrets it gets | Service type |
 |---|---|---|

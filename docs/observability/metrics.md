@@ -1,0 +1,45 @@
+# Metrics
+
+Every service exposes Micrometer metrics in Prometheus format at `/actuator/prometheus` (the gateway on its management port `9081`). Every series carries an `application` label with the service name.
+
+## What is measured
+
+| Metric | Source | Use |
+|---|---|---|
+| `http_server_requests_seconds_*` | Spring MVC, per `application`, `method`, `uri`, `status` | Throughput, latency percentiles, error rate |
+| `jvm_memory_*`, `jvm_gc_*`, `jvm_threads_*`, `process_cpu_usage`, `system_cpu_usage` | JVM and process | Heap, GC, CPU — including whether the whole machine is saturated |
+| `hikaricp_connections_active` / `_pending` / `_timeout_total` | HikariCP | Database pool use: `pending > 0` means requests are waiting for a connection |
+| `resilience4j_circuitbreaker_state` | Resilience4j | Which breakers are open |
+| `kafka_producer_*`, `kafka_consumer_*` | Kafka clients | Producer throughput, consumer lag |
+
+### Latency histograms
+
+`config-repo/application.yaml` turns on histogram buckets for `http.server.requests` and adds service-level-objective buckets at 100 ms, 250 ms, 500 ms and **1 s**:
+
+```yaml
+management.metrics.distribution:
+  percentiles-histogram.http.server.requests: true
+  slo.http.server.requests: 100ms,250ms,500ms,1s
+```
+
+Buckets (rather than percentiles computed inside each JVM) let Prometheus aggregate latency across instances and compute any percentile afterwards, and the 1 s bucket answers "what share of requests met the p99 < 1 s target" directly.
+
+## Queries for the requirements
+
+The [requirements](../requirements.md#non-functional) set throughput, latency and availability targets. Measured at the gateway — what a client experiences — excluding Actuator's own traffic:
+
+| Target | PromQL |
+|---|---|
+| Throughput (req/s) | `sum(rate(http_server_requests_seconds_count{application="api-gateway-service",uri!~"/actuator.*"}[1m]))` |
+| p99 latency | `histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{application="api-gateway-service",uri!~"/actuator.*"}[1m])))` |
+| Availability (share without a 5xx) | `1 - sum(rate(http_server_requests_seconds_count{application="api-gateway-service",status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{application="api-gateway-service"}[5m]))` |
+| Share of requests under 1 s | `sum(rate(http_server_requests_seconds_bucket{application="api-gateway-service",le="1.0"}[5m])) / sum(rate(http_server_requests_seconds_count{application="api-gateway-service"}[5m]))` |
+
+Swap `application` or group `by (application, uri)` to find which service or endpoint is responsible. Comparing a route's latency at the gateway with the same route inside the owning service shows how much time is spent in the gateway itself.
+
+## Reading one service directly
+
+```bash
+curl -s localhost:8082/actuator/prometheus | grep '^hikaricp_connections'
+curl -s localhost:9081/actuator/prometheus | grep '^http_server_requests_seconds_count'
+```

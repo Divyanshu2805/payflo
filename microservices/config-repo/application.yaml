@@ -23,4 +23,21 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      # 1.0 = trace every request. Drop it (e.g. 0.05) for load tests so Zipkin isn't the bottleneck.
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      # Histogram buckets let Prometheus compute p50/p95/p99 across instances
+      # (histogram_quantile), and the SLO bucket at 1s gives "share of requests under the p99 target".
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,250ms,500ms,1s

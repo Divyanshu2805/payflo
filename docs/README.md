@@ -14,6 +14,10 @@ Everything about how PayFlo is built, run and changed. Start with the section th
 - [Architecture decisions](architecture/decisions/README.md) — why the system is shaped the way it is.
 - [Data model](schema/README.md) — the four databases, their entities, the state machines, and schema conventions.
 
+## Operating it
+
+- [Observability](observability/README.md) — tracing across services, metrics, and the queries for throughput, latency and availability.
+
 ## Reference
 
 - [API reference](api/README.md) — every endpoint, the mock acquirer's test values, idempotency, rate limits and errors.
