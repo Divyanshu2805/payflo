@@ -5,7 +5,7 @@ Traps this stack has actually hit. Most fail **silently** — no compile error, 
 | Page | Covers |
 |---|---|
 | [Spring and JPA](spring-and-jpa.md) | Lombok builders, MapStruct, time zones, Spring Security auto-configuration, exception resolution |
-| [Microservices](microservices.md) | Feign and sealed types, `common-lib` beans and jars, config-service, transactions around remote calls, Kafka topics, scheduling |
+| [Microservices](microservices.md) | Feign and sealed types, the gateway's proxy pool, `common-lib` beans and jars, config-service, transactions around remote calls, Kafka topics, scheduling |
 | [Kubernetes](kubernetes.md) | Profiles, Jib images, kind, start-up order, Eureka in-cluster |
 
 A recurring lesson across all three: **a green build is not proof the behaviour is right.** A field silently left `null`, a filter chain that swallowed an exception, a type Jackson couldn't pick — each compiled and started cleanly here. Verify the effect through the gateway, not just the exit code.

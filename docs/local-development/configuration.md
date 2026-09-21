@@ -47,6 +47,7 @@ The development defaults for the three secrets are committed on purpose so the s
 |---|---|---|---|
 | `app.rate-limit.method` | `api-gateway-service.yaml` | `fixed` | Which of the four `RateLimiter` implementations is active. **Must be set** — with no value, no limiter bean exists and the gateway fails to start |
 | `app.rate-limit.use-case.api-key.requests-per-minute` | `api-gateway-service.yaml` | `200` (`API_KEY_RATE_LIMIT_PER_MINUTE`) | Per-API-key limit |
+| `app.gateway.proxy.max-connections-per-route`, `…-total` | `ProxyHttpClientConfig` defaults | `200`, `1000` | The gateway's connection pool to downstream services — the HTTP client's own default is 5 per route ([why](../practices/gotchas/microservices.md#the-gateways-proxy-pool-allows-5-connections-per-route)) |
 | `app.security.public-routes` | `api-gateway-service.yaml` | signup, login, `/webhook/**` | Routes the gateway lets through without credentials. The gateway's own health and metrics are on its management port, outside this filter |
 | `payment.simulator.*` | `payment-service.yaml` | poll every 5 s; per-method delay and success rate; `chaos-mode: NORMAL` | How the simulated bank resolves authorizations — see [mock acquirer](../api/mock-acquirer.md) |
 | `payment.order.default-order-expiry-minutes` | `payment-service.yaml` | `30` | `expiresAt` when an order doesn't send one |
