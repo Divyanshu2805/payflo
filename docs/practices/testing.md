@@ -25,6 +25,10 @@ Every change to a flow is verified end to end through the gateway, against the r
 
 A green `contextLoads` says nothing about any of these.
 
+## Load testing
+
+The JMeter plan in `microservices/load-test/` drives orders and payments through the gateway and grades the run against the throughput, p99 and availability targets. See [load testing](../load-testing/README.md).
+
 ## Adding tests
 
 - Business logic — the state machine table, fee and GST arithmetic, the saga's compensation, the mock processors — suits plain JUnit tests that construct the class directly and mock its collaborators, with no Spring context and no infrastructure.

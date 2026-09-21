@@ -17,6 +17,7 @@ Everything about how PayFlo is built, run and changed. Start with the section th
 ## Operating it
 
 - [Observability](observability/README.md) — tracing across services, metrics, and the queries for throughput, latency and availability.
+- [Load testing](load-testing/README.md) — the JMeter plan, how to run it, and how each non-functional target is measured.
 
 ## Reference
 

@@ -16,7 +16,7 @@ The key is not tied to the request body: reusing a key with a different payload 
 
 ## Rate limits
 
-Only API-key traffic is limited, at the gateway: **200 requests per minute per key** by default (`app.rate-limit.use-case.api-key.requests-per-minute`). JWT traffic is not limited.
+Only API-key traffic is limited, at the gateway: **200 requests per minute per key** by default (`app.rate-limit.use-case.api-key.requests-per-minute`, overridable with `API_KEY_RATE_LIMIT_PER_MINUTE`). JWT traffic is not limited.
 
 Every API-key response carries:
 

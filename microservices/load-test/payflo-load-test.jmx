@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PayFlo load test: order creation + payment initiation through the API gateway.
+     Run it with run_load_test.py (docs/load-testing/). Tunable with -J properties:
+       host, port, protocol, threads, rampup, duration (seconds), keys (CSV of keyId,secret). -->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+<hashTree>
+<TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="PayFlo load test" enabled="true">
+  <boolProp name="TestPlan.functional_mode">false</boolProp><boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+  <elementProp name="TestPlan.user_defined_variables" elementType="Arguments"><collectionProp name="Arguments.arguments"/></elementProp>
+</TestPlan>
+<hashTree>
+<ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="Gateway" enabled="true">
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments"/></elementProp>
+  <stringProp name="HTTPSampler.domain">${__P(host,localhost)}</stringProp><stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp><stringProp name="HTTPSampler.protocol">${__P(protocol,http)}</stringProp>
+  <stringProp name="HTTPSampler.implementation">HttpClient4</stringProp><stringProp name="HTTPSampler.connect_timeout">5000</stringProp><stringProp name="HTTPSampler.response_timeout">30000</stringProp>
+</ConfigTestElement>
+<hashTree/>
+<ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Merchants" enabled="true">
+  <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+  <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController">
+    <boolProp name="LoopController.continue_forever">false</boolProp><stringProp name="LoopController.loops">-1</stringProp>
+  </elementProp>
+  <stringProp name="ThreadGroup.num_threads">${__P(threads,50)}</stringProp><stringProp name="ThreadGroup.ramp_time">${__P(rampup,30)}</stringProp>
+  <boolProp name="ThreadGroup.scheduler">true</boolProp><stringProp name="ThreadGroup.duration">${__P(duration,120)}</stringProp><stringProp name="ThreadGroup.delay">0</stringProp>
+  <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+</ThreadGroup>
+<hashTree>
+<JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Pick this thread's API key" enabled="true">
+  <stringProp name="scriptLanguage">groovy</stringProp><stringProp name="parameters"></stringProp><stringProp name="filename"></stringProp><stringProp name="cacheKey">true</stringProp>
+  <stringProp name="script">// Give each thread one merchant's API key for the whole run (keys.csv: keyId,secret per line),
+// so the card it tokenizes is always charged by the same merchant.
+if (vars.get("authHeader") == null) {
+    def keys = props.get("payflo.keys")
+    if (keys == null) {
+        synchronized (props) {
+            keys = props.get("payflo.keys")
+            if (keys == null) {
+                def path = org.apache.jmeter.util.JMeterUtils.getPropDefault("keys", "keys.csv")
+                keys = new File(path).readLines().findAll { it.trim() &amp;&amp; !it.startsWith("#") }.collect { it.trim().split(",") }
+                if (keys.isEmpty()) throw new IllegalStateException("No API keys in " + path)
+                props.put("payflo.keys", keys)
+            }
+        }
+    }
+    def k = keys[ctx.getThreadNum() % keys.size()]
+    vars.put("keyId", k[0])
+    vars.put("authHeader", (k[0] + ":" + k[1]).bytes.encodeBase64().toString())
+    vars.put("customerEmail", "lt-" + ctx.getThreadNum() + "@load.test")
+}</stringProp>
+</JSR223PreProcessor>
+<hashTree/>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Auth and content type" enabled="true"><collectionProp name="HeaderManager.headers"><elementProp name="" elementType="Header"><stringProp name="Header.name">Content-Type</stringProp><stringProp name="Header.value">application/json</stringProp></elementProp><elementProp name="" elementType="Header"><stringProp name="Header.name">Authorization</stringProp><stringProp name="Header.value">Basic ${authHeader}</stringProp></elementProp></collectionProp></HeaderManager>
+<hashTree/>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Create order" enabled="true">
+  <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+    <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{"amount":{"amountUnits":${__Random(100,100000)},"currency":"INR"},"receipt":"lt-${__UUID()}","customer":{"name":"Load Test","email":"${customerEmail}"}}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  </collectionProp></elementProp>
+  <stringProp name="HTTPSampler.path">/v1/orders</stringProp><stringProp name="HTTPSampler.method">POST</stringProp><boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Order created" enabled="true">
+  <collectionProp name="Asserion.test_strings"><stringProp name="1">20[01]</stringProp></collectionProp>
+  <stringProp name="Assertion.custom_message"></stringProp><stringProp name="Assertion.test_field">Assertion.response_code</stringProp><boolProp name="Assertion.assume_success">false</boolProp><intProp name="Assertion.test_type">1</intProp>
+</ResponseAssertion>
+<hashTree/>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract order_id" enabled="true">
+  <stringProp name="JSONPostProcessor.referenceNames">order_id</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.id</stringProp><stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+</JSONPostProcessor>
+<hashTree/>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract customer_id" enabled="true">
+  <stringProp name="JSONPostProcessor.referenceNames">customer_id</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.customerId</stringProp><stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+</JSONPostProcessor>
+<hashTree/>
+</hashTree>
+<OnceOnlyController guiclass="OnceOnlyControllerGui" testclass="OnceOnlyController" testname="Tokenize a card once per thread" enabled="true"/>
+<hashTree>
+<IfController guiclass="IfControllerPanel" testclass="IfController" testname="Only after a successful order" enabled="true">
+  <stringProp name="IfController.condition">${__jexl3("${customer_id}" != "NOT_FOUND")}</stringProp><boolProp name="IfController.evaluateAll">false</boolProp><boolProp name="IfController.useExpression">true</boolProp>
+</IfController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Tokenize card" enabled="true">
+  <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+    <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">{"pan":"4111111111111111","cvv":"123","expiryMonth":12,"expiryYear":2035,"customerId":"${customer_id}","cardHolderName":"Load Test"}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  </collectionProp></elementProp>
+  <stringProp name="HTTPSampler.path">/v1/vault/tokenize</stringProp><stringProp name="HTTPSampler.method">POST</stringProp><boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Card tokenized" enabled="true">
+  <collectionProp name="Asserion.test_strings"><stringProp name="1">20[01]</stringProp></collectionProp>
+  <stringProp name="Assertion.custom_message"></stringProp><stringProp name="Assertion.test_field">Assertion.response_code</stringProp><boolProp name="Assertion.assume_success">false</boolProp><intProp name="Assertion.test_type">1</intProp>
+</ResponseAssertion>
+<hashTree/>
+<JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract card_token" enabled="true">
+  <stringProp name="JSONPostProcessor.referenceNames">card_token</stringProp><stringProp name="JSONPostProcessor.jsonPathExprs">$.token</stringProp><stringProp name="JSONPostProcessor.match_numbers">1</stringProp><stringProp name="JSONPostProcessor.defaultValues">NOT_FOUND</stringProp>
+</JSONPostProcessor>
+<hashTree/>
+</hashTree>
+</hashTree>
+</hashTree>
+<IfController guiclass="IfControllerPanel" testclass="IfController" testname="Only when the order was created" enabled="true">
+  <stringProp name="IfController.condition">${__jexl3("${order_id}" != "NOT_FOUND")}</stringProp><boolProp name="IfController.evaluateAll">false</boolProp><boolProp name="IfController.useExpression">true</boolProp>
+</IfController>
+<hashTree>
+<HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Initiate payment" enabled="true">
+  <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+  <elementProp name="HTTPsampler.Arguments" elementType="Arguments"><collectionProp name="Arguments.arguments">
+    <elementProp name="" elementType="HTTPArgument"><boolProp name="HTTPArgument.always_encode">false</boolProp><stringProp name="Argument.value">${paymentBody}</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+  </collectionProp></elementProp>
+  <stringProp name="HTTPSampler.path">/v1/payments</stringProp><stringProp name="HTTPSampler.method">POST</stringProp><boolProp name="HTTPSampler.follow_redirects">false</boolProp><boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+</HTTPSamplerProxy>
+<hashTree>
+<JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Pick payment method" enabled="true">
+  <stringProp name="scriptLanguage">groovy</stringProp><stringProp name="parameters"></stringProp><stringProp name="filename"></stringProp><stringProp name="cacheKey">true</stringProp>
+  <stringProp name="script">// Payment mix: 40% UPI, 30% netbanking, 30% card (card goes gateway -&gt; payment -&gt; vault).
+def r = new Random().nextInt(100)
+def token = vars.get("card_token")
+def order = vars.get("order_id")
+if (r &lt; 30 &amp;&amp; token &amp;&amp; token != "NOT_FOUND") {
+    vars.put("paymentBody", '{"orderId":"' + order + '","method":"CARD","methodDetails":{"token":"' + token + '"}}')
+} else if (r &lt; 60) {
+    vars.put("paymentBody", '{"orderId":"' + order + '","method":"NETBANKING","methodDetails":{"bank":"HDFC"}}')
+} else {
+    vars.put("paymentBody", '{"orderId":"' + order + '","method":"UPI","methodDetails":{"vpa":"load@okbank"}}')
+}</stringProp>
+</JSR223PreProcessor>
+<hashTree/>
+<HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Idempotency key" enabled="true"><collectionProp name="HeaderManager.headers"><elementProp name="" elementType="Header"><stringProp name="Header.name">X-Idempotency-Key</stringProp><stringProp name="Header.value">${__UUID()}</stringProp></elementProp></collectionProp></HeaderManager>
+<hashTree/>
+<ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Payment accepted" enabled="true">
+  <collectionProp name="Asserion.test_strings"><stringProp name="1">20[01]</stringProp></collectionProp>
+  <stringProp name="Assertion.custom_message"></stringProp><stringProp name="Assertion.test_field">Assertion.response_code</stringProp><boolProp name="Assertion.assume_success">false</boolProp><intProp name="Assertion.test_type">1</intProp>
+</ResponseAssertion>
+<hashTree/>
+</hashTree>
+</hashTree>
+</hashTree>
+</hashTree>
+</hashTree>
+</jmeterTestPlan>
