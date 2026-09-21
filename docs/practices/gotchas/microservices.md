@@ -6,6 +6,13 @@
 - **Cause:** vault-service returns `PaymentProcessorResponse`, a sealed interface. Without type information in the JSON, Jackson on payment-service's side can't choose which record to build, and deserialization throws.
 - **Fix:** `@JsonTypeInfo(use = NAME, property = "type")` with `@JsonSubTypes` for `PENDING` / `SUCCESS` / `FAILURE`. Any sealed type sent over Feign needs the same.
 
+## The gateway's proxy pool allows 5 connections per route
+
+- **Symptom:** under load, requests through the gateway take hundreds of milliseconds longer than the same requests inside the owning service — in a load test, `/v1/orders` took ~25 ms in payment-service but ~370 ms at the gateway — while a rarely used route (vault) added only a few milliseconds.
+- **Cause:** Spring Cloud Gateway Server Web MVC proxies with Apache HttpClient 5 (on the classpath through Eureka), whose pooling connection manager defaults to 5 connections per route. With 100 concurrent requests to one service, 95 queue in the gateway waiting for a connection. Metrics show it as latency at the gateway only; the service looks idle.
+- **Fix:** `ProxyHttpClientConfig` in the gateway supplies a `ClientHttpRequestFactoryBuilder` with a bigger pool — `app.gateway.proxy.max-connections-per-route` (200) and `…max-connections-total` (1000). Switching the whole application to the JDK client (`spring.http.clients.imperative.factory: jdk`) is not a fix: it also changes the client Feign's decoder expects, and API-key lookups started failing with `'messageConverters' must not be empty`.
+- **Watch for:** lifting this limit moves the queue downstream. The 5-connection pool had been quietly throttling traffic into payment-service; without it, payment-service's own database pool became the bottleneck — see [Open-Session-In-View](spring-and-jpa.md).
+
 ## `common-lib` beans must be registered, not scanned
 
 - **Symptom:** a class added to `common-lib` never becomes a bean in the services.
