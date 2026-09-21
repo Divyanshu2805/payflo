@@ -42,4 +42,5 @@ app:
     method: fixed
     use-case:
       api-key:
-        requests-per-minute: 200
+        # Per API key. Raise it (API_KEY_RATE_LIMIT_PER_MINUTE) for load tests, or every key tops out at 200/min.
+        requests-per-minute: ${API_KEY_RATE_LIMIT_PER_MINUTE:200}

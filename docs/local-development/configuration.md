@@ -37,6 +37,7 @@ Each value can be overridden with the environment variable named in its placehol
 | `ZIPKIN_URL` | `http://localhost:9411/api/v2/spans` | every service — where spans are sent ([tracing](../observability/tracing.md)) |
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` | every service — share of requests traced; lower it for load tests |
 | `MANAGEMENT_PORT` | `9081` | the gateway — its Actuator port, separate from the public `8080` |
+| `API_KEY_RATE_LIMIT_PER_MINUTE` | `200` | the gateway — requests per minute per API key; raise it for [load tests](../load-testing/running.md) |
 
 The development defaults for the three secrets are committed on purpose so the stack starts with no setup. Never use them for anything shared; see [known gaps](../known-gaps/not-yet-built.md#security).
 
@@ -45,7 +46,7 @@ The development defaults for the three secrets are committed on purpose so the s
 | Setting | File | Value | Effect |
 |---|---|---|---|
 | `app.rate-limit.method` | `api-gateway-service.yaml` | `fixed` | Which of the four `RateLimiter` implementations is active. **Must be set** — with no value, no limiter bean exists and the gateway fails to start |
-| `app.rate-limit.use-case.api-key.requests-per-minute` | `api-gateway-service.yaml` | `200` | Per-API-key limit |
+| `app.rate-limit.use-case.api-key.requests-per-minute` | `api-gateway-service.yaml` | `200` (`API_KEY_RATE_LIMIT_PER_MINUTE`) | Per-API-key limit |
 | `app.security.public-routes` | `api-gateway-service.yaml` | signup, login, `/webhook/**` | Routes the gateway lets through without credentials. The gateway's own health and metrics are on its management port, outside this filter |
 | `payment.simulator.*` | `payment-service.yaml` | poll every 5 s; per-method delay and success rate; `chaos-mode: NORMAL` | How the simulated bank resolves authorizations — see [mock acquirer](../api/mock-acquirer.md) |
 | `payment.order.default-order-expiry-minutes` | `payment-service.yaml` | `30` | `expiresAt` when an order doesn't send one |
