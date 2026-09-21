@@ -39,6 +39,10 @@ Every background job is a `@Scheduled` method guarded by a ShedLock `@SchedulerL
 
 Every entity extends `BaseEntity`, whose `created_at`/`updated_at` are filled by JPA auditing and `created_by`/`updated_by` by `common-lib`'s `AuditorAwareImpl`: the API key id if the request authenticated with one, else `merchant_id: <uuid>`, else `SYSTEM` for work with no request (schedulers, consumers). Every payment status change is also written to `payment_transition_log` by the state machine.
 
+## Database connections
+
+Open-Session-In-View is off (`spring.jpa.open-in-view: false`), so a service holds a database connection only inside a transaction — never across a remote call. Each service's HikariCP pool is sized in its `config-repo` file and gives up after 5 seconds rather than 30 when exhausted. See [the pitfall](../practices/gotchas/spring-and-jpa.md#open-session-in-view-holds-a-connection-across-remote-calls).
+
 ## Schema management
 
 Each service's tables are created and altered by Hibernate (`ddl-auto: update`). There is no migration tool, no version history and no rollback; a removed column is never dropped. See [schema conventions](../schema/conventions.md) and [known gaps](../known-gaps/not-yet-built.md#platform).
