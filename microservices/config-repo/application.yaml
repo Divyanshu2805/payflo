@@ -7,6 +7,11 @@ eureka:
     prefer-ip-address: true
 
 spring:
+  jpa:
+    # Open-Session-In-View holds a DB connection for the whole HTTP request once the first query
+    # runs — including across remote Feign calls (payment -> vault, order -> merchant). Under load
+    # that exhausted payment-service's pool. Connections are now held only inside transactions.
+    open-in-view: false
   data:
     redis:
       host: ${REDIS_HOST:localhost}

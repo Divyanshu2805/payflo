@@ -35,3 +35,15 @@
 - **Symptom:** a business rule violation returns `500 INTERNAL_ERROR`.
 - **Cause:** a bare `RuntimeException` (or a new exception type) falls through to the catch-all handler — rotating a revoked API key does this today.
 - **Fix:** throw one of `common-lib`'s typed exceptions, or add a handler for a new one.
+
+## Open-Session-In-View holds a connection across remote calls
+
+- **Symptom:** under load, payment-service logs `Connection is not available, request timed out` with every pool connection active, while PostgreSQL shows those same connections idle — held by the application but not running queries.
+- **Cause:** `spring.jpa.open-in-view` is on by default (Spring logs a warning about it at startup). It binds a persistence context to the whole HTTP request, and once the first query runs, the JDBC connection stays with the request until it ends — including across the Feign call to vault-service during payment initiation. That undoes the saga's point of keeping remote calls out of transactions: connections are held for the duration of a remote call.
+- **Fix:** `spring.jpa.open-in-view: false` in `config-repo/application.yaml`, for every service. Connections are now held only inside `@Transactional` methods. Nothing relied on lazy loading outside a transaction.
+
+## Size the connection pool, and fail fast when it's exhausted
+
+- **Symptom:** requests stall for exactly 30 seconds, then fail — and because the circuit breakers wrapped whole service methods, those failures opened the merchant-service breaker although merchant-service was healthy.
+- **Cause:** HikariCP's defaults — 10 connections and a 30-second wait for one.
+- **Fix:** each service's pool is sized in `config-repo/<service>.yaml` (payment 40, merchant 20, vault and operations 10, each overridable with `<SERVICE>_DB_POOL_SIZE`) with `connection-timeout: 5000`. Keep the sum under PostgreSQL's `max_connections` — 100 locally, 300 on Kubernetes.

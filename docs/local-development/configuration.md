@@ -29,6 +29,7 @@ Each value can be overridden with the environment variable named in its placehol
 | `EUREKA_URL` | `http://localhost:8761/eureka` | every service |
 | `MERCHANT_DB_URL`, `PAYMENT_DB_URL`, `VAULT_DB_URL`, `OPERATIONS_DB_URL` | `jdbc:postgresql://localhost:5432/payflo_<service>` | the business services |
 | `DB_USER`, `DB_PASS` | `user` / `password` | the business services |
+| `MERCHANT_DB_POOL_SIZE`, `PAYMENT_DB_POOL_SIZE`, `VAULT_DB_POOL_SIZE`, `OPERATIONS_DB_POOL_SIZE` | `20`, `40`, `10`, `10` | each business service's database connection pool — keep the sum under PostgreSQL's `max_connections` |
 | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | `localhost`, `6380`, empty | the gateway and every business service (idempotency, caches, the retry queue, ShedLock) |
 | `KAFKA_BROKERS` | `localhost:29092` | payment, operations |
 | `JWT_SECRET` | a development-only value | merchant-service (signs) and the gateway (verifies) — must be identical |

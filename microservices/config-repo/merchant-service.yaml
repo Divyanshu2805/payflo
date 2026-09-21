@@ -6,6 +6,11 @@ spring:
     url: ${MERCHANT_DB_URL:jdbc:postgresql://localhost:5432/payflo_merchant}
     username: ${DB_USER:user}
     password: ${DB_PASS:password}
+    hikari:
+      # Sized from load testing (docs/load-testing/). Keep the sum across services under Postgres
+      # max_connections. Fail fast when the pool is exhausted instead of queueing for 30s.
+      maximum-pool-size: ${MERCHANT_DB_POOL_SIZE:20}
+      connection-timeout: 5000
   jpa:
     hibernate:
       ddl-auto: update
