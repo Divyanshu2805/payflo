@@ -23,6 +23,8 @@ These are authoritative and kept current:
 | Setup, configuration, troubleshooting, the monolith | [`docs/local-development/`](docs/local-development/README.md) |
 | Constraints, trade-offs, what isn't built yet | [`docs/known-gaps/`](docs/known-gaps/README.md) |
 | Kubernetes manifests, images, cluster configuration | [`docs/deployment/`](docs/deployment/README.md) |
+| Tracing, metrics, dashboards | [`docs/observability/`](docs/observability/README.md) |
+| The load test and measured results | [`docs/load-testing/`](docs/load-testing/README.md) |
 | Design targets | [`docs/requirements.md`](docs/requirements.md) — check known gaps before assuming one is met |
 
 If a change would make any of these inaccurate, **update that doc in the same change**. Diagrams are generated: edit the owning `d_*.py` in `docs/assets/diagrams/src/`, run `build.py` and `render.py`, and commit the regenerated SVG and PNG.
@@ -45,6 +47,8 @@ microservices/
   operations-service/   webhook/ (Kafka consumer → Redis retry queue → DLQ), settlement/, its own outbox/
   discovery-service/, config-service/
   k8s/                  Kustomize manifests + kind-config.yaml; secrets.env is gitignored
+  observability/        Zipkin/Prometheus/Grafana: docker-compose.yaml locally, kustomization.yaml (included by k8s/)
+  load-test/            JMeter plan + provision_keys.py + run_load_test.py; keys.csv and results/ are gitignored
   inside each service (com.project.payflo.<module>): entity/ repository/ mapper/ service/ service/impl/
   controller/ dto/ client/ config/
 src/, pom.xml           the frozen monolith (com.project.payflo)
@@ -74,6 +78,8 @@ On Windows, use `mvnw.cmd`. Start order: discovery → config → the four busin
 - **No cross-service foreign keys** — plain UUIDs.
 - **New settings go in `config-repo`**, with a `-k8s.yaml` override and a ConfigMap / `secrets.env.example` entry when they differ in-cluster. A new Feign client needs a `url = "${<X>_SERVICE_URI:}"` override for Kubernetes.
 - **A sealed type crossing Feign needs `@JsonTypeInfo`.**
+- **Check performance-sensitive changes with the load test**, not just a single request: every bottleneck it has found (gateway proxy pool, Open-Session-In-View, pool sizing, the outbox poller, breaker scope) was invisible one request at a time.
+- **The gateway's Actuator is on its management port `9081`**, never the public `8080`.
 
 ## Practices
 
