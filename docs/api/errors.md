@@ -33,6 +33,7 @@ Every error response from every service has the same JSON shape, produced by one
 | `IdempotencyConflictException` | 409 | `IDEMPOTENCY_CONFLICT` — the same key is still being processed |
 | `DataIntegrityViolationException` | 409 | `DATA_INTEGRITY_VIOLATION` — a unique index caught a duplicate |
 | `RateLimitException` | 429 | `RATE_LIMIT_EXCEEDED`, with `Retry-After` |
+| `CallNotPermittedException` (payment-service) | 503 | `DEPENDENCY_UNAVAILABLE`, with `Retry-After: 10` — a circuit breaker to merchant- or vault-service is open; retry shortly |
 | `Exception` (anything else) | 500 | `INTERNAL_ERROR` |
 
 ## From the gateway
