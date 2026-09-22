@@ -30,8 +30,10 @@ public class BankCallbackSimulator {
 
         LocalDateTime globalWindow = LocalDateTime.now().minusSeconds(1);
 
+        // Oldest first, bounded, so a large backlog (e.g. after a load test) is worked through in
+        // slices instead of being re-read in full every poll.
         List<Payment> candidates = paymentRepository
-                .findByStatusAndCreatedAtBefore(PaymentStatus.AUTHORIZING, globalWindow);
+                .findTop500ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(PaymentStatus.AUTHORIZING, globalWindow);
 
         log.info("Simulating payments for {} payments", candidates.size());
 

@@ -28,8 +28,8 @@ Every background job is a `@Scheduled` method guarded by a ShedLock `@SchedulerL
 
 | Job | Service | Schedule |
 |---|---|---|
-| `OutboxPoller` | payment, operations | every 5 s |
-| `BankCallbackSimulator` | payment | every `payment.simulator.poll-interval-ms` (5 s) |
+| `OutboxPoller` | payment, operations | every 5 s; batches of 500, draining for up to 30 s per run |
+| `BankCallbackSimulator` | payment | every `payment.simulator.poll-interval-ms` (5 s); the oldest 500 `AUTHORIZING` payments per run |
 | `WebhookDeliveryScheduler` — deliver due entries | operations | every 1 s, deliveries on virtual threads |
 | `WebhookDeliveryScheduler` — reconcile from the database | operations | every 10 s |
 | `SettlementEngine` | operations | 23:00 daily (`0 0 23 * * *`), lock held up to 2 h |
