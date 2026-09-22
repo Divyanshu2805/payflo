@@ -41,7 +41,11 @@ The complete request and response shapes are in the [internal API reference](../
 
 ### Resilience
 
-Every Feign call is wrapped in a Resilience4j `@CircuitBreaker` and `@Retry`, with instances named after the target service in each caller's `config-repo` file. The default circuit breaker opens at a 50% failure rate over a 20-call window and stays open for 10 seconds; retries make 3 attempts with backoff.
+Every Feign call is wrapped in a Resilience4j `@CircuitBreaker` and `@Retry`, with instances named after the target service in each caller's `config-repo` file. The default circuit breaker opens at a 50% failure rate over a 100-call window (once 50 calls are recorded) and stays open for 10 seconds; retries make 3 attempts with backoff.
+
+Because the annotations sit on whole service methods — `OrderServiceImpl.create`, not just the Feign call inside it — the breaker and retry are told which exceptions mean *the dependency failed*: the breaker records only `feign.RetryableException`, 5xx responses (`FeignServerException`), I/O errors and timeouts, and the retry only re-attempts connection-level failures. A local problem, like payment-service's own database pool running out, no longer opens the breaker for a healthy merchant-service, and a `4xx` from the dependency (a correct answer) doesn't count. Under load testing, the 20-call window and record-everything default opened the breaker on momentary tail spikes.
+
+When a breaker is open, the call is refused immediately and the client gets `503 DEPENDENCY_UNAVAILABLE` with `Retry-After: 10` — a temporary condition to retry, not a `500`.
 
 - **payment → vault** is the critical path of a card payment. If it fails, the [payment saga](flows/payment.md) compensates rather than leaving the payment in `AUTHORIZING`.
 - **vault-service** runs the card processor behind a **thread-pool bulkhead** (`vault-card-processor`), so a slow acquirer can't exhaust its request threads.

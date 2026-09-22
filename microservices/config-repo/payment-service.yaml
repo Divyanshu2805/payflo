@@ -64,11 +64,22 @@ resilience4j:
   circuitbreaker:
     configs:
       default:
-        sliding-window-size: 20
-        minimum-number-of-calls: 10
+        # ~100 calls is still well under a second of traffic at a few hundred req/s;
+        # 20 made the breaker trip on momentary tail spikes.
+        sliding-window-size: 100
+        minimum-number-of-calls: 50
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
         permitted-number-of-calls-in-half-open-state: 3
+        # Count only failures of the remote call. The annotations sit on whole service methods, so
+        # without this a local DB-pool timeout in payment-service would open the breaker for a
+        # healthy merchant-service (seen under load testing).
+        # 4xx answers from a healthy dependency don't count.
+        record-exceptions:
+          - feign.RetryableException
+          - feign.FeignException$FeignServerException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
     instances:
       merchant-service:
         base-config: default
@@ -81,6 +92,11 @@ resilience4j:
         wait-duration: 200ms
         enable-exponential-backoff: true
         exponential-backoff-multiplier: 2
+        # Retry only connection-level failures; retrying a whole service method on e.g. a DB timeout
+        # multiplies load exactly when the system is already saturated.
+        retry-exceptions:
+          - feign.RetryableException
+          - java.io.IOException
     instances:
       merchant-service:
         base-config: default
