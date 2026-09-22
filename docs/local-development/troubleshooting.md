@@ -13,6 +13,7 @@ Common problems and their fixes. Deeper explanations of the silent-failure traps
 | The gateway fails with `No qualifying bean of type 'RateLimiter'` | `app.rate-limit.method` is unset | Set it in `config-repo/api-gateway-service.yaml` (`fixed` by default) |
 | `NoClassDefFoundError` for a class you just added to `common-lib` | The service resolved an old `common-lib` jar from `~/.m2` | `./mvnw install` in `microservices/` again, or build as a reactor with `-pl common-lib,<module>` |
 | "Port 8080 was already in use" | Something else on the machine uses 8080 | Start the gateway with `--server.port=<port>` |
+| The gateway's `/actuator/health` answers `401` | Actuator isn't on the gateway's public port | Use the management port: `localhost:9081/actuator/health` |
 
 ## Requests
 
@@ -22,8 +23,10 @@ Common problems and their fixes. Deeper explanations of the silent-failure traps
 | `429` with `Retry-After` | Over 200 requests per minute on one API key | Wait, or raise `requests-per-minute` locally |
 | A `/v1/...` call directly on `:8081`–`:8084` behaves as if there's no merchant | Direct calls skip the gateway, so no `X-Merchant-Id` is set | Always go through `:8080` |
 | A card payment comes back `FAILED` with `PAYMENT_GATEWAY_ROUTER_UNREACHABLE` | vault-service is down, its circuit breaker is open, or `methodDetails.token` is missing or unknown | The saga compensated and published `PAYMENT_AUTHORIZATION_COMPENSATED`. Check vault-service and the token, then retry with a new payment |
-| A payment stays `AUTHORIZING` | payment-service's scheduler isn't running, or `chaos-mode` is `TIMEOUT` | Check payment-service's log for `BankCallbackSimulator`; check `payment.simulator.chaos-mode` |
-| No webhook arrives | No `MerchantWebhookConfig` subscribed to that event, or the target is failing | `GET /v1/merchants/webhooks`; look at `webhook_event.last_response_code` in `payflo_operations` |
+| A payment stays `AUTHORIZING` | payment-service's scheduler isn't running, `chaos-mode` is `TIMEOUT`, or a backlog is ahead of it — the simulator works through the oldest 500 per run, so after a load test new payments wait their turn | Check payment-service's log for `BankCallbackSimulator`; check `payment.simulator.chaos-mode` |
+| No webhook arrives | No `MerchantWebhookConfig` subscribed to that event, the target is failing, or the outbox is behind | `GET /v1/merchants/webhooks`; look at `webhook_event.last_response_code` in `payflo_operations`; check `payflo_outbox_pending` on payment-service's `/actuator/prometheus` |
+| `503 DEPENDENCY_UNAVAILABLE` | A circuit breaker to merchant- or vault-service is open | Check that service; the breaker half-opens after 10 s and closes once calls succeed |
+| Settlement fails with `null value in column "bank_reference"` (or `"refund_amount_units"`) violates not-null constraint | The database was created before these columns became nullable / populated; `ddl-auto: update` never relaxes an existing constraint | `ALTER TABLE settlement ALTER COLUMN bank_reference DROP NOT NULL;` in `payflo_operations`, or [reset the database](resetting-data.md) |
 
 ## Kafka
 

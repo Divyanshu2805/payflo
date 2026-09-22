@@ -26,6 +26,6 @@ The four databases are separate but share one server, and every service runs one
 
 `ddl-auto: update` adds columns and tables but never removes or renames them and keeps no history, so the schema can drift from the entities and there is no rollback. Fine for development; a real deployment needs Flyway or Liquibase first.
 
-## Design targets are not measured
+## Throughput is measured, and short of the target
 
-The [requirements](../requirements.md) set targets — 10k TPS, p99 under a second, 99.99% availability. Nothing has been load-tested and there is no metrics pipeline, so none of them is demonstrated today.
+The [requirements](../requirements.md) set 10k TPS, p99 under a second and 99.99% availability. On one laptop, the [load test](../load-testing/results.md) sustains 837 requests per second with a p99 of 247 ms and no failed requests — latency and correctness are met, throughput is about a twelfth of the target, capped by the machine. Reaching 10k TPS is a matter of replicas, a larger database and partitioned outbox publishing, each to be re-measured; the availability target is uptime over months and needs the metrics recorded over time, not a single run.

@@ -20,6 +20,8 @@ PayFlo is the piece that sits behind a "Pay now" button. A business signs up, ge
 - **Webhooks** — HMAC-signed deliveries per subscribed endpoint, retried on a fixed schedule for 24 hours, then dead-lettered.
 - **Nightly settlement** — per-merchant payouts with a fee and GST breakdown, linked back to every payment they cover.
 - **Idempotent writes** — any write can be retried safely with `X-Idempotency-Key`.
+- **Observable** — one trace per request across every service in Zipkin, Prometheus metrics with latency histograms, and a Grafana dashboard tracking the throughput, p99 and availability targets.
+- **Load-tested** — a JMeter plan that grades each run against the targets: 837 req/s at a p99 of 247 ms with zero errors on a single laptop, after six bottlenecks the tests exposed were fixed.
 
 ## How it works
 
@@ -46,6 +48,7 @@ Read more: [architecture overview](docs/architecture/README.md) · [security mod
 | Data and messaging | PostgreSQL (one database per service), Redis, Apache Kafka, ShedLock |
 | Security | jjwt, bcrypt and AES-256-GCM via Spring Security Crypto |
 | Infrastructure | Docker Compose, Jib, Kubernetes (kind), Kustomize |
+| Observability and testing | Micrometer Tracing, Zipkin, Prometheus, Grafana, Apache JMeter |
 
 Details and versions: [tech stack](docs/tech-stack.md).
 
@@ -76,6 +79,14 @@ Then sign up, log in, create an API key and make a payment through `http://local
 
 Each module has a `contextLoads` test that needs discovery, config and the infrastructure running; the flows are verified end to end through the gateway by hand. Automated tests of the business logic are the largest open gap. See [testing](docs/practices/testing.md).
 
+Performance is measured with the [load test](docs/load-testing/README.md) in `microservices/load-test/`:
+
+| Target | Required | Measured on one laptop |
+|---|---|---|
+| Throughput | 10,000 TPS | 837 req/s — capped by the machine; see [what 10k would take](docs/load-testing/results.md#what-10000-tps-would-take) |
+| p99 latency | < 1 s | 247 ms |
+| Availability | 99.99% | 0 errors in 149,582 requests |
+
 ## Project structure
 
 ```
@@ -90,6 +101,8 @@ microservices/
   vault-service/          card tokenization and charging (:8083)
   operations-service/     webhook delivery and nightly settlement (:8084)
   k8s/                    Kubernetes manifests (Kustomize) and the kind cluster config
+  observability/          Zipkin, Prometheus, Grafana — docker-compose locally, Kustomize in the cluster
+  load-test/              the JMeter plan and the scripts that provision keys and grade a run
 src/                      the frozen phase 1 monolith
 services.docker-compose.yaml   local PostgreSQL, Redis, Kafka, Control Center
 docs/                     documentation
@@ -114,6 +127,8 @@ See [deployment](docs/deployment/README.md).
 | [Engineering practices](docs/practices/README.md) | Conventions, testing, guardrails, known pitfalls |
 | [Known gaps](docs/known-gaps/README.md) | Trade-offs and what isn't built yet |
 | [Deployment](docs/deployment/README.md) | Running on Kubernetes |
+| [Observability](docs/observability/README.md) | Tracing, metrics and the Grafana dashboard |
+| [Load testing](docs/load-testing/README.md) | Running the load test and the measured results |
 
 The full index is at [`docs/`](docs/README.md), and the design targets are in [requirements](docs/requirements.md).
 
