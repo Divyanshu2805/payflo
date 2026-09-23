@@ -34,7 +34,7 @@ public class OutboxPoller {
     // Keep draining within one run, but stay well inside the ShedLock lease (lockAtMostFor).
     private static final long MAX_RUN_MILLIS = 30_000;
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 1000)
     @SchedulerLock(name = "payment-service-outbox-poller", lockAtMostFor = "1m", lockAtLeastFor = "1s")
     public void poll() {
         long deadline = System.currentTimeMillis() + MAX_RUN_MILLIS;

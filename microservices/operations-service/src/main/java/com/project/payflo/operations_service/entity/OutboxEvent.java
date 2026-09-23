@@ -18,6 +18,8 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+// The poller reads PENDING rows oldest-first; without this index each batch scanned the whole table.
+@Table(indexes = @Index(name = "idx_outbox_event_status_created_at", columnList = "status, created_at"))
 public class OutboxEvent extends BaseEntity {
 
     @Id

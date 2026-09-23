@@ -40,7 +40,7 @@ The response is `201` with the payment, usually `AUTHORIZING`.
 
 ## Publishing
 
-`outbox/OutboxPoller` (every 5 s, ShedLock) publishes `PENDING` outbox rows to `orders.events` / `payments.events`, keyed by merchant id, and marks each `PUBLISHED`, or `FAILED` after 3 attempts. From there, [webhook delivery](webhook-delivery.md) takes over.
+`outbox/OutboxPoller` (every second, ShedLock) publishes `PENDING` outbox rows to `orders.events` / `payments.events`, keyed by merchant id, and marks each `PUBLISHED`, or `FAILED` after 3 attempts. From there, [webhook delivery](webhook-delivery.md) takes over.
 
 ## Related
 
