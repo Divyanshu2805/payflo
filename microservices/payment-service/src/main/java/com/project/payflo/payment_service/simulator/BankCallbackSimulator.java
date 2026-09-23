@@ -13,7 +13,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 @Component
 @Slf4j
@@ -24,33 +29,67 @@ public class BankCallbackSimulator {
     private final PaymentService paymentService;
     private final SimulatorConfig simulatorConfig;
 
+    private static final int BATCH_SIZE = 500;
+    // Keep draining within one run, but stay well inside the ShedLock lease (lockAtMostFor).
+    private static final long MAX_RUN_MILLIS = 30_000;
+
+    private final ExecutorService callbackExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
     @Scheduled(fixedDelayString = "${payment.simulator.poll-interval-ms:5000}")
-    @SchedulerLock(name = "payment-service-bank-callback-simulator", lockAtMostFor = "10s", lockAtLeastFor = "1s")
+    @SchedulerLock(name = "payment-service-bank-callback-simulator", lockAtMostFor = "1m", lockAtLeastFor = "1s")
     public void processCallbacks() {
-
-        LocalDateTime globalWindow = LocalDateTime.now().minusSeconds(1);
-
-        // Oldest first, bounded, so a large backlog (e.g. after a load test) is worked through in
-        // slices instead of being re-read in full every poll.
-        List<Payment> candidates = paymentRepository
-                .findTop500ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(PaymentStatus.AUTHORIZING, globalWindow);
-
-        log.info("Simulating payments for {} payments", candidates.size());
-
-        if (candidates.isEmpty()) return;
-
-        for (Payment payment: candidates) {
-            simulateCallback(payment);
-        }
+        long deadline = System.currentTimeMillis() + MAX_RUN_MILLIS;
+        List<Payment> candidates;
+        int resolved;
+        // Oldest first, in bounded slices, so a large backlog is worked through instead of being
+        // re-read in full every poll. A full slice with nothing due yet ends the run.
+        do {
+            LocalDateTime globalWindow = LocalDateTime.now().minusSeconds(1);
+            candidates = paymentRepository
+                    .findTop500ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(PaymentStatus.AUTHORIZING, globalWindow);
+            resolved = simulateCallbacks(candidates);
+            log.info("Simulated bank callbacks: {} candidates, {} resolved", candidates.size(), resolved);
+        } while (candidates.size() == BATCH_SIZE && resolved > 0 && System.currentTimeMillis() < deadline);
     }
 
-    private void simulateCallback(Payment payment) {
+    // One payment at a time (~50/s) fell far behind under load. Each callback is its own short
+    // transaction, so they run on virtual threads, at most `concurrency` at once.
+    private int simulateCallbacks(List<Payment> candidates) {
+        Semaphore permits = new Semaphore(simulatorConfig.getConcurrency());
+        List<Future<Boolean>> callbacks = new ArrayList<>(candidates.size());
+        int resolved = 0;
+        try {
+            for (Payment payment : candidates) {
+                permits.acquire();
+                callbacks.add(callbackExecutor.submit(() -> {
+                    try {
+                        return simulateCallback(payment);
+                    } catch (Exception e) {
+                        log.error("Bank callback simulation failed, paymentId: {}", payment.getId(), e);
+                        return false;
+                    } finally {
+                        permits.release();
+                    }
+                }));
+            }
+            for (Future<Boolean> callback : callbacks) {
+                if (callback.get()) resolved++;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            log.error("Bank callback simulation run failed", e);
+        }
+        return resolved;
+    }
+
+    private boolean simulateCallback(Payment payment) {
         SimulatorConfig.MethodSimulatorConfig methodConfig = simulatorConfig.configFor(payment.getMethod());
 
         LocalDateTime dueAt = dueAt(payment, methodConfig);
 
         if(LocalDateTime.now().isBefore(dueAt)) {
-            return;
+            return false;
         }
 
         ChaosMode chaosMode = simulatorConfig.getChaosMode();
@@ -60,9 +99,11 @@ public class BankCallbackSimulator {
             case FAILURE -> resolve(payment, false);
             case TIMEOUT -> {
                 log.debug("BankCallback simulator: Payment Timed out");
+                return false;
             }
             case NORMAL, SLOW -> resolve(payment, shouldApprove(payment, methodConfig));
         }
+        return true;
     }
 
     private void resolve(Payment payment, boolean approve) {

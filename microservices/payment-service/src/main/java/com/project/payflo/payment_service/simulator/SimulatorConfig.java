@@ -18,6 +18,8 @@ public class SimulatorConfig {
 
     private Integer pollIntervalMs = 2000;
     private ChaosMode chaosMode = ChaosMode.NORMAL;
+    // Payments resolved at once. Each one holds a database connection, so keep this well under the pool size.
+    private Integer concurrency = 16;
     private Map<String, MethodSimulatorConfig> methods = new HashMap<>();
 
     public MethodSimulatorConfig configFor(PaymentMethod method) {

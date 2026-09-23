@@ -55,6 +55,8 @@ payment:
     default-order-expiry-minutes: 30
   simulator:
     poll-interval-ms: 5000
+    # Callbacks resolved at once; each holds a database connection, so keep it well under the pool size.
+    concurrency: 16
     chaos-mode: NORMAL
     methods:
       CARD:
