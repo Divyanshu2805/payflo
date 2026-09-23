@@ -8,7 +8,7 @@ Controllers orchestrate, services decide, repositories query. A controller never
 
 ## Entities
 
-- Extend `common-lib`'s `BaseEntity`; ids are `@GeneratedValue(strategy = GenerationType.UUID)`; annotate with `@Getter @Setter @AllArgsConstructor @NoArgsConstructor @Builder`.
+- Extend `common-lib`'s `BaseEntity`; ids are UUIDs — `@GeneratedValue(strategy = GenerationType.UUID)`, or `@UuidGenerator(style = VERSION_7)` (time-ordered, so inserts stay on recent index pages) on payment-service's high-volume tables; annotate with `@Getter @Setter @AllArgsConstructor @NoArgsConstructor @Builder`.
 - **Every field with a default value needs `@Builder.Default`**, or the builder yields `null`. Read the compiler warning.
 - Enums are `@Enumerated(EnumType.STRING)` with an explicit column `length`, and live in `common-lib`.
 - Money is the `Money` embeddable, never a bare numeric column.

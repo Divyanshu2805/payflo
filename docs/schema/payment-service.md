@@ -31,7 +31,7 @@ One attempt to pay an order by one method.
 | `merchant_id` | Plain id → merchant-service. Indexed. |
 | `amount_units`, `currency` | Copied from the order. |
 | `idempotency_key` | The caller's `X-Idempotency-Key`, or a random value. Unique per merchant (`(merchant_id, idempotency_key)`), which is what makes a retried payment return the original. |
-| `status` | `PaymentStatus`, moved only by the [state machine](enums.md#payment-state-machine). |
+| `status` | `PaymentStatus`, moved only by the [state machine](enums.md#payment-state-machine). Indexed with `created_at` (`idx_payment_status_created_at`) for the simulator's oldest-`AUTHORIZING`-first query. |
 | `method` | `CARD`, `UPI` or `NETBANKING` (`WALLET` exists in the enum but has no adapter). |
 | `method_details` | Method-specific input, `jsonb` — a card `token`, a UPI `vpa`, a net-banking `bank`. |
 | `processor_reference` | The mock acquirer's reference for a `Pending` answer. |

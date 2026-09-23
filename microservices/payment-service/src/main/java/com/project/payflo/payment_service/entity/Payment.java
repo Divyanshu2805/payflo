@@ -5,6 +5,7 @@ import com.project.payflo.common_lib.entity.Money;
 import com.project.payflo.common_lib.enums.PaymentMethod;
 import com.project.payflo.common_lib.enums.PaymentStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -17,6 +18,8 @@ import java.util.UUID;
 @Table(name = "payment", indexes = {
         @Index(name = "idx_payment_order_id", columnList = "order_id"),
         @Index(name = "idx_payment_merchant_id", columnList = "merchant_id"),
+        // The bank callback simulator reads AUTHORIZING payments oldest-first.
+        @Index(name = "idx_payment_status_created_at", columnList = "status, created_at"),
         @Index(name = "idx_payment_merchant_idempotency", columnList = "merchant_id, idempotency_key", unique = true)
 })
 @Getter
@@ -27,7 +30,7 @@ import java.util.UUID;
 public class Payment extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
