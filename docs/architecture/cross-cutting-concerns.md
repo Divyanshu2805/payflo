@@ -24,11 +24,11 @@ Services publish events only through a transactional outbox, never by calling Ka
 
 ## Scheduling
 
-Every background job is a `@Scheduled` method guarded by a ShedLock `@SchedulerLock` with a Redis lock provider, so each runs on exactly one instance however many are deployed:
+Every background job is a `@Scheduled` method guarded by a ShedLock `@SchedulerLock` with a Redis lock provider, so each runs on exactly one instance however many are deployed. Each service's `SchedulingConfig` supplies a pooled scheduler (`spring.task.scheduling.pool.size`, 4) so one job's long run doesn't delay another:
 
 | Job | Service | Schedule |
 |---|---|---|
-| `OutboxPoller` | payment, operations | every 5 s; batches of 500, draining for up to 30 s per run |
+| `OutboxPoller` | payment, operations | every 1 s; batches of 500, draining for up to 30 s per run |
 | `BankCallbackSimulator` | payment | every `payment.simulator.poll-interval-ms` (5 s); the oldest 500 `AUTHORIZING` payments per run |
 | `WebhookDeliveryScheduler` — deliver due entries | operations | every 1 s, deliveries on virtual threads |
 | `WebhookDeliveryScheduler` — reconcile from the database | operations | every 10 s |

@@ -13,6 +13,6 @@ A service never calls Kafka from a request. It writes an `outbox_event` row — 
 ## Consequences
 
 - An event is published if and only if its change committed. Events are delivered at least once; consumers must tolerate a duplicate.
-- Events arrive up to a few seconds after the change — longer if changes are written faster than one poller can publish them; `payflo_outbox_pending` shows the backlog.
+- Events arrive a second or two after the change — longer if changes are written faster than one poller can publish them; `payflo_outbox_pending` shows the backlog. Under the load test (~1,250 events/s) it stays below ~1,600.
 - A row that fails three times is never retried automatically; it stays visible with its `last_error`.
 - The outbox classes are duplicated in the two services rather than shared.

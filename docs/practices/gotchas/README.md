@@ -4,7 +4,7 @@ Traps this stack has actually hit. Most fail **silently** — no compile error, 
 
 | Page | Covers |
 |---|---|
-| [Spring and JPA](spring-and-jpa.md) | Lombok builders, MapStruct, time zones, Spring Security auto-configuration, exception resolution, Open-Session-In-View, connection pools |
+| [Spring and JPA](spring-and-jpa.md) | Lombok builders, MapStruct, time zones, Spring Security auto-configuration, exception resolution, Open-Session-In-View, `saveAll` on detached rows, scheduler threads, connection pools |
 | [Microservices](microservices.md) | Feign and sealed types, the gateway's proxy pool, `common-lib` beans and jars, config-service, transactions around remote calls, Kafka topics, scheduling |
 | [Kubernetes](kubernetes.md) | Profiles, Jib images, kind, start-up order, Eureka in-cluster |
 

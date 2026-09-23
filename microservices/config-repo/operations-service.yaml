@@ -17,11 +17,16 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        # Group INSERT/UPDATEs into JDBC batches (the outbox marks whole batches PUBLISHED at once).
+        # Group INSERT/UPDATEs into JDBC batches.
         jdbc:
           batch_size: 50
         order_updates: true
         order_inserts: true
+  task:
+    scheduling:
+      # One thread per scheduled job, so no job waits behind another (see SchedulingConfig).
+      pool:
+        size: 4
   kafka:
     bootstrap-servers: ${KAFKA_BROKERS:localhost:29092}
     # Carry trace context through Kafka headers (producer -> consumer spans in Zipkin).
