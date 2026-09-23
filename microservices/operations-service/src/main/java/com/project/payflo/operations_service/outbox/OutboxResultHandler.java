@@ -24,16 +24,10 @@ public class OutboxResultHandler {
         outboxEventRepository.save(event);
     }
 
-    // One transaction (and JDBC-batched UPDATEs) for a whole acknowledged batch, instead of one
-    // transaction per event.
+    // One transaction and one UPDATE for a whole acknowledged batch, instead of one per event.
     @Transactional
     public void handleEventsPublished(List<OutboxEvent> events) {
-        LocalDateTime now = LocalDateTime.now();
-        for (OutboxEvent event : events) {
-            event.setStatus(OutboxStatus.PUBLISHED);
-            event.setPublishedAt(now);
-        }
-        outboxEventRepository.saveAll(events);
+        outboxEventRepository.markPublished(events.stream().map(OutboxEvent::getId).toList(), LocalDateTime.now());
     }
 
     @Transactional
