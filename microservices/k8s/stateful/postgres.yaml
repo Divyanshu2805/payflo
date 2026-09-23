@@ -64,6 +64,11 @@ spec:
           args:
             - "-c"
             - "max_connections=300"
+            # Group commit: concurrent commits share one WAL flush — durable, unlike synchronous_commit=off.
+            - "-c"
+            - "commit_delay=1000"
+            - "-c"
+            - "commit_siblings=5"
           ports:
             - containerPort: 5432
           env:
