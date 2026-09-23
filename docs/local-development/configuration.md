@@ -50,7 +50,9 @@ The development defaults for the three secrets are committed on purpose so the s
 | `app.rate-limit.use-case.api-key.requests-per-minute` | `api-gateway-service.yaml` | `200` (`API_KEY_RATE_LIMIT_PER_MINUTE`) | Per-API-key limit |
 | `app.gateway.proxy.max-connections-per-route`, `…-total` | `ProxyHttpClientConfig` defaults | `200`, `1000` | The gateway's connection pool to downstream services — the HTTP client's own default is 5 per route ([why](../practices/gotchas/microservices.md#the-gateways-proxy-pool-allows-5-connections-per-route)) |
 | `app.security.public-routes` | `api-gateway-service.yaml` | signup, login, `/webhook/**` | Routes the gateway lets through without credentials. The gateway's own health and metrics are on its management port, outside this filter |
-| `payment.simulator.*` | `payment-service.yaml` | poll every 5 s; per-method delay and success rate; `chaos-mode: NORMAL` | How the simulated bank resolves authorizations — see [mock acquirer](../api/mock-acquirer.md) |
+| `payment.simulator.*` | `payment-service.yaml` | poll every 5 s; `concurrency: 16`; per-method delay and success rate; `chaos-mode: NORMAL` | How the simulated bank resolves authorizations — see [mock acquirer](../api/mock-acquirer.md). `concurrency` is how many callbacks run at once; each holds a database connection |
+| `app.webhook.target-cache-ttl-seconds` | `operations-service.yaml` | `30` | How long the webhook consumer remembers a merchant's targets before asking merchant-service again |
+| `spring.task.scheduling.pool.size` | `payment-service.yaml`, `operations-service.yaml` | `4` | Scheduler threads, so one scheduled job doesn't wait behind another |
 | `payment.order.default-order-expiry-minutes` | `payment-service.yaml` | `30` | `expiresAt` when an order doesn't send one |
 
 Next: [first-time setup](setup.md).

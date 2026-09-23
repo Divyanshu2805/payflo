@@ -30,7 +30,7 @@ The response is `201` with the payment, usually `AUTHORIZING`.
 
 ## Authorization and capture
 
-`simulator/BankCallbackSimulator` stands in for the bank's asynchronous answer. Every 5 seconds (ShedLock-guarded) it picks up `AUTHORIZING` payments older than their method's simulated delay and calls `PaymentServiceImpl.resolveAuthorization`:
+`simulator/BankCallbackSimulator` stands in for the bank's asynchronous answer. Every 5 seconds (ShedLock-guarded) it picks up `AUTHORIZING` payments older than their method's simulated delay, oldest first in slices of 500 for up to 30 seconds per run, and calls `PaymentServiceImpl.resolveAuthorization` for each — `payment.simulator.concurrency` (16) at a time, on virtual threads:
 
 - By the method's success rate (card 90%, UPI 95%, net banking 80%, or forced by `chaos-mode`), fires `AUTHORIZE_SUCCESS` → `AUTHORIZED` or `AUTHORIZE_FAIL` → `FAILED`.
 - On approval it **auto-captures**: `CAPTURE_REQUEST` → `CAPTURING`, the adapter's `capture()`, then `CAPTURE_SUCCESS` → `CAPTURED` (setting `captured_at`, and the order to `PAID`) or `CAPTURE_FAIL` → back to `AUTHORIZED`.
