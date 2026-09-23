@@ -65,6 +65,8 @@ app:
       refunds: refunds.events
       settlements: settlements.events
   webhook:
+    # How long the consumer remembers a merchant's webhook targets before asking merchant-service again.
+    target-cache-ttl-seconds: 30
     delivery:
       redis-key: webhook-retry
       poll-batch-size: 100

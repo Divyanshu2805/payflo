@@ -3,7 +3,6 @@ package com.project.payflo.operations_service.webhook;
 import com.project.payflo.common_lib.dto.WebhookTarget;
 import com.project.payflo.common_lib.enums.WebhookEventStatus;
 import com.project.payflo.common_lib.util.SignerUtil;
-import com.project.payflo.operations_service.client.MerchantServiceClient;
 import com.project.payflo.operations_service.entity.WebhookEvent;
 import com.project.payflo.operations_service.repository.WebhookEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class WebhookKafkaConsumer {
 
-    private final MerchantServiceClient merchantServiceClient;
+    private final WebhookTargetCache webhookTargetCache;
     private final ObjectMapper objectMapper;
     private final SignerUtil signerUtil;
     private final WebhookEventRepository webhookEventRepository;
@@ -54,7 +53,7 @@ public class WebhookKafkaConsumer {
 
             UUID merchantId = UUID.fromString(merchantIdRaw.toString());
 
-            List<WebhookTarget> targets = merchantServiceClient.getActiveConfigsForEvent(merchantId, eventType);
+            List<WebhookTarget> targets = webhookTargetCache.activeTargetsFor(merchantId, eventType);
             if (targets.isEmpty()) {
                 log.debug("No webhook target was found, skipping event: {}", eventType);
                 ack.acknowledge();

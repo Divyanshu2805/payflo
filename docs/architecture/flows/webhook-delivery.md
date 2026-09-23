@@ -9,7 +9,7 @@ All paths below are under `operations-service/src/main/java/com/project/payflo/o
 ## From event to delivery row
 
 1. **`webhook/WebhookKafkaConsumer`** listens on `payments.events`, `orders.events`, `refunds.events` and `settlements.events` (consumer group `operations-service`, manual acknowledgement).
-2. It asks merchant-service which endpoints want this event — `client/MerchantServiceClient` → `GET /internal/merchants/{merchantId}/webhook-targets?eventType=…`. A config subscribes to a comma-separated list of event types, or to everything when the list is blank or `ALL`. The response carries each target's URL and its **decrypted** signing secret.
+2. It asks merchant-service which endpoints want this event — `webhook/WebhookTargetCache` → `client/MerchantServiceClient` → `GET /internal/merchants/{merchantId}/webhook-targets?eventType=…`. The answer is remembered in memory for `app.webhook.target-cache-ttl-seconds` (30), so a new, changed or disabled config takes up to that long to apply; a call per event capped the consumer at a few hundred events a second. A config subscribes to a comma-separated list of event types, or to everything when the list is blank or `ALL`. The response carries each target's URL and its **decrypted** signing secret.
 3. For each target it signs the payload with HMAC-SHA256 (`common-lib`'s `SignerUtil`, that target's secret) and saves a `WebhookEvent` in `PENDING` with the target URL copied in, so a later config change never rewrites history.
 4. It adds each event to the Redis sorted set `webhook-retry` (`webhook/WebhookRetryQueue`), scored by when it is due, then acknowledges the Kafka record.
 
