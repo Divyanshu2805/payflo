@@ -4,7 +4,6 @@ import com.project.payflo.common_lib.dto.FindOrCreateCustomerRequest;
 import com.project.payflo.common_lib.enums.EventAggregateType;
 import com.project.payflo.common_lib.enums.OrderStatus;
 import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
-import com.project.payflo.common_lib.exception.DuplicateResourceException;
 import com.project.payflo.common_lib.exception.ResourceNotFoundException;
 import com.project.payflo.payment_service.client.CustomerServiceClient;
 import com.project.payflo.payment_service.dto.request.CreateOrderRequest;
@@ -54,10 +53,9 @@ public class OrderServiceImpl implements OrderService {
     @CircuitBreaker(name = "merchant-service")
     @Retry(name = "merchant-service")
     public OrderResponse create(UUID merchantId, CreateOrderRequest request) {
-        if (request.receipt() != null && orderRepository.existsByMerchantIdAndReceipt(merchantId, request.receipt())) {
-            throw new DuplicateResourceException("ORDER_RECEIPT_DUPLICATE", "Order with receipt already exists: " + request.receipt());
-        }
-
+        // No database access here: under NOT_SUPPORTED, a query would bind a connection to this whole
+        // method and hold it across the Feign call below. The receipt check runs in persist()'s
+        // transaction instead.
         UUID customerId = null;
         if (request.customer() != null) {
             customerId = customerServiceClient.findOrCreate(
