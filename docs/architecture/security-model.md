@@ -54,7 +54,7 @@ Card data is confined to vault-service and its database — see [decision 0004](
 |---|---|
 | Dashboard passwords | bcrypt hash (`app_user.password_hash`) |
 | API-key secrets | bcrypt hash, plus the previous hash during rotation |
-| Webhook signing secrets | AES-encrypted with `webhook.secret-encryption-key` (`WEBHOOK_SECRET_KEY`); decrypted only to sign a delivery |
+| Webhook signing secrets | AES-encrypted with `webhook.secret-encryption-key` (`WEBHOOK_SECRET_KEY`); decrypted only to sign a delivery. operations-service keeps the decrypted targets in memory for up to 30 s (`WebhookTargetCache`), never in Redis or its database |
 | Card numbers | Envelope-encrypted, above |
 
 The JWT key, vault master key and webhook encryption key have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`. A real deployment needs a secret store; see [known gaps](../known-gaps/not-yet-built.md#security).
