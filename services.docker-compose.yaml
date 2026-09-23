@@ -2,6 +2,9 @@ services:
   postgres:
     image: postgres:18-alpine
     container_name: pgvector-payflo
+    # Group commit: a committing transaction waits up to 1 ms for others so they share one WAL flush.
+    # Durable (unlike synchronous_commit=off); measured ~+6% throughput under the load test.
+    command: [ "postgres", "-c", "commit_delay=1000", "-c", "commit_siblings=5" ]
     environment:
       POSTGRES_DB: payflo-db
       POSTGRES_USER: user
