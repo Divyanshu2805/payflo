@@ -54,6 +54,12 @@
 - **Cause:** `spring.threads.virtual.enabled: true` makes Spring Boot's scheduler a `SimpleAsyncTaskScheduler`, which runs every fixed-delay job on its single scheduler thread and ignores `spring.task.scheduling.pool.size`. While `BankCallbackSimulator` worked through 500 payments, `OutboxPoller` could not start.
 - **Fix:** `SchedulingConfig` in payment-service and operations-service declares a `ThreadPoolTaskScheduler`, sized by `spring.task.scheduling.pool.size` in `config-repo`. Raise it when a service gains more scheduled jobs than threads.
 
+## PostgreSQL's defaults are sized for a tiny machine
+
+- **Symptom:** under write load, sessions queue on the WAL flush and throughput is far below what the CPU allows.
+- **Cause:** out of the box PostgreSQL has 128 MB of `shared_buffers` and checkpoints every 1 GB of WAL — against a payment database of several gigabytes with randomly ordered UUID indexes.
+- **Fix:** `services.docker-compose.yaml` starts it with `shared_buffers=2GB`, `max_wal_size=8GB`, `checkpoint_timeout=15min`, `wal_compression=lz4` and group commit; the Kubernetes StatefulSet uses the same settings with smaller memory values (`shared_buffers=512MB`) to fit its 1536Mi limit. `fsync` and `synchronous_commit` stay on — a payment system can't trade durability for speed. This took the load test from 660 to 963 req/s.
+
 ## Size the connection pool, and fail fast when it's exhausted
 
 - **Symptom:** requests stall for exactly 30 seconds, then fail — and because the circuit breakers wrapped whole service methods, those failures opened the merchant-service breaker although merchant-service was healthy.

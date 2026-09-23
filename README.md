@@ -21,7 +21,7 @@ PayFlo is the piece that sits behind a "Pay now" button. A business signs up, ge
 - **Nightly settlement** — per-merchant payouts with a fee and GST breakdown, linked back to every payment they cover.
 - **Idempotent writes** — any write can be retried safely with `X-Idempotency-Key`.
 - **Observable** — one trace per request across every service in Zipkin, Prometheus metrics with latency histograms, and a Grafana dashboard tracking the throughput, p99 and availability targets.
-- **Load-tested** — a JMeter plan that grades each run against the targets: 1,279 req/s at a p99 of 160 ms with zero errors on a single laptop, after seven bottlenecks the tests exposed were fixed.
+- **Load-tested** — a JMeter plan that grades each run against the targets: about 1,000 req/s with payments captured alongside, at a p99 around 250 ms with zero errors on a single laptop, after ten bottlenecks the tests exposed were fixed.
 
 ## How it works
 
@@ -83,9 +83,9 @@ Performance is measured with the [load test](docs/load-testing/README.md) in `mi
 
 | Target | Required | Measured on one laptop |
 |---|---|---|
-| Throughput | 10,000 TPS | 1,279 req/s — capped by the machine; see [what 10k would take](docs/load-testing/results.md#what-10000-tps-would-take) |
-| p99 latency | < 1 s | 160 ms |
-| Availability | 99.99% | 0 errors in 229,112 requests |
+| Throughput | 10,000 TPS | ~1,000 req/s — capped by the machine; see [what 10k would take](docs/load-testing/results.md#what-10000-tps-would-take) |
+| p99 latency | < 1 s | ~250 ms |
+| Availability | 99.99% | 0 errors in ~180,000 requests per run |
 
 ## Project structure
 

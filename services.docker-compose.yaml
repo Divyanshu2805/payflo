@@ -4,7 +4,14 @@ services:
     container_name: pgvector-payflo
     # Group commit: a committing transaction waits up to 1 ms for others so they share one WAL flush.
     # Durable (unlike synchronous_commit=off); measured ~+6% throughput under the load test.
-    command: [ "postgres", "-c", "commit_delay=1000", "-c", "commit_siblings=5" ]
+    # Memory and WAL: the defaults (128 MB of cache, a checkpoint every 1 GB of WAL) are far too small
+    # for write-heavy load; fsync and synchronous_commit stay on.
+    command: [ "postgres",
+               "-c", "commit_delay=1000", "-c", "commit_siblings=5",
+               "-c", "shared_buffers=2GB", "-c", "effective_cache_size=6GB", "-c", "wal_buffers=64MB",
+               "-c", "max_wal_size=8GB", "-c", "checkpoint_timeout=15min",
+               "-c", "checkpoint_completion_target=0.9", "-c", "wal_compression=lz4" ]
+    shm_size: 1gb
     environment:
       POSTGRES_DB: payflo-db
       POSTGRES_USER: user
