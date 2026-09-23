@@ -42,6 +42,18 @@
 - **Cause:** `spring.jpa.open-in-view` is on by default (Spring logs a warning about it at startup). It binds a persistence context to the whole HTTP request, and once the first query runs, the JDBC connection stays with the request until it ends — including across the Feign call to vault-service during payment initiation. That undoes the saga's point of keeping remote calls out of transactions: connections are held for the duration of a remote call.
 - **Fix:** `spring.jpa.open-in-view: false` in `config-repo/application.yaml`, for every service. Connections are now held only inside `@Transactional` methods. Nothing relied on lazy loading outside a transaction.
 
+## `saveAll` on detached entities is a `SELECT` and an `UPDATE` per row
+
+- **Symptom:** marking a batch of 500 outbox rows `PUBLISHED` takes far longer than the Kafka sends it follows.
+- **Cause:** the rows were loaded in an earlier transaction, so they are detached; `saveAll` merges each one, which re-reads it and then updates it. JDBC batching groups the updates but not the reads.
+- **Fix:** a `@Modifying` bulk `UPDATE … WHERE id IN (:ids)` — `OutboxEventRepository.markPublished`. A bulk update skips auditing, so it sets `updatedAt` itself.
+
+## With virtual threads on, scheduled jobs share one thread
+
+- **Symptom:** a `@Scheduled(fixedDelay = …)` job runs late or in bursts — the outbox backlog rose and fell in a ~10-second sawtooth under load.
+- **Cause:** `spring.threads.virtual.enabled: true` makes Spring Boot's scheduler a `SimpleAsyncTaskScheduler`, which runs every fixed-delay job on its single scheduler thread and ignores `spring.task.scheduling.pool.size`. While `BankCallbackSimulator` worked through 500 payments, `OutboxPoller` could not start.
+- **Fix:** `SchedulingConfig` in payment-service and operations-service declares a `ThreadPoolTaskScheduler`, sized by `spring.task.scheduling.pool.size` in `config-repo`. Raise it when a service gains more scheduled jobs than threads.
+
 ## Size the connection pool, and fail fast when it's exhausted
 
 - **Symptom:** requests stall for exactly 30 seconds, then fail — and because the circuit breakers wrapped whole service methods, those failures opened the merchant-service breaker although merchant-service was healthy.

@@ -53,7 +53,7 @@ The monolith has these; the services don't yet:
 - **No schema migrations** — `ddl-auto: update` across four databases.
 - **No automated tests of business logic** — each module has only `contextLoads`. See [testing](../practices/testing.md).
 - **No alerting or log shipping.** Traces, metrics and dashboards exist ([observability](../observability/README.md)), but nothing alerts on them, and logs stay on each pod's standard output.
-- **One outbox poller per service can't keep up with sustained peak load.** It publishes ~650 events/s, while ~420 orders/s write ~1,500; the backlog drains after the peak, so webhooks lag but none are lost. See [load-test results](../load-testing/results.md#whats-still-limiting).
+- **The webhook consumer and the bank simulator can't keep up with sustained peak load.** The outbox now publishes as fast as events are written, but `WebhookKafkaConsumer` handles one record at a time with a call to merchant-service for each, and `BankCallbackSimulator` resolves 500 payments per run; both fall behind during a load test and catch up afterwards. Nothing is lost. See [load-test results](../load-testing/results.md#whats-still-limiting).
 - **Kubernetes is local only** — one replica per service, a NodePort instead of an Ingress, no autoscaling, images loaded into kind rather than pushed by CI, and no CI pipeline at all.
 - **Two property names for the same Kafka topics** — see [the pitfall](../practices/gotchas/microservices.md#two-property-names-for-the-same-kafka-topic).
 - **Not built at all:** merchant KYC (every merchant stays `PENDING_KYC`), analytics dashboards, and the `@MaskedCard` log filter from the requirements.
