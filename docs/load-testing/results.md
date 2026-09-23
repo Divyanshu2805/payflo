@@ -6,15 +6,15 @@ Measured on a single development laptop (32 logical cores, 16 GB for Docker), wi
 
 | Target | Required | Measured | |
 |---|---|---|---|
-| Throughput | 10,000 TPS | **837 req/s** sustained for 3 minutes (≈ 419 orders + 419 payments per second) | Not met |
-| p99 latency | < 1 s | **247 ms** for the slowest request type (payments); 232 ms across all requests; max 398 ms | Met |
-| Availability | 99.99% | **100%** — 0 failed requests out of 149,582 | Met for the run |
+| Throughput | 10,000 TPS | **1,279 req/s** sustained for 3 minutes (≈ 640 orders + 640 payments per second) | Not met |
+| p99 latency | < 1 s | **160 ms** for the slowest request type (payments); 151 ms across all requests; max 276 ms | Met |
+| Availability | 99.99% | **100%** — 0 failed requests out of 229,112 | Met for the run |
 
-Latency and correctness hold with margin. Throughput is roughly a twelfth of the target, and on this setup it's capped by the machine rather than by any one service: total CPU reached 100% while no service's own CPU exceeded ~16%, because the load generator, seven JVMs, PostgreSQL, Kafka and Redis all compete for the same cores. The availability figure is for the run only — the real target is uptime over months (see [how each target is measured](README.md#how-each-target-is-measured)).
+Latency and correctness hold with margin. Throughput is roughly an eighth of the target, and on this setup it's capped by the machine rather than by any one service: total CPU reached 100% while no service's own CPU exceeded ~16%, because the load generator, seven JVMs, PostgreSQL, Kafka and Redis all compete for the same cores. The availability figure is for the run only — the real target is uptime over months (see [how each target is measured](README.md#how-each-target-is-measured)).
 
 ## How it got there
 
-The first runs found six problems, each visible only under concurrency. Every row is the same test after the fixes above it:
+The runs found seven problems, each visible only under concurrency; the last run also turned on PostgreSQL group commit. Every row is the same test after the fixes above it:
 
 | Run | Change | Throughput | p99 (worst type) | Errors | What the metrics showed |
 |---|---|---|---|---|---|
@@ -23,15 +23,16 @@ The first runs found six problems, each visible only under concurrency. Every ro
 | 3 | Pools sized (payment 40), 5 s acquisition timeout, open breaker answered as `503` | 158 req/s | 5.7 s | 54% | Still out of connections — PostgreSQL showed the pool's connections **idle**, held by the application but not querying |
 | 4 | Open-Session-In-View turned off | 717 req/s | 647 ms | ~0% | Connections now held only inside transactions. The outbox backlog peaked at ~89,000 events and drained at ~10/s |
 | 5 | Outbox published in acknowledged batches (and the simulator bounded) | 745 req/s | 611 ms | 1.2% | Backlog drained ~66× faster. One burst of 503s at the end of ramp-up: a DB-pool timeout had counted as a merchant-service failure and opened its breaker |
-| 6 | Breakers and retries count only remote failures; wider breaker window | **837 req/s** | **247 ms** | **0%** | — |
+| 6 | Breakers and retries count only remote failures; wider breaker window | 837 req/s | 247 ms | 0% | Order creation still held a database connection across the customer lookup: its receipt check ran before the Feign call |
+| 7 | Receipt check moved into the persist transaction; PostgreSQL group commit (`commit_delay`) | **1,279 req/s** | **160 ms** | **0%** | — |
 
 Details of each cause and fix are in [known pitfalls](../practices/gotchas/README.md): the [gateway's proxy pool](../practices/gotchas/microservices.md#the-gateways-proxy-pool-allows-5-connections-per-route), [Open-Session-In-View](../practices/gotchas/spring-and-jpa.md#open-session-in-view-holds-a-connection-across-remote-calls), [pool sizing](../practices/gotchas/spring-and-jpa.md#size-the-connection-pool-and-fail-fast-when-its-exhausted); and in [service communication](../architecture/service-communication.md) for the outbox and the breaker scope.
 
 ## What's still limiting
 
 - **The machine.** With the load generator on the same host, adding virtual users adds latency, not throughput. A real measurement puts JMeter on separate machines.
-- **The outbox under sustained load.** Each order produces 3–4 events (order created, payment created, two status changes), so ~420 orders/s write ~1,500 events/s, while one poller publishes ~650/s. At this rate the backlog grows during a run and drains afterwards — webhooks fall behind real time, though none are lost. `payflo_outbox_pending` on the dashboard shows it.
-- **payment-service's commit rate.** Its pool still peaks at 40 connections in use under the heaviest load; each payment is three transactions (record, apply result, and the simulator's authorize-and-capture), and each commit waits on PostgreSQL's WAL flush.
+- **The outbox under sustained load.** Each order produces 3–4 events (order created, payment created, two status changes), so ~640 orders/s write well over 2,000 events/s, while one poller publishes ~650/s. At this rate the backlog grows during a run and drains afterwards — about 117,000 events were still pending a few minutes after the latest run — so webhooks fall behind real time, though none are lost. `payflo_outbox_pending` on the dashboard shows it.
+- **payment-service's commit rate.** Its pool still peaks at 40 connections in use under the heaviest load; each payment is three transactions (record, apply result, and the simulator's authorize-and-capture), and each commit waits on PostgreSQL's WAL flush. Group commit (`commit_delay=1000`, `commit_siblings=5`) lets concurrent commits share a flush, which helps but doesn't remove the cost.
 
 ## What 10,000 TPS would take
 

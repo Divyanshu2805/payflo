@@ -49,14 +49,14 @@ The script prints one row per request type and the verdict for each target:
 
 ```
 request                   count      rps     p50     p95     p99     max   errors
-Create order              74763    418.4      91     152     197     365    0.00%
-Initiate payment          74719    418.9     127     202     247     398    0.00%
-Tokenize card               100      5.5      21      42      49      52    0.00%
-ALL                      149582    837.1     106     186     232     398    0.00%
+Create order             114521    639.6      46      65      83     216    0.00%
+Initiate payment         114491    640.3     101     137     160     276    0.00%
+Tokenize card               100      5.4      18      28      31      34    0.00%
+ALL                      229112   1279.4      63     128     151     276    0.00%
 
 targets:
-  MISS  throughput    actual 837.1  (target >= 10000 req/s)
-  PASS  p99_latency   actual 247.0  (target < 1000 ms (every request type))
+  MISS  throughput    actual 1279.4  (target >= 10000 req/s)
+  PASS  p99_latency   actual 160.0  (target < 1000 ms (every request type))
   PASS  availability  actual 1.0  (target >= 99.99%)
 ```
 
