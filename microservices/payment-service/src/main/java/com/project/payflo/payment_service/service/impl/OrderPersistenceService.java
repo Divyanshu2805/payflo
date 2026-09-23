@@ -2,6 +2,7 @@ package com.project.payflo.payment_service.service.impl;
 
 import com.project.payflo.common_lib.enums.EventAggregateType;
 import com.project.payflo.common_lib.enums.OrderStatus;
+import com.project.payflo.common_lib.exception.DuplicateResourceException;
 import com.project.payflo.payment_service.dto.request.CreateOrderRequest;
 import com.project.payflo.payment_service.dto.response.OrderResponse;
 import com.project.payflo.payment_service.entity.OrderRecord;
@@ -27,6 +28,12 @@ public class OrderPersistenceService {
     @Transactional
     public OrderResponse persist(UUID merchantId, CreateOrderRequest request, UUID customerId,
                                   int defaultOrderExpiryMinutes) {
+        // Checked here, in the same short transaction as the insert, rather than before the remote
+        // customer lookup; the (merchant_id, receipt) unique index still catches a concurrent duplicate.
+        if (request.receipt() != null && orderRepository.existsByMerchantIdAndReceipt(merchantId, request.receipt())) {
+            throw new DuplicateResourceException("ORDER_RECEIPT_DUPLICATE", "Order with receipt already exists: " + request.receipt());
+        }
+
         OrderRecord order = OrderRecord.builder()
                 .receipt(request.receipt())
                 .amount(request.amount())
