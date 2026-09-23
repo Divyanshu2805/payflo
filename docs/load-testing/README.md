@@ -33,4 +33,4 @@ Availability in the requirements means uptime over months — about 52 minutes o
 ## Pages
 
 - [Running a load test](running.md) — setup, the commands, and reading the output.
-- [Results](results.md) — the measured numbers, the seven problems the test found, and what 10,000 TPS would take.
+- [Results](results.md) — the measured numbers, the problems the test found, and what 10,000 TPS would take.

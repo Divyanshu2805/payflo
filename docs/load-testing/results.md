@@ -6,15 +6,17 @@ Measured on a single development laptop (32 logical cores, 16 GB for Docker), wi
 
 | Target | Required | Measured | |
 |---|---|---|---|
-| Throughput | 10,000 TPS | **1,279 req/s** sustained for 3 minutes (≈ 640 orders + 640 payments per second) | Not met |
-| p99 latency | < 1 s | **160 ms** for the slowest request type (payments); 151 ms across all requests; max 276 ms | Met |
-| Availability | 99.99% | **100%** — 0 failed requests out of 229,112 | Met for the run |
+| Throughput | 10,000 TPS | **~1,000 req/s** for 3 minutes (≈ 500 orders + 500 payments per second) with payments being captured alongside; three runs gave 963, 1,005 and 1,023 | Not met |
+| p99 latency | < 1 s | **219–267 ms** for the slowest request type (payments) across those runs | Met |
+| Availability | 99.99% | **100%** — 0 failed requests in each run (172,058 to 183,268 requests) | Met for the run |
 
-Latency and correctness hold with margin. Throughput is roughly an eighth of the target, and on this setup it's capped by the machine rather than by any one service: total CPU reached 100% while no service's own CPU exceeded ~16%, because the load generator, seven JVMs, PostgreSQL, Kafka and Redis all compete for the same cores. The availability figure is for the run only — the real target is uptime over months (see [how each target is measured](README.md#how-each-target-is-measured)).
+Latency and correctness hold with margin. Throughput is roughly a tenth of the target, and on this setup it's capped by the machine rather than by any one service: total CPU sits at ~96% of 32 cores, shared between the Docker VM (PostgreSQL alone ~5 cores), JMeter, payment-service, Docker Desktop's network proxy (~4 cores) and the other JVMs.
+
+**Two throughput figures, and why.** Earlier runs reached 1,279 req/s, but that was the rate at which requests were *accepted*: the bank simulator resolved only ~50 payments a second, so nearly every payment was still `AUTHORIZING` when the run ended and its capture happened afterwards. With the simulator resolving payments during the run, capture competes for the same database, and the figure is ~1,000 req/s. Even then captures don't fully keep pace — about 57% of a run's payments are captured before it ends, the backlog peaks near 40,000 and clears ~40 seconds after — so the rate this laptop can hold indefinitely is lower still. The availability figure is for the run only — the real target is uptime over months (see [how each target is measured](README.md#how-each-target-is-measured)).
 
 ## How it got there
 
-The runs found seven problems, each visible only under concurrency; the last run also turned on PostgreSQL group commit. Every row is the same test after the fixes above it:
+The runs found a series of problems, each visible only under concurrency. Every row is the same test after the fixes above it. Runs 1–8 measure accepted requests with capture deferred; from run 9 capture runs alongside:
 
 | Run | Change | Throughput | p99 (worst type) | Errors | What the metrics showed |
 |---|---|---|---|---|---|
@@ -24,16 +26,22 @@ The runs found seven problems, each visible only under concurrency; the last run
 | 4 | Open-Session-In-View turned off | 717 req/s | 647 ms | ~0% | Connections now held only inside transactions. The outbox backlog peaked at ~89,000 events and drained at ~10/s |
 | 5 | Outbox published in acknowledged batches (and the simulator bounded) | 745 req/s | 611 ms | 1.2% | Backlog drained ~66× faster. One burst of 503s at the end of ramp-up: a DB-pool timeout had counted as a merchant-service failure and opened its breaker |
 | 6 | Breakers and retries count only remote failures; wider breaker window | 837 req/s | 247 ms | 0% | Order creation still held a database connection across the customer lookup: its receipt check ran before the Feign call |
-| 7 | Receipt check moved into the persist transaction; PostgreSQL group commit (`commit_delay`) | **1,279 req/s** | **160 ms** | **0%** | — |
+| 7 | Receipt check moved into the persist transaction; PostgreSQL group commit (`commit_delay`) | 1,279 req/s | 160 ms | 0% | ~117,000 outbox events still unpublished minutes after the run |
+| 8 | Outbox poller: index for its query, one `UPDATE` per batch, a scheduler thread pool | 1,247 req/s | 161 ms | 0% | Outbox backlog under ~1,600. The webhook consumer's Kafka lag grew to ~194,000, and 322,000 payments sat in `AUTHORIZING` |
+| 9 | Webhook targets cached for 30 s; simulator resolves 16 payments at once, with an index for its query | 660 req/s | 373 ms | 0% | Consumer lag ~0. Capture now runs during the test: payment-service's pool was full with up to 63 requests waiting, and PostgreSQL was the constraint |
+| 10 | PostgreSQL given 2 GB of cache and a larger WAL budget (defaults: 128 MB, 1 GB) | 963 req/s | 228 ms | 0% | Sessions mostly waiting on the WAL flush; the disk manages ~470 flushes a second (`pg_test_fsync`) |
+| 11 | Time-ordered ids (UUID v7) in payment-service | **1,005 req/s** | **267 ms** | **0%** | Within run-to-run variation of run 10 |
 
 Details of each cause and fix are in [known pitfalls](../practices/gotchas/README.md): the [gateway's proxy pool](../practices/gotchas/microservices.md#the-gateways-proxy-pool-allows-5-connections-per-route), [Open-Session-In-View](../practices/gotchas/spring-and-jpa.md#open-session-in-view-holds-a-connection-across-remote-calls), [pool sizing](../practices/gotchas/spring-and-jpa.md#size-the-connection-pool-and-fail-fast-when-its-exhausted); and in [service communication](../architecture/service-communication.md) for the outbox and the breaker scope.
 
 ## What's still limiting
 
 - **The machine.** With the load generator on the same host, adding virtual users adds latency, not throughput. A real measurement puts JMeter on separate machines.
-- **The webhook consumer.** The outbox used to be the lag: one poller published ~650 events/s and ~117,000 events were still pending minutes after a run. With an index for its query, one `UPDATE` per batch and a scheduler thread of its own, it now keeps pace with the ~1,250 events/s a run writes — fewer than ~1,600 are pending at any moment. The queue has moved downstream: `WebhookKafkaConsumer` takes one record at a time and calls merchant-service for each, so its Kafka lag grew by ~1,000 events/s during the run, to ~194,000 by the end, and drained afterwards. Webhooks still fall behind real time under load, though none are lost.
-- **The bank simulator.** It resolves at most 500 `AUTHORIZING` payments per run, roughly 50 a second, against ~620 payments a second arriving, so most payments from a run are captured long after it ends. That also halves the event rate the outbox sees: the two status-change events per payment are written late.
-- **payment-service's commit rate.** Its pool still peaks at 40 connections in use under the heaviest load; each payment is three transactions (record, apply result, and the simulator's authorize-and-capture), and each commit waits on PostgreSQL's WAL flush. Group commit (`commit_delay=1000`, `commit_siblings=5`) lets concurrent commits share a flush, which helps but doesn't remove the cost.
+- **Capture against the same database.** A payment is four commits — create the order, record the payment, apply the gateway result, authorize-and-capture — and capture alone is a locked read, three state changes, two updates and an event. With 16 captures at once (`payment.simulator.concurrency`) the simulator resolves ~820 payments a second on an idle system but only ~280 while requests are arriving, against ~500 arriving. Lowering it gives requests more of the database and lets captures fall further behind; it doesn't add capacity.
+- **payment-service's database connections.** All 40 are in use for the whole run, with 65–76 requests waiting at the peak. Sampled in PostgreSQL, about half of them are idle inside a transaction — waiting for the application's next statement, which on a saturated machine, through Docker Desktop's port proxy, is slow to arrive — and most of the rest are waiting for the WAL flush.
+- **The disk under Docker Desktop.** ~470 `fdatasync` calls a second (2.1 ms each), so commits are flushed in groups. Removing `commit_delay`, and turning off the pool's auto-commit round trips, each changed nothing measurable (1,023 and 947 req/s) and were not kept.
+- **Webhooks and the outbox keep up.** The outbox backlog stays under ~1,500 events and the webhook consumer's Kafka lag under ~1,150 throughout a run. The load-test merchants have no webhook targets, so this covers looking targets up, not signing and storing deliveries.
+- **The dataset.** These runs were made on top of ~1.5 million orders and payments left by earlier runs; a fresh database was not measured.
 
 ## What 10,000 TPS would take
 

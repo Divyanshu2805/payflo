@@ -69,6 +69,22 @@ spec:
             - "commit_delay=1000"
             - "-c"
             - "commit_siblings=5"
+            # Memory and WAL: the defaults (128 MB of cache, a checkpoint every 1 GB of WAL) are far too
+            # small for write-heavy load. Sized to fit this pod's 1536Mi limit; fsync and synchronous_commit stay on.
+            - "-c"
+            - "shared_buffers=512MB"
+            - "-c"
+            - "effective_cache_size=1GB"
+            - "-c"
+            - "wal_buffers=64MB"
+            - "-c"
+            - "max_wal_size=4GB"
+            - "-c"
+            - "checkpoint_timeout=15min"
+            - "-c"
+            - "checkpoint_completion_target=0.9"
+            - "-c"
+            - "wal_compression=lz4"
           ports:
             - containerPort: 5432
           env:
