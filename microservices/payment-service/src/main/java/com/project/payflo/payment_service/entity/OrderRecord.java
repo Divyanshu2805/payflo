@@ -4,6 +4,7 @@ import com.project.payflo.common_lib.entity.BaseEntity;
 import com.project.payflo.common_lib.entity.Money;
 import com.project.payflo.common_lib.enums.OrderStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -26,7 +27,7 @@ import java.util.UUID;
 public class OrderRecord  extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
     private UUID id;
 
     // no FK — cross-service boundary

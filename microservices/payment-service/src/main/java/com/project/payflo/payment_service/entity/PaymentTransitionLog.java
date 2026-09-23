@@ -5,6 +5,7 @@ import com.project.payflo.common_lib.enums.PaymentActor;
 import com.project.payflo.common_lib.enums.PaymentEvent;
 import com.project.payflo.common_lib.enums.PaymentStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -22,7 +23,7 @@ import java.util.UUID;
 public class PaymentTransitionLog extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
