@@ -8,7 +8,7 @@ Any `POST`, `PUT` or `PATCH` to a business service may send an `X-Idempotency-Ke
 - On a successful response (`< 400`, non-empty), the status and body are stored for **24 hours**. On an error the claim is deleted, so the client can retry cleanly.
 - A repeat within 24 hours gets the stored status and body replayed — the operation doesn't run again.
 - A repeat while the first is still running gets `409 IDEMPOTENCY_CONFLICT`.
-- Requests without the header are untouched.
+- Requests without the header are untouched — and for payments that means [unprotected](../known-gaps/api-behavior.md#without-an-idempotency-key-an-order-can-be-paid-more-than-once).
 
 `POST /v1/payments` goes further: the same header becomes the payment's own `idempotency_key`, unique per merchant in the database, so even after the 24-hour window a retry returns the payment already created under that key rather than a second attempt.
 

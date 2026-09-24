@@ -17,6 +17,7 @@ Every change to a flow is verified end to end through the gateway, against the r
 |---|---|
 | Authentication | Signup → login → create an API key → call an API-key endpoint; a wrong secret is `401`; 201 requests in a minute on one key is a `429` |
 | The payment path | Create an order with a `customer`, tokenize a card, pay by card and by UPI; each reaches `CAPTURED` within seconds and the order `PAID`. A [test failure value](../api/mock-acquirer.md) comes back `FAILED` |
+| Idempotency | `python idempotency_replay_test.py` in `microservices/load-test/` — every key must resolve to one order or payment ([replay test](../load-testing/running.md#6-replay-test-for-idempotency)) |
 | Compensation | Stop vault-service and pay by card: the payment ends `FAILED` with `PAYMENT_GATEWAY_ROUTER_UNREACHABLE` |
 | Events | `ORDER_CREATED`, `PAYMENT_CREATED` and `PAYMENT_STATUS_CHANGED` appear on their topics in Control Center or Kafka UI |
 | Webhooks | Register `…/webhook/success` as a target and watch `webhook_event` rows reach `DELIVERED`; register a URL that fails and watch `attempts` and `next_retry_at` advance |
