@@ -48,7 +48,7 @@ microservices/
   discovery-service/, config-service/
   k8s/                  Kustomize manifests + kind-config.yaml; secrets.env is gitignored
   observability/        Zipkin/Prometheus/Grafana: docker-compose.yaml locally, kustomization.yaml (included by k8s/)
-  load-test/            JMeter plan + provision_keys.py + run_load_test.py; keys.csv and results/ are gitignored
+  load-test/            JMeter plan + provision_keys.py + run_load_test.py + idempotency_replay_test.py; keys.csv and results/ are gitignored
   inside each service (com.project.payflo.<module>): entity/ repository/ mapper/ service/ service/impl/
   controller/ dto/ client/ config/
 src/, pom.xml           the frozen monolith (com.project.payflo)

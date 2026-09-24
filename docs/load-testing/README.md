@@ -9,6 +9,7 @@ Everything lives in `microservices/load-test/`:
 | `payflo-load-test.jmx` | The Apache JMeter plan: each virtual user is one merchant's backend creating orders and paying them through the gateway |
 | `provision_keys.py` | Signs up N test merchants through the gateway and writes their API keys to `keys.csv` (gitignored) |
 | `run_load_test.py` | Runs the plan headless, writes JMeter's HTML report, and grades the run against the three targets |
+| `idempotency_replay_test.py` | Sends the same order and payment requests many times under one `X-Idempotency-Key` and checks each took effect once |
 
 ## What one virtual user does
 
@@ -33,4 +34,4 @@ Availability in the requirements means uptime over months — about 52 minutes o
 ## Pages
 
 - [Running a load test](running.md) — setup, the commands, and reading the output.
-- [Results](results.md) — the measured numbers, the problems the test found, and what 10,000 TPS would take.
+- [Results](results.md) — the measured numbers, the problems the test found, the idempotency replay result, and what 10,000 TPS would take.

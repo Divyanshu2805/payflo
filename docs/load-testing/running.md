@@ -72,3 +72,19 @@ Each run writes `results/<timestamp>/` (gitignored):
 `python run_load_test.py --summary-only results/<timestamp>` grades an earlier run again.
 
 While it runs, the Grafana dashboard shows the same test from the servers' side: throughput and p99 at the gateway and per service, database pool use, and whether the outbox is keeping up. When the client's numbers and the gateway's disagree, the difference is time spent outside the services — in the load generator or the network.
+
+## 6. Replay test for idempotency
+
+A separate script checks the [idempotency guarantee](../api/idempotency-and-rate-limits.md#idempotency) rather than speed. For each idempotency key it sends 20 identical requests at the same instant and 5 more after the first has finished, for payments (UPI, net banking and card) and for order creation, then repeats a payment burst with no key as a control:
+
+```bash
+python idempotency_replay_test.py --payments 1000 --order-keys 400 --merchants 20
+```
+
+It needs the same `keys.csv` and raised rate limit as the load test. It prints a JSON summary and a `PASS`/`FAIL` line, and exits `1` if any key produced more than one order or payment. Every order it creates carries the run id (`receipt` starting `idem-<run>-`, and `notes.idemRun`), so the count can be confirmed in `payflo_payment`:
+
+```sql
+select count(distinct o.id) as orders, count(p.id) as payments
+from order_record o left join payment p on p.order_id = o.id
+where o.receipt like 'idem-<run>-pay-%';
+```

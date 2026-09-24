@@ -52,11 +52,25 @@ Nothing in the design stops the services scaling out — every scheduled job is 
 3. **Partition the outbox work** — more Kafka partitions and a poller per partition (or change-data-capture with Debezium) so publishing scales with writes.
 4. **Re-measure per step** with this test and the dashboard, raising `--threads` until p99 or errors move, to find the next bottleneck rather than guess it.
 
+## Idempotency under concurrent retries
+
+`idempotency_replay_test.py` sent each request 25 times under one `X-Idempotency-Key` — 20 at the same instant, 5 after the first had finished — through the gateway, with one instance of each service running:
+
+| Request | Keys | Requests | Duplicates | Rows created | Duplicates that took effect |
+|---|---|---|---|---|---|
+| `POST /v1/payments` (UPI, net banking, card) | 1,000 | 25,000 | 24,000 | 1,000 payments | **0** |
+| `POST /v1/orders` | 400 | 10,000 | 9,600 | 400 orders | **0** |
+
+A duplicate that arrived while the first request was in flight got `409 IDEMPOTENCY_CONFLICT`; one that arrived afterwards got the first `201` replayed with the same id. The database agreed: 1,000 payments for 1,000 orders, none with a second payment. Two runs gave the same result.
+
+The control shows why the key matters: the same burst of 5 payment requests **without** a key created 5 payments on every one of 20 orders, and 2 to 5 of them were captured per order. See [an order can be paid more than once](../known-gaps/api-behavior.md#without-an-idempotency-key-an-order-can-be-paid-more-than-once).
+
 ## Reproducing these numbers
 
 ```bash
 python provision_keys.py --merchants 50
 python run_load_test.py --threads 100 --rampup 20 --duration 180
+python idempotency_replay_test.py --payments 1000 --order-keys 400 --merchants 20
 ```
 
 Absolute numbers depend on the hardware; the relative effect of each fix, and what the dashboard shows at each step, should reproduce.
