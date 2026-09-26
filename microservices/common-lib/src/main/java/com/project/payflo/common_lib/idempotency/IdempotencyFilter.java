@@ -49,8 +49,18 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
 
+        // A stored response is only ever replayed to the merchant it was created for. Without an
+        // authenticated merchant (the gateway, which never trusts inbound identity headers, and the
+        // public signup/login routes) a key would be shared by every caller, so don't cache at all.
         UUID merchantId = merchantContext.getMerchantId();
-        String key = merchantId != null ? merchantId+":"+rawKey : rawKey;
+        if (merchantId == null) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // Method and path are part of the key so a key reused on another endpoint can't replay
+        // this endpoint's response.
+        String key = merchantId + ":" + request.getMethod() + ":" + request.getRequestURI() + ":" + rawKey;
 
         boolean claimed = idempotencyStore.setIfAbsent(key, IN_PROGRESS_TTL);
 
@@ -99,6 +109,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         if (separatorIndex < 0) {
             var ex = new IdempotencyConflictException("A request with this idempotency key is in progress");
             handlerExceptionResolver.resolveException(request, response, null, ex);
+            return;
         }
 
         int status = Integer.parseInt(stored.substring(0, separatorIndex));
