@@ -4,7 +4,7 @@
 
 Any `POST`, `PUT` or `PATCH` to a business service may send an `X-Idempotency-Key` header. `common-lib`'s `IdempotencyFilter`, registered in every business service, makes a retry with the same key safe:
 
-- The first request claims `idempotency:<merchantId>:<key>` in Redis with an atomic `SET NX` and a 30-second in-progress marker, then runs.
+- The first request claims `idempotency:<merchantId>:<method>:<path>:<key>` in Redis with an atomic `SET NX` and a 30-second in-progress marker, then runs. The merchant, method and path are part of the key, so a stored response is only ever replayed to the merchant and endpoint it was created for.
 - On a successful response (`< 400`, non-empty), the status and body are stored for **24 hours**. On an error the claim is deleted, so the client can retry cleanly.
 - A repeat within 24 hours gets the stored status and body replayed — the operation doesn't run again.
 - A repeat while the first is still running gets `409 IDEMPOTENCY_CONFLICT`.
