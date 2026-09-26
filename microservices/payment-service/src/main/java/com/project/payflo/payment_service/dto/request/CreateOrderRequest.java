@@ -1,6 +1,7 @@
 package com.project.payflo.payment_service.dto.request;
 
 import com.project.payflo.common_lib.entity.Money;
+import com.project.payflo.payment_service.validation.OrderAmount;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +13,7 @@ import java.util.Map;
 public record CreateOrderRequest(
 
         @NotNull(message = "Amount is required")
+        @OrderAmount
         Money amount,
 
         @Size(max = 100)

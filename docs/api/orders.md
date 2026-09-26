@@ -8,7 +8,7 @@ What a customer is paying for. **Service:** payment-service · **Controller:** `
 
 | Field | Constraint | Meaning |
 |---|---|---|
-| `amount` | required | `Money` — `{ amountUnits, currency }` |
+| `amount` | required | `Money` — `{ amountUnits, currency }`. `amountUnits` must be between 1 and 500,000,000 (INR 5,000,000) and `currency` must be `INR`; anything else is `400 VALIDATION_FAILED` |
 | `receipt` | at most 100 characters | The merchant's own order reference; unique per merchant |
 | `notes` | — | Any JSON object, stored as-is |
 | `expiresAt` | — | Defaults to 30 minutes from now (`payment.order.default-order-expiry-minutes`). Nothing expires orders yet |
