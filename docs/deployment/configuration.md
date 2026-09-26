@@ -22,6 +22,7 @@ The `app-config` ConfigMap sets `SPRING_PROFILES_ACTIVE=k8s` for every service, 
 | `KAFKA_BROKERS` | `kafka:9092` |
 | `REDIS_HOST`, `REDIS_PORT` | `redis`, `6379` |
 | `MERCHANT_SERVICE_URI`, `PAYMENT_SERVICE_URI`, `VAULT_SERVICE_URI`, `OPERATIONS_SERVICE_URI` | `http://<service>` — the Feign clients' base URLs while Eureka is off |
+| `WEBHOOK_ALLOW_PRIVATE_TARGETS` | `true` — the local cluster lets webhook URLs point at private addresses and use `http` (the in-cluster dummy receiver needs it). Set it to `false` in any shared cluster |
 | `ZIPKIN_URL` | `http://zipkin:9411/api/v2/spans` — where every service reports spans |
 | `TRACING_SAMPLING_PROBABILITY` | `0.1` — one request in ten is traced in the cluster |
 

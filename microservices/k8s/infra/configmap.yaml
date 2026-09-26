@@ -17,5 +17,8 @@ data:
   PAYMENT_SERVICE_URI: "http://payment-service"
   VAULT_SERVICE_URI: "http://vault-service"
   OPERATIONS_SERVICE_URI: "http://operations-service"
+  # The kind cluster is local, so webhook targets may be private/http (the in-cluster dummy receiver
+  # is one). Set to "false" in any shared cluster.
+  WEBHOOK_ALLOW_PRIVATE_TARGETS: "true"
   ZIPKIN_URL: "http://zipkin:9411/api/v2/spans"
   TRACING_SAMPLING_PROBABILITY: "0.1"
