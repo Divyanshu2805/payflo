@@ -11,10 +11,12 @@ All paths below are under `operations-service/src/main/java/com/project/payflo/o
 1. **`SettlementEngine`** runs at 23:00 (`@Scheduled(cron = "0 0 23 * * *")`), ShedLock-guarded with the lock held for up to 2 hours so only one instance settles. It fetches the active merchant ids from merchant-service (`GET /internal/merchants/active-ids`) and settles each merchant on its own **virtual thread**.
 2. **`SettlementTransactionExecutor.processForMerchant`** (one transaction per merchant):
    - pulls the merchant's captured, unsettled payments from payment-service (`GET /internal/payments/unsettled-captured?merchantId=`); none means nothing to do;
-   - computes **gross** (their sum), **fee** (2% of gross), **GST** (18% of the fee) and **net** (gross − fee − GST), rounded to whole minor units;
-   - saves a `Settlement` in `INITIATED` and one `SettlementPayment` row per payment — the audit trail from payout back to payments;
-   - fetches the merchant's bank account and IFSC (`GET /internal/merchants/{id}/settlement-bank-details`) and asks `BankTransferProcessor` to transfer the net amount;
-   - on acceptance, stores the bank's `TXN_…` reference and moves the settlement to `TRANSFER_PENDING`; any exception along the way marks it `FAILED`.
+   - drops any payment already in a payout that is `INITIATED` or `TRANSFER_PENDING` — a payment only becomes `SETTLED` when the payout is confirmed, so without this a slow transfer would be paid again the next night;
+   - fetches the merchant's bank account and IFSC (`GET /internal/merchants/{id}/settlement-bank-details`) **before writing anything**; a merchant with no account on file, or whose lookup fails, is skipped and its payments stay captured for a later run;
+   - groups the payments by currency, and splits a group whose total would exceed `Money`'s int range, so each group becomes its own settlement;
+   - for each, computes **gross** (their sum), **fee** (2% of gross), **GST** (18% of the fee) and **net** (gross − fee − GST), rounded to whole minor units;
+   - saves a `Settlement` in `INITIATED` and one `SettlementPayment` row per payment — the audit trail from payout back to payments — and asks `BankTransferProcessor` to transfer the net amount;
+   - on acceptance, stores the bank's `TXN_…` reference and moves the settlement to `TRANSFER_PENDING`; any exception along the way marks it `FAILED`, which frees its payments for the next run.
 
 Every call to payment- and merchant-service goes through `SettlementIntegrationGateway`, which wraps them in a circuit breaker and retry.
 
