@@ -37,7 +37,7 @@ Known missing features and open issues, grouped by area. Items marked *(from rea
 - **Remote calls run inside the settlement transaction.** `processForMerchant` and `resolveTransfer` call payment- and merchant-service while holding a database transaction — the pattern the payment saga avoids.
 - **`mark-settled` bypasses the state machine.** It sets `SETTLED` directly, without checking the payment is `CAPTURED` and without a transition-log row.
 - **The payout simulator always succeeds**, so the `FAILED` callback branch never runs and there is no chaos mode for payouts.
-- **The `SETTLEMENT_*` payload puts the whole `Settlement` object under `settlementId`**, rather than its id. *(from reading the code)*
+- **Nothing sets a merchant's settlement bank account.** A merchant without one is skipped (logged, payments left captured), so no payout happens until the columns are filled in the database — there is no profile or bank-details API.
 - **Refunds aren't deducted**, since refunds don't exist.
 
 ## Ported from the monolith

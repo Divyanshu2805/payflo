@@ -23,8 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -41,18 +43,82 @@ public class SettlementTransactionExecutor {
     private final OutboxEventPublisher outboxEventPublisher;
     private final SettlementIntegrationGateway settlementIntegrationGateway;
 
+    // Payments settle only once the payout is confirmed, so until then they still look "unsettled" to
+    // payment-service. A payment in a payout in one of these states must not go into another.
+    private static final List<SettlementStatus> IN_FLIGHT = List.of(
+            SettlementStatus.INITIATED, SettlementStatus.TRANSFER_PENDING);
+
+    // Money holds an int, so one settlement's gross must fit in one.
+    private static final long MAX_GROSS_UNITS_PER_SETTLEMENT = Integer.MAX_VALUE;
+
     @Transactional
     public void processForMerchant(UUID merchantId, LocalDate settlementDate) {
-        List<PaymentSettlementView> unsettledPayments = settlementIntegrationGateway.findUnsettledCaptured(merchantId);
+        List<PaymentSettlementView> captured = settlementIntegrationGateway.findUnsettledCaptured(merchantId);
+        if (captured.isEmpty()) return;
+
+        Set<UUID> inFlight = settlementPaymentRepository.findPaymentIdsInSettlements(merchantId, IN_FLIGHT);
+        List<PaymentSettlementView> unsettledPayments = captured.stream()
+                .filter(p -> !inFlight.contains(p.paymentId()))
+                .toList();
         if (unsettledPayments.isEmpty()) return;
+
+        // Checked before anything is written: a merchant with nowhere to pay out to is skipped, and
+        // its payments stay captured for a later run.
+        SettlementBankDetails bankDetails;
+        try {
+            bankDetails = settlementIntegrationGateway.getSettlementBankDetails(merchantId);
+        } catch (Exception e) {
+            log.error("Could not load bank details for merchantId: {}, skipping settlement", merchantId, e);
+            return;
+        }
+        if (bankDetails == null || isBlank(bankDetails.accountNumber()) || isBlank(bankDetails.ifsc())) {
+            log.warn("Skipping settlement for merchantId: {}: no settlement bank account on file ({} payments waiting)",
+                    merchantId, unsettledPayments.size());
+            return;
+        }
 
         log.info("Processing {} unsettled payments for merchantId: {} on {} date",
                 unsettledPayments.size(), merchantId, settlementDate);
 
-        Integer grossAmount = unsettledPayments.stream()
-                .map(PaymentSettlementView::amountUnits)
-                .reduce(Integer::sum)
-                .orElse(0);
+        // One settlement per currency, and per slice small enough for its gross to fit Money's int.
+        Map<String, List<PaymentSettlementView>> byCurrency = new LinkedHashMap<>();
+        for (PaymentSettlementView payment : unsettledPayments) {
+            byCurrency.computeIfAbsent(payment.currency(), c -> new ArrayList<>()).add(payment);
+        }
+        for (List<PaymentSettlementView> sameCurrency : byCurrency.values()) {
+            for (List<PaymentSettlementView> slice : slicesWithinLimit(sameCurrency)) {
+                settle(merchantId, settlementDate, slice, bankDetails);
+            }
+        }
+    }
+
+    private static List<List<PaymentSettlementView>> slicesWithinLimit(List<PaymentSettlementView> payments) {
+        List<List<PaymentSettlementView>> slices = new ArrayList<>();
+        List<PaymentSettlementView> current = new ArrayList<>();
+        long currentGross = 0;
+        for (PaymentSettlementView payment : payments) {
+            if (!current.isEmpty() && currentGross + payment.amountUnits() > MAX_GROSS_UNITS_PER_SETTLEMENT) {
+                slices.add(current);
+                current = new ArrayList<>();
+                currentGross = 0;
+            }
+            current.add(payment);
+            currentGross += payment.amountUnits();
+        }
+        if (!current.isEmpty()) slices.add(current);
+        return slices;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private void settle(UUID merchantId, LocalDate settlementDate, List<PaymentSettlementView> unsettledPayments,
+                        SettlementBankDetails settlementBankDetails) {
+        // Sliced so the sum fits an int; the sum is widened anyway so a bug can't wrap silently.
+        int grossAmount = Math.toIntExact(unsettledPayments.stream()
+                .mapToLong(PaymentSettlementView::amountUnits)
+                .sum());
 
         Money gross = Money.of(grossAmount, unsettledPayments.getFirst().currency());
 
@@ -85,8 +151,6 @@ public class SettlementTransactionExecutor {
             }
             settlementPaymentRepository.saveAll(links);
 
-
-            SettlementBankDetails settlementBankDetails = settlementIntegrationGateway.getSettlementBankDetails(merchantId);
             BankTransferResult bankTransferResult = bankTransferProcessor.initiate(settlement.getId(), merchantId, netAmount,
                     settlementBankDetails.accountNumber(), settlementBankDetails.ifsc());
 
@@ -128,7 +192,7 @@ public class SettlementTransactionExecutor {
             log.info("Settlement processed successfully, settlementId: {}", settlement.getId());
             outboxEventPublisher.publish(EventAggregateType.SETTLEMENT, settlementId,
                     "SETTLEMENT_PROCESSED", Map.of(
-                            "settlementId", settlement,
+                            "settlementId", settlement.getId(),
                             "merchantId", settlement.getMerchantId(),
                             "status", settlement.getStatus().name(),
                             "settlementAmount", settlement.getNetAmount().getAmountUnits(),
@@ -141,7 +205,7 @@ public class SettlementTransactionExecutor {
             log.warn("Settlement failed, settlementId: {}", settlement.getId());
             outboxEventPublisher.publish(EventAggregateType.SETTLEMENT, settlementId,
                     "SETTLEMENT_FAILED", Map.of(
-                            "settlementId", settlement,
+                            "settlementId", settlement.getId(),
                             "merchantId", settlement.getMerchantId(),
                             "status", settlement.getStatus().name(),
                             "settlementAmount", settlement.getNetAmount().getAmountUnits(),
