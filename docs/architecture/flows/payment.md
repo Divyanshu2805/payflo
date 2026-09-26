@@ -19,7 +19,7 @@ All paths below are under `payment-service/src/main/java/com/project/payflo/paym
 1. **Replay check.** With an `X-Idempotency-Key`, `findExistingAttempt` returns the payment already created under that key for this merchant, if any.
 2. **`recordPayment` — transaction 1.** Locks the order (`findByIdAndMerchantIdForUpdate`, `SELECT … FOR UPDATE`) so concurrent attempts on one order serialize; requires it to be `CREATED` or `ATTEMPTED` (`400 ORDER_NOT_PAYABLE` otherwise) and to have no other payment in flight or completed (`400 ORDER_PAYMENT_IN_PROGRESS` — the lock makes concurrent attempts see each other); marks it `ATTEMPTED` and increments `attempts`; creates the `Payment` (`CREATED`, amount copied from the order); fires `AUTHORIZE_ATTEMPT` → `AUTHORIZING`.
 3. **The gateway call — no transaction.** `gateway/PaymentGatewayRouter` picks the method's `PaymentAdapter`:
-   - `CardPaymentAdapter` → vault-service `POST /internal/vault/charge` with the token and amount only; vault-service decrypts the card and runs its mock acquirer behind a bulkhead.
+   - `CardPaymentAdapter` → vault-service `POST /internal/vault/charge` with the paying merchant's id, the token and the amount only; vault-service charges the token only if that merchant created it, decrypts the card and runs its mock acquirer behind a bulkhead.
    - `UpiPaymentAdapter`, `NetBankingAdapter` → the local `PaymentProcessor` for that method.
 
    Every processor answers `Pending` (with a processor reference) or `Failure` (with an error code) — see [mock acquirer](../../api/mock-acquirer.md).

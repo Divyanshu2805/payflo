@@ -28,6 +28,6 @@ The service-to-service API. It is not part of the merchant contract and is **nev
 
 | Method | Path | Request | Response | Caller |
 |---|---|---|---|---|
-| `POST` | `/internal/vault/charge` | `VaultChargeRequest { paymentId, token, amount, methodDetails }` | `PaymentProcessorResponse` — `PENDING`, `SUCCESS` or `FAILURE`, with a `type` discriminator | payment-service's `CardPaymentAdapter` |
+| `POST` | `/internal/vault/charge` | `VaultChargeRequest { paymentId, merchantId, token, amount, methodDetails }` | `PaymentProcessorResponse` — `PENDING`, `SUCCESS` or `FAILURE`, with a `type` discriminator | payment-service's `CardPaymentAdapter` |
 
-`/internal/vault/charge` decrypts the card behind the token and runs the mock card processor behind a thread-pool bulkhead with a 5-second timeout. An unknown or revoked token is `404`. The request carries no merchant id, so vault-service does not check that the token belongs to the paying merchant — see [known gaps](../known-gaps/not-yet-built.md#security).
+`/internal/vault/charge` decrypts the card behind the token and runs the mock card processor behind a thread-pool bulkhead with a 5-second timeout. An unknown or revoked token — or one created by a different merchant than `merchantId` — is `404`, so another merchant's token is indistinguishable from one that doesn't exist.

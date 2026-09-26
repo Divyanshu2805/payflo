@@ -26,7 +26,7 @@ public class CardPaymentAdapter implements PaymentAdapter {
         String token = (String) request.methodDetails().get("token");
 
         PaymentProcessorResponse response = vaultServiceClient.charge(
-                new VaultChargeRequest(request.paymentId(), token, request.amount(), request.methodDetails())
+                new VaultChargeRequest(request.paymentId(), request.merchantId(), token, request.amount(), request.methodDetails())
         );
 
         return switch (response) {
