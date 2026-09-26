@@ -50,7 +50,7 @@ The monolith has these; the services don't yet:
 ## Platform
 
 - **No schema migrations** — `ddl-auto: update` across four databases.
-- **No automated tests of business logic** — each module has only `contextLoads`. See [testing](../practices/testing.md).
+- **Little automated test coverage** — each module has `contextLoads`, and a handful of unit tests cover the idempotency filter, webhook URL validation, order amounts, the one-payment-per-order rule and settlement arithmetic; nothing else (state machine, saga, processors, controllers, repositories). See [testing](../practices/testing.md).
 - **No alerting or log shipping.** Traces, metrics and dashboards exist ([observability](../observability/README.md)), but nothing alerts on them, and logs stay on each pod's standard output.
 - **Capture can't keep up with sustained peak load on one machine.** The outbox and the webhook consumer now keep pace, but under the load test `BankCallbackSimulator` captures about 57% of payments as they arrive; the rest are captured within ~40 seconds of the load ending. Nothing is lost. See [load-test results](../load-testing/results.md#whats-still-limiting).
 - **Kubernetes is local only** — one replica per service, a NodePort instead of an Ingress, no autoscaling, images loaded into kind rather than pushed by CI, and no CI pipeline at all.

@@ -7,7 +7,17 @@
 | Each microservice | `./mvnw -pl <module> test` from `microservices/` | One `*ApplicationTests.contextLoads` per module — the Spring context starts | discovery-service, config-service and PostgreSQL/Redis/Kafka running, since each context imports its configuration from config-service |
 | The monolith | `./mvnw test -Duser.timezone=Asia/Kolkata` from the root | `PayFloApplicationTests.contextLoads` | PostgreSQL; the time-zone flag ([the pitfall](gotchas/spring-and-jpa.md#postgresql-rejects-the-jvms-legacy-time-zone-name)) |
 
-There are **no unit tests or integration tests** of business logic yet — that is the largest gap in the codebase, tracked in [known gaps](../known-gaps/not-yet-built.md#platform).
+Plain JUnit unit tests (no Spring context, no infrastructure — run them with `-Dtest=<Class>` to skip `contextLoads`) cover the first money- and security-critical pieces:
+
+| Test | Covers |
+|---|---|
+| `common-lib` `IdempotencyFilterTest` | Replay, key scoped by merchant + method + path, nothing cached without a merchant, a failed request releases its key |
+| `common-lib` `WebhookUrlValidatorTest` | Which webhook URLs are refused (private, loopback, link-local, metadata, http, credentials) in strict and development mode |
+| `payment-service` `OrderAmountTest` | Order amount and currency validation |
+| `payment-service` `PaymentAuthorizationRecorderTest` | One live payment per order; a failed attempt doesn't block a retry |
+| `operations-service` `SettlementTransactionExecutorTest` | Fee/GST arithmetic, int-overflow splitting, per-currency settlements, in-flight payments excluded, merchants without a bank account skipped |
+
+There are still **no integration tests** and no tests of the rest of the business logic (the state machine, the saga's compensation, the mock processors) — the largest gap in the codebase, tracked in [known gaps](../known-gaps/not-yet-built.md#platform).
 
 ## What is verified by hand
 
