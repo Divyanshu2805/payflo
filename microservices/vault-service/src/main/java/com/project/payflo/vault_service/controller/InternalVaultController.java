@@ -18,6 +18,7 @@ public class InternalVaultController {
 
     @PostMapping("/charge")
     public PaymentProcessorResponse charge(@RequestBody VaultChargeRequest request) {
-        return vaultService.charge(request.paymentId(), request.token(), request.amount(), request.methodDetails());
+        return vaultService.charge(request.paymentId(), request.merchantId(), request.token(),
+                request.amount(), request.methodDetails());
     }
 }

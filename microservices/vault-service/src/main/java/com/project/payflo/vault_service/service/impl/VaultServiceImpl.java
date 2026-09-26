@@ -76,10 +76,12 @@ public class VaultServiceImpl implements VaultService {
 
     @Override
     @Transactional
-    public PaymentProcessorResponse charge(UUID paymentId, String token,
+    public PaymentProcessorResponse charge(UUID paymentId, UUID merchantId, String token,
                                            Money amount, Map<String, Object> methodDetails) {
-        CardToken cardToken = cardTokenRepository.findByTokenAndRevokedAtIsNull(token)
-                .orElseThrow(() -> new ResourceNotFoundException("CardToken", token));
+        // Scoped by merchant: another merchant's token is indistinguishable from an unknown one.
+        // A missing merchant id matches nothing (the column is NOT NULL), so it is refused too.
+        CardToken cardToken = cardTokenRepository.findByTokenAndMerchantAndRevokedAtIsNull(token, merchantId)
+                .orElseThrow(() -> new ResourceNotFoundException("CardToken", token.substring(0, Math.min(4, token.length())) + "****"));
 
         VaultCard vaultCard = cardToken.getVaultCard();
         byte[] panBytes = null;

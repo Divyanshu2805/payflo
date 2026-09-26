@@ -13,5 +13,6 @@ public interface VaultService {
 
     TokenizeResponse tokenize(TokenizeRequest request, UUID merchantId);
 
-    PaymentProcessorResponse charge(UUID paymentId, String token, Money amount, Map<String, Object> methodDetails);
+    PaymentProcessorResponse charge(UUID paymentId, UUID merchantId, String token, Money amount,
+                                    Map<String, Object> methodDetails);
 }
