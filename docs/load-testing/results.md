@@ -63,7 +63,7 @@ Nothing in the design stops the services scaling out — every scheduled job is 
 
 A duplicate that arrived while the first request was in flight got `409 IDEMPOTENCY_CONFLICT`; one that arrived afterwards got the first `201` replayed with the same id. The database agreed: 1,000 payments for 1,000 orders, none with a second payment. Two runs gave the same result.
 
-The control shows why the key matters: the same burst of 5 payment requests **without** a key created 5 payments on every one of 20 orders, and 2 to 5 of them were captured per order. See [an order can be paid more than once](../known-gaps/api-behavior.md#without-an-idempotency-key-an-order-can-be-paid-more-than-once).
+The control, measured before the fix, shows why it mattered: the same burst of 5 payment requests **without** a key created 5 payments on every one of 20 orders, and 2 to 5 of them were captured per order. An order now accepts one payment at a time ([an order takes one payment at a time](../known-gaps/api-behavior.md#an-order-takes-one-payment-at-a-time)), and the script fails the run unless each control order ends with exactly one payment; that run hasn't been repeated yet.
 
 ## Reproducing these numbers
 

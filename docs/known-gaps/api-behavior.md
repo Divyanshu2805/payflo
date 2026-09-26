@@ -30,9 +30,9 @@ A JWT can create orders and an API key can manage webhook configs. The monolith 
 
 A repeated `X-Idempotency-Key` within 24 hours replays the first successful response even if the new request body is different. Use a new key for a new operation.
 
-## Without an idempotency key, an order can be paid more than once
+## An order takes one payment at a time
 
-An order stays payable while it is `ATTEMPTED`, so that a failed payment can be retried. That also means a second `POST /v1/payments` for the same order is accepted while the first is still `AUTHORIZING`, and each payment is then captured on its own. Five simultaneous keyless requests for one order created five payments, most of them captured ([measured](../load-testing/results.md#idempotency-under-concurrent-retries)). Always send `X-Idempotency-Key` on a payment; the service does not yet refuse a new payment while another for the same order is in flight or captured.
+An order stays payable while it is `ATTEMPTED`, so that a failed payment can be retried — but only once every earlier attempt has `FAILED`, been `CANCELLED` or `AUTH_EXPIRED`. While another payment for the order is in flight or completed, `POST /v1/payments` is `400 ORDER_PAYMENT_IN_PROGRESS`, with or without an `X-Idempotency-Key`. Still send a key: it is what lets a retry of the *same* request return the original payment instead of that error.
 
 ## Error bodies from the gateway are smaller
 

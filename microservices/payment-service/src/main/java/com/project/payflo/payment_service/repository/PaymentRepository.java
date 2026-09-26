@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,4 +35,6 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     List<Payment> findByMerchantIdAndStatusForUpdate(UUID merchantId, PaymentStatus paymentStatus);
 
     Optional<Payment> findByMerchantIdAndIdempotencyKey(UUID merchantId, String idempotencyKey);
+
+    boolean existsByOrder_IdAndStatusIn(UUID orderId, Collection<PaymentStatus> statuses);
 }

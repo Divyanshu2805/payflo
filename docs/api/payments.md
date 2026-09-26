@@ -4,7 +4,7 @@ Paying an order, and capturing an authorized payment. **Service:** payment-servi
 
 | Method | Path | Request | Response | Notes |
 |---|---|---|---|---|
-| `POST` | `/v1/payments` | `PaymentInitRequest { orderId, method, methodDetails? }` + optional `X-Idempotency-Key` header | `201` `PaymentResponse { id, orderId, merchantId, amount, status, method, methodDetails, errorCode, errorDescription, capturedAt, createdAt }` | Usually `AUTHORIZING`; `FAILED` with an `errorCode` for a [test failure value](mock-acquirer.md). `404 ORDER_NOT_FOUND` for an unknown order; `400 ORDER_NOT_PAYABLE` unless the order is `CREATED` or `ATTEMPTED`. |
+| `POST` | `/v1/payments` | `PaymentInitRequest { orderId, method, methodDetails? }` + optional `X-Idempotency-Key` header | `201` `PaymentResponse { id, orderId, merchantId, amount, status, method, methodDetails, errorCode, errorDescription, capturedAt, createdAt }` | Usually `AUTHORIZING`; `FAILED` with an `errorCode` for a [test failure value](mock-acquirer.md). `404 ORDER_NOT_FOUND` for an unknown order; `400 ORDER_NOT_PAYABLE` unless the order is `CREATED` or `ATTEMPTED`. `400 ORDER_PAYMENT_IN_PROGRESS` while another payment for the order is in flight or completed (retry only after every earlier attempt has failed). |
 | `POST` | `/v1/payments/{paymentId}/capture` | — | `200` `PaymentResponse` | Captures an `AUTHORIZED` payment: `CAPTURED` on success, back to `AUTHORIZED` (retryable) on failure. Anything not `AUTHORIZED` is `409 INVALID_STATE_TRANSITION`. `404 PAYMENT_NOT_FOUND` for an unknown or another merchant's payment. |
 
 ## `methodDetails` by method
