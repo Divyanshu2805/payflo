@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +30,13 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class PaymentAuthorizationRecorder {
+
+    // A payment in any of these states still counts as the order's payment. FAILED, CANCELLED and
+    // AUTH_EXPIRED never took money, so the order can be paid again.
+    private static final List<PaymentStatus> LIVE_PAYMENT_STATUSES = List.of(
+            PaymentStatus.CREATED, PaymentStatus.AUTHORIZING, PaymentStatus.AUTHORIZED,
+            PaymentStatus.CAPTURING, PaymentStatus.CAPTURED, PaymentStatus.SETTLED,
+            PaymentStatus.PARTIALLY_REFUNDED);
 
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
@@ -44,6 +52,13 @@ public class PaymentAuthorizationRecorder {
         if(order.getOrderStatus() != OrderStatus.CREATED && order.getOrderStatus() != OrderStatus.ATTEMPTED) {
             throw new BusinessRuleViolationException("ORDER_NOT_PAYABLE",
                     "Order cannot accept payment in status: "+order.getOrderStatus());
+        }
+
+        // The order row is locked, so concurrent attempts queue here and each sees the previous one.
+        // Retrying is for orders whose earlier attempts all failed; otherwise it would charge twice.
+        if (paymentRepository.existsByOrder_IdAndStatusIn(order.getId(), LIVE_PAYMENT_STATUSES)) {
+            throw new BusinessRuleViolationException("ORDER_PAYMENT_IN_PROGRESS",
+                    "Order already has a payment in progress or completed: "+order.getId());
         }
 
         order.setOrderStatus(OrderStatus.ATTEMPTED);

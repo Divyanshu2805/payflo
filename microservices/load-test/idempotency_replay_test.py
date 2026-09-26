@@ -183,7 +183,8 @@ def main():
 
     summary["orders"] = summarize(replay_keys(args.order_keys, order_request, args.dups, args.late, args.wave))
 
-    # Control: the same payment burst with no idempotency key.
+    # Control: the same payment burst with no idempotency key. Even without a key an order may hold only
+    # one live payment, so each order must end with exactly one (the rest are 400 ORDER_PAYMENT_IN_PROGRESS).
     with ThreadPoolExecutor(16) as pool:
         control_orders = list(pool.map(lambda i: new_order("ctl", i), range(args.control)))
     payments_per_order = Counter()
@@ -200,9 +201,11 @@ def main():
     duplicated = summary["payments"]["keys_resolving_to_several_ids"] + summary["orders"]["keys_resolving_to_several_ids"]
     unanswered = summary["payments"]["keys_with_no_success"] + summary["orders"]["keys_with_no_success"]
     retried = summary["payments"]["duplicate_requests"] + summary["orders"]["duplicate_requests"]
-    verdict = "PASS" if duplicated == 0 and unanswered == 0 else "FAIL"
+    multi_paid = sum(orders for created, orders in payments_per_order.items() if created != 1)
+    verdict = "PASS" if duplicated == 0 and unanswered == 0 and multi_paid == 0 else "FAIL"
     print(f"\n{verdict}  {retried} duplicate requests, {duplicated} keys took effect more than once, "
-          f"{unanswered} keys never succeeded", file=sys.stderr)
+          f"{unanswered} keys never succeeded, {multi_paid} keyless orders without exactly one payment",
+          file=sys.stderr)
     sys.exit(0 if verdict == "PASS" else 1)
 
 
