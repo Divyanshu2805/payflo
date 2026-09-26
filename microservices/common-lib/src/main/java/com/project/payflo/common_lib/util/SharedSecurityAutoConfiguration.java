@@ -18,6 +18,13 @@ public class SharedSecurityAutoConfiguration {
         return new SignerUtil();
     }
 
+    // Secure unless a development setting opts in (see config-repo/application.yaml).
+    @Bean
+    public WebhookUrlValidator webhookUrlValidator(
+            @Value("${webhook.allow-private-targets:false}") boolean allowPrivateTargets) {
+        return new WebhookUrlValidator(allowPrivateTargets);
+    }
+
     @Bean
     @ConditionalOnProperty(name = "vault.master-key")
     public BytesEncryptor masterKeyEncryptor(@Value("${vault.master-key}") String masterKey) {

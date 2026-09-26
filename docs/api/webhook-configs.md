@@ -12,7 +12,7 @@ The endpoints a merchant wants events delivered to. **Service:** merchant-servic
 
 | Field | Constraint |
 |---|---|
-| `targetUrl` | required, at most 500 characters, must start with `http://` or `https://` |
+| `targetUrl` | required, at most 500 characters, must start with `http://` or `https://`. Beyond that it must be `https`, carry no credentials, and resolve only to public addresses — otherwise `400 WEBHOOK_URL_NOT_ALLOWED`. Loopback and private addresses (and plain `http`) are accepted only where `WEBHOOK_ALLOW_PRIVATE_TARGETS` is `true`, the development default; link-local and cloud-metadata addresses never are. The check is repeated at delivery, so a URL that stops qualifying fails its delivery attempts |
 | `eventTypes` | at most 1000 characters; a comma-separated list such as `PAYMENT_STATUS_CHANGED,ORDER_CREATED`. Blank or `ALL` subscribes to every event |
 
 ## What a delivery looks like

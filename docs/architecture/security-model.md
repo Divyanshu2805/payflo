@@ -59,6 +59,10 @@ Card data is confined to vault-service and its database — see [decision 0004](
 
 The JWT key, vault master key and webhook encryption key have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`. A real deployment needs a secret store; see [known gaps](../known-gaps/not-yet-built.md#security).
 
+## Webhook targets
+
+A webhook URL is merchant-supplied and operations-service calls it from inside the platform, so it is validated (`common-lib`'s `WebhookUrlValidator`) when the config is saved and again just before each delivery: `https`, no embedded credentials, and every address the host resolves to must be public. Without that a merchant could aim a webhook at `localhost`, a cluster Service such as `vault-service`, or a cloud metadata address. Link-local addresses are always refused; loopback, private ranges and plain `http` are allowed only while `WEBHOOK_ALLOW_PRIVATE_TARGETS` is `true`, which is the development default and must be `false` in a shared environment. Redirects aren't followed (POSTs aren't by the JDK client). The delivery-time check narrows, but doesn't close, a DNS-rebinding window — the connection isn't pinned to the address that was checked.
+
 ## Webhook signatures
 
 Every outbound webhook carries an HMAC-SHA256 signature of its payload, computed with that webhook config's own secret, in the `X-PayFlo-Signature` header — so a merchant can verify a delivery came from PayFlo and wasn't altered.

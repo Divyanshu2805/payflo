@@ -1,6 +1,8 @@
 package com.project.payflo.operations_service.webhook;
 
 import com.project.payflo.common_lib.enums.WebhookEventStatus;
+import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
+import com.project.payflo.common_lib.util.WebhookUrlValidator;
 import com.project.payflo.operations_service.entity.WebhookEvent;
 import com.project.payflo.operations_service.repository.WebhookEventRepository;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -30,6 +32,7 @@ public class WebhookDeliverExecutor {
     private final RestClient restClient;
     private final WebhookDlqRecorder webhookDlqRecorder;
     private final MeterRegistry meterRegistry;
+    private final WebhookUrlValidator webhookUrlValidator;
 
     private static final List<Duration> BACKOFF = List.of(
             Duration.ofMinutes(1), Duration.ofMinutes(5), Duration.ofMinutes(30),
@@ -58,6 +61,16 @@ public class WebhookDeliverExecutor {
 
         event.setAttempts(event.getAttempts()+1);
         event.setLastAttemptAt(LocalDateTime.now());
+
+        // Checked again at delivery: the config was validated when saved, but a hostname can resolve
+        // somewhere else by now, and configs saved before this check existed were never validated.
+        try {
+            webhookUrlValidator.validate(event.getTargetUrl());
+        } catch (BusinessRuleViolationException blocked) {
+            log.warn("Webhook target blocked for event {}: {}", webhookEventId, blocked.getMessage());
+            handleAttemptFailed(event, WebhookUrlValidator.ERROR_CODE + ": " + blocked.getMessage());
+            return;
+        }
 
         try {
             var response = restClient.post()

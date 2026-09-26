@@ -2,6 +2,7 @@ package com.project.payflo.merchant_service.service.impl;
 
 import com.project.payflo.common_lib.exception.ResourceNotFoundException;
 import com.project.payflo.common_lib.util.RandomizerUtil;
+import com.project.payflo.common_lib.util.WebhookUrlValidator;
 import com.project.payflo.merchant_service.dto.request.UpdateWebhookConfigRequest;
 import com.project.payflo.merchant_service.dto.response.WebhookConfigResponse;
 import com.project.payflo.merchant_service.entity.Merchant;
@@ -30,9 +31,12 @@ public class WebhookConfigServiceImpl implements WebhookConfigService {
     private final WebhookConfigRepository merchantWebhookConfigRepository;
     private final BytesEncryptor bytesEncryptor;
     private final WebhookConfigMapper webhookConfigMapper;
+    private final WebhookUrlValidator webhookUrlValidator;
 
     @Override
     public WebhookConfigResponse create(UUID merchantId, UpdateWebhookConfigRequest request) {
+        webhookUrlValidator.validate(request.targetUrl());
+
         Merchant merchant = merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Merchant", merchantId));
 
@@ -71,6 +75,8 @@ public class WebhookConfigServiceImpl implements WebhookConfigService {
     @Override
     @Transactional
     public WebhookConfigResponse update(UUID merchantId, UUID configId, UpdateWebhookConfigRequest request) {
+        webhookUrlValidator.validate(request.targetUrl());
+
         MerchantWebhookConfig config = requireOwnedConfig(merchantId, configId);
         config.setTargetUrl(request.targetUrl());
         config.setEventTypes(request.eventTypes());
