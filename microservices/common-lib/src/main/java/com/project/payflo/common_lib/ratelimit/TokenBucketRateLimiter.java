@@ -77,6 +77,9 @@ public class TokenBucketRateLimiter implements RateLimiter {
                     String.valueOf(System.currentTimeMillis()),
                     String.valueOf(ttlSeconds));
 
+            if (result == null || result.size() < 3) {
+                return RateLimitResult.allowed(maxRequests);
+            }
             boolean allowed = result.get(0) == 1L;
             int remaining = result.get(1).intValue();
             int retryAfter = result.get(2).intValue();

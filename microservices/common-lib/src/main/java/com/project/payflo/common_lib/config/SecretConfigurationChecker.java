@@ -21,12 +21,13 @@ import java.util.function.Function;
 @Slf4j
 public class SecretConfigurationChecker {
 
-    // Every default committed in config-repo, secrets.env.example or the monolith.
+    // Every default ever committed in config-repo or secrets.env.example, including ones since replaced.
     private static final Set<String> KNOWN_DEFAULTS = Set.of(
             "dont-use-in-prod-a9asd7fulasjdfaklsdfu98q3uhjdiosh897as9d8f7ua9osufdjilasdjf",
             "change-me-dev-only-jwt-secret-at-least-64-characters-long-0123456789abcdef",
             "arXfSlAXS4TRCw5tlKCFSwjG+D4C4ESUV47We3pw2eI=",
             "dev-internal-api-token-change-me",
+            "dev-admin-api-key-change-me",
             "change-me-generate-with-openssl-rand-base64-32");
 
     private final Function<String, String> properties;
@@ -57,6 +58,7 @@ public class SecretConfigurationChecker {
         checkBase64Key("vault.master-key", problems);
         checkBase64Key("webhook.secret-encryption-key", problems);
         checkText("internal.api-token", 24, problems);
+        checkText("app.security.admin-api-key", 24, problems);
         return problems;
     }
 
