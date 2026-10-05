@@ -27,7 +27,6 @@ Known missing features and open issues, grouped by area. Items marked *(from rea
 - **`WALLET` has no adapter or processor.**
 - **Capture always succeeds** — every adapter's `capture()` returns success unconditionally.
 - **The transition log's `actor` is always `SYSTEM`**, and there is no `reason` column (the monolith had one).
-- **A failed outbox row is never retried** after its third attempt.
 
 ## Settlement
 

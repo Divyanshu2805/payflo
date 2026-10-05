@@ -24,4 +24,18 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
     int markPublished(@Param("ids") Collection<UUID> ids, @Param("now") LocalDateTime now);
 
     long countByStatus(OutboxStatus status);
+
+    // A FAILED row has used up its immediate attempts. Putting it back to PENDING after a pause means a
+    // Kafka outage longer than a few polls delays events instead of stranding them for good.
+    @Modifying
+    @Query("update OutboxEvent e set e.status = com.project.payflo.common_lib.enums.OutboxStatus.PENDING, "
+            + "e.attempts = 0, e.updatedAt = :now "
+            + "where e.status = com.project.payflo.common_lib.enums.OutboxStatus.FAILED and e.updatedAt < :before")
+    int requeueFailed(@Param("before") LocalDateTime before, @Param("now") LocalDateTime now);
+
+    // Bounded, and reads through idx_outbox_event_status_created_at, so a purge never scans the table.
+    @Modifying
+    @Query(value = "delete from outbox_event where id in (select id from outbox_event "
+            + "where status = 'PUBLISHED' and created_at < :before limit :batchSize)", nativeQuery = true)
+    int purgePublished(@Param("before") LocalDateTime before, @Param("batchSize") int batchSize);
 }
