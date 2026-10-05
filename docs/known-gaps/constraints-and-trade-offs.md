@@ -4,7 +4,7 @@ Structural limits of the current design. None of them is a problem at today's sc
 
 ## Trust between services is by reachability
 
-The gateway authenticates; the services believe the `X-Merchant-Id` it forwards, and `/internal/**` endpoints trust any caller. That is sound only while nothing but the gateway can reach a business service. On Kubernetes that holds because every other Service is `ClusterIP`, but no credential, mTLS or `NetworkPolicy` enforces it between pods. Going live means adding one of those. See [decision 0003](../architecture/decisions/0003-authenticate-once-at-the-gateway.md).
+The gateway authenticates; the services believe the `X-Merchant-Id` it forwards. That is sound only while nothing but the gateway can reach a business service. On Kubernetes that holds because every other Service is `ClusterIP`; the `/internal/**` endpoints add one shared token on top, which stops a caller that merely has network access but not a pod that holds the secret, and it is the same secret everywhere. Nothing identifies *which* service is calling, and no mTLS or `NetworkPolicy` enforces who may talk to whom. Going live means adding those. See [decision 0003](../architecture/decisions/0003-authenticate-once-at-the-gateway.md).
 
 ## Consistency across services is best-effort
 

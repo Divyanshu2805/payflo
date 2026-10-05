@@ -39,12 +39,13 @@ Business services believe `X-Merchant-Id` because only the gateway can reach the
 
 ## Internal API
 
-`/internal/**` endpoints accept arbitrary merchant and payment ids and apply no scoping of their own; they trust that the calling service already resolved the merchant. They are protected only by reachability:
+`/internal/**` endpoints accept arbitrary merchant and payment ids and apply no scoping of their own; they trust that the calling service already resolved the merchant. They are protected by three things:
 
 1. The gateway has no route for `/internal/**`.
 2. On Kubernetes, business services are `ClusterIP` — unreachable from outside the cluster.
+3. **A shared service token.** Every service rejects an `/internal/**` request without the right `X-Internal-Token` (`INTERNAL_API_TOKEN`, compared in constant time by `InternalApiAuthFilter`), and every Feign client sends it. A pod that can reach a service on the network still can't call an internal endpoint without it.
 
-There is no service-to-service credential, mTLS or `NetworkPolicy` yet, so any pod in the namespace can call any internal endpoint.
+The token is one secret for the whole platform, not an identity per service: whoever holds it can call any internal endpoint, including the one that returns decrypted webhook signing secrets, and rotating it means restarting every service. There is still no mTLS or `NetworkPolicy`. A blank token stops the service starting.
 
 ## The card vault
 
@@ -64,7 +65,13 @@ Card data is confined to vault-service and its database — see [decision 0004](
 | Webhook signing secrets | AES-encrypted with `webhook.secret-encryption-key` (`WEBHOOK_SECRET_KEY`); decrypted only to sign a delivery. operations-service keeps the decrypted targets in memory for up to 30 s (`WebhookTargetCache`), never in Redis or its database |
 | Card numbers | Envelope-encrypted, above |
 
-The JWT key, vault master key and webhook encryption key have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`. A real deployment needs a secret store; see [known gaps](../known-gaps/not-yet-built.md#security).
+The JWT key, vault master key, webhook encryption key and internal token have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`. A real deployment needs a secret store; see [known gaps](../known-gaps/not-yet-built.md#security).
+
+A service checks the secrets it holds at start-up (`SecretConfigurationChecker`). With `ENFORCE_STRONG_SECRETS=true` (`app.security.enforce-strong-secrets`) it **refuses to start** on a committed default, a JWT key or token that is too short, or a key that isn't 32 base64 bytes; with it off (the default) it logs a warning naming the secret. Set it in any shared environment, and give the vault master key and the webhook encryption key different values — both default to the same one. There is no key versioning: changing a key makes everything encrypted under the old one unreadable until it is re-encrypted.
+
+## Transport and Redis
+
+Traffic is plain HTTP between the services and, by default, to the gateway. The gateway can serve TLS itself (`GATEWAY_TLS_ENABLED`, `GATEWAY_TLS_KEYSTORE`, `GATEWAY_TLS_KEYSTORE_PASSWORD`), but more often TLS is terminated by a load balancer or Ingress in front of it. **Inside the platform nothing is encrypted:** a card number travels from the merchant to the gateway and on to vault-service in clear unless the front is TLS *and* the hop between pods is protected by a service mesh or mTLS, which isn't set up. Redis, which holds the API-key cache and idempotency responses, accepts a password (`REDIS_PASSWORD`; empty means none, the development default) but not TLS.
 
 ## Webhook targets
 

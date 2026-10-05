@@ -3,7 +3,7 @@
 The service-to-service API. It is not part of the merchant contract and is **never routed by the gateway**.
 
 - **Callers:** Feign clients, resolving each target by service name through Eureka (or a `*_SERVICE_URI` on Kubernetes), wrapped in a Resilience4j circuit breaker and retry.
-- **Authentication:** none — these endpoints rely on being unreachable from outside. See the [security model](../architecture/security-model.md#internal-api).
+- **Authentication:** a shared service token in the `X-Internal-Token` header (`INTERNAL_API_TOKEN`), checked by every service for any path under `/internal/` and sent by every Feign client; without it the answer is `401 UNAUTHORIZED`. This is a shared secret, not a per-service identity — any service holding the token can call any internal endpoint. Being unreachable from outside is still the first line of defence. See the [security model](../architecture/security-model.md#internal-api).
 - **Authorization:** none. They accept arbitrary merchant and payment ids; the caller has already resolved the merchant.
 - **Wire types** live in `common-lib`'s `dto` package.
 

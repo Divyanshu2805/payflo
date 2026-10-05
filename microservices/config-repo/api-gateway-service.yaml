@@ -1,5 +1,14 @@
 server:
   port: 8080
+  # TLS for the public listener, off by default. To turn it on, point it at a PKCS12 keystore and set
+  # GATEWAY_TLS_ENABLED=true. In production TLS is more often terminated by a load balancer or Ingress in
+  # front of the gateway, in which case leave this off. The hop from the gateway to the services is plain
+  # HTTP either way (see docs/architecture/security-model.md).
+  ssl:
+    enabled: ${GATEWAY_TLS_ENABLED:false}
+    key-store: ${GATEWAY_TLS_KEYSTORE:}
+    key-store-password: ${GATEWAY_TLS_KEYSTORE_PASSWORD:}
+    key-store-type: ${GATEWAY_TLS_KEYSTORE_TYPE:PKCS12}
 
 # Actuator (health, prometheus) on its own port, outside GatewayAuthFilter and the public
 # listener: Prometheus can scrape it, but it isn't reachable through the gateway's public port.

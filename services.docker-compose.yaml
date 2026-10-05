@@ -34,10 +34,14 @@ services:
       - "6380:6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    # Set REDIS_PASSWORD (in your shell or a .env file) to require a password; the services read the same
+    # variable. Unset, there is none. ($$ is compose's escape: the shell inside the container expands it.)
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command: [ "sh", "-c", "exec redis-server --appendonly yes $${REDIS_PASSWORD:+--requirepass \"$$REDIS_PASSWORD\"}" ]
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD-SHELL", "redis-cli --no-auth-warning $${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep -q PONG" ]
       interval: 10s
       timeout: 5s
       retries: 5

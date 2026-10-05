@@ -21,6 +21,22 @@ spring:
     virtual:
       enabled: true
 
+internal:
+  # Shared by every service: required on /internal/** requests, sent by every Feign client. Development
+  # default; set INTERNAL_API_TOKEN to a long random value in any shared environment.
+  api-token: ${INTERNAL_API_TOKEN:dev-internal-api-token-change-me}
+
+app:
+  security:
+    # true makes a service refuse to start while it is using a committed development secret (JWT key,
+    # vault master key, webhook encryption key, internal token). Set ENFORCE_STRONG_SECRETS=true in any
+    # shared environment; false (the default) only logs a warning.
+    enforce-strong-secrets: ${ENFORCE_STRONG_SECRETS:false}
+  outbox:
+    # Published events are deleted after this long; failed ones go back in the queue after a pause.
+    retention-days: ${OUTBOX_RETENTION_DAYS:7}
+    requeue-failed-after-minutes: 5
+
 webhook:
   # Development default: lets a merchant's webhook point at localhost / a private address and use plain
   # http (the documented local test uses http://localhost:8080/webhook/success). Link-local and metadata
