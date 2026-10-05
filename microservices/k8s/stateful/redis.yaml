@@ -17,6 +17,15 @@ spec:
       containers:
         - name: redis
           image: redis:7-alpine
+          # Requires a password when REDIS_PASSWORD is set (see secrets.env.example).
+          command: ["sh", "-c", "exec redis-server ${REDIS_PASSWORD:+--requirepass \"$REDIS_PASSWORD\"}"]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: REDIS_PASSWORD
+                  optional: true
           ports:
             - containerPort: 6379
           resources:

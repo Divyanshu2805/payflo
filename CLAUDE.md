@@ -70,7 +70,7 @@ On Windows, use `mvnw.cmd`. Start order: discovery → config → the four busin
 
 ## Rules that are easy to break
 
-- **Authentication belongs to the gateway.** No `SecurityFilterChain` in a business service; controllers read the merchant only from `MerchantContext`.
+- **Authentication belongs to the gateway.** No `SecurityFilterChain` in a business service; controllers read the merchant only from `MerchantContext`. `/internal/**` additionally needs the shared `X-Internal-Token` — a new Feign client needs the `InternalAuthFeignConfig` interceptor.
 - **No remote call inside `@Transactional`.** See `OrderPersistenceService` and `saga/PaymentAuthorizationRecorder`.
 - **Events only through the outbox**; every `@Scheduled` job has a ShedLock `@SchedulerLock`.
 - **Payment status changes only through `PaymentTransitionService`.**

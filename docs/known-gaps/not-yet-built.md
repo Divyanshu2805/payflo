@@ -4,10 +4,12 @@ Known missing features and open issues, grouped by area. Items marked *(from rea
 
 ## Security
 
-- **No service-to-service authentication.** `/internal/**` has none, and every business service trusts `X-Merchant-Id` from any caller (`app.security.trust-inbound-headers` defaults to `true`). There is no mTLS, service token or `NetworkPolicy` — see [constraints](constraints-and-trade-offs.md#trust-between-services-is-by-reachability).
-- **The gateway doesn't strip client identity headers.** It overwrites the headers it sets but passes the rest through: on a JWT request a client-sent `X-Key-Id` reaches the service (and ends up in `created_by`), and on a public route every identity header does. *(from reading the code)*
+- **Service-to-service authentication is one shared token.** `/internal/**` requires `X-Internal-Token`, but it is the same secret for every service (anyone holding it can call any internal endpoint, including the one returning decrypted webhook signing secrets), and every business service still trusts `X-Merchant-Id` from any caller that has network access (`app.security.trust-inbound-headers` defaults to `true`). There is no mTLS or `NetworkPolicy` — see [constraints](constraints-and-trade-offs.md#trust-between-services-is-by-reachability).
+- **Nothing is encrypted between pods, and Redis has no TLS.** The gateway can serve TLS and Redis accepts a password, but a card number still crosses the gateway-to-vault hop in clear. Needs a service mesh or mTLS.
+- **A merchant's test/live key environment is ignored.** `X-Environment` is forwarded but nothing reads it: a `TEST` key and a `LIVE` key see the same orders and payments. Separating them means tagging data with the environment — a product decision.
+- **A suspension takes up to a minute to apply**, and is let through if merchant-service can't be asked. There is also no API to suspend a merchant — the status is changed in the database.
 - **No roles or permissions within a merchant.** Any authenticated user or API key can do anything that merchant can; `AppUser.role` travels in the JWT as `X-User-Role` but nothing reads it.
-- **Development secrets are committed.** The JWT key, vault master key and webhook encryption key default to fixed values in `config-repo/`, and `k8s/secrets.env.example` holds the same. Losing or rotating the master key without re-encryption makes every vaulted card unreadable. A real deployment needs a secret store.
+- **Development secrets are committed.** The JWT key, vault master key, webhook encryption key and internal token default to fixed values in `config-repo/`, and `k8s/secrets.env.example` holds the same. `ENFORCE_STRONG_SECRETS=true` makes a service refuse to start on them, but it is off by default and nothing sets it for you. There is no key versioning, so losing or rotating the master key without re-encryption makes every vaulted card unreadable. A real deployment needs a secret store.
 - **The decrypted card number lives on the heap as a `String`.** vault-service zeroes the byte array after use, but the `String` copy can't be zeroed.
 - **`api_key.last_used_at` is never written.**
 

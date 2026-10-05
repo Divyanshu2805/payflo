@@ -35,6 +35,13 @@ Each value can be overridden with the environment variable named in its placehol
 | `JWT_SECRET` | a development-only value | merchant-service (signs) and the gateway (verifies) — must be identical |
 | `VAULT_MASTER_KEY` | a development-only value | vault-service only |
 | `WEBHOOK_SECRET_KEY` | a development-only value | merchant-service only — encrypts webhook signing secrets |
+| `INTERNAL_API_TOKEN` | a development-only value | every service — required on `/internal/**` (header `X-Internal-Token`), sent by every Feign client; must be identical everywhere and must not be empty |
+| `ENFORCE_STRONG_SECRETS` | `false` | every service — `true` makes a service refuse to start while it uses a committed development secret (JWT key, vault master key, webhook key, internal token) or one that is too short; `false` logs a warning |
+| `REDIS_PASSWORD` | empty (none) | Redis (set it where you run `docker compose`) and every service — Redis requires it when set |
+| `JWT_RATE_LIMIT_PER_MINUTE`, `PUBLIC_AUTH_RATE_LIMIT_PER_MINUTE`, `MAX_FAILED_AUTH_PER_MINUTE` | `600`, `120`, `30` | the gateway — per merchant for JWT traffic, per client address on signup/login, and failed authentications per client address ([rate limits](../api/idempotency-and-rate-limits.md#rate-limits)) |
+| `CLIENT_IP_HEADER` | empty | the gateway — the header (e.g. `X-Forwarded-For`) holding the real client address when behind a proxy; empty uses the socket's address |
+| `GATEWAY_TLS_ENABLED`, `GATEWAY_TLS_KEYSTORE`, `GATEWAY_TLS_KEYSTORE_PASSWORD`, `GATEWAY_TLS_KEYSTORE_TYPE` | `false`, empty, empty, `PKCS12` | the gateway — serve HTTPS from a keystore |
+| `OUTBOX_RETENTION_DAYS` | `7` | payment-service, operations-service — published outbox rows older than this are deleted |
 | `WEBHOOK_ALLOW_PRIVATE_TARGETS` | `true` | merchant-service (when a config is saved) and operations-service (at delivery) — `true` lets a webhook URL point at localhost or a private address and use plain `http`; `false` (set it in any shared environment) requires `https` and a public address. Link-local and cloud-metadata addresses are refused either way |
 | `ZIPKIN_URL` | `http://localhost:9411/api/v2/spans` | every service — where spans are sent ([tracing](../observability/tracing.md)) |
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` | every service — share of requests traced; lower it for load tests |

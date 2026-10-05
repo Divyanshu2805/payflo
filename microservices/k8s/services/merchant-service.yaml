@@ -26,6 +26,20 @@ spec:
             - configMapRef:
                 name: app-config
           env:
+            # Optional: unset means no Redis password / the development internal token. Set both in secrets.env
+            # for anything shared (see secrets.env.example).
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: REDIS_PASSWORD
+                  optional: true
+            - name: INTERNAL_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: INTERNAL_API_TOKEN
+                  optional: true
             - name: MERCHANT_DB_PASSWORD
               valueFrom:
                 secretKeyRef:

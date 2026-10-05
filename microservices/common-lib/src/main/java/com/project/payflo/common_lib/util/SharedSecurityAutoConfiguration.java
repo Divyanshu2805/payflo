@@ -1,12 +1,14 @@
 package com.project.payflo.common_lib.util;
 
 import com.project.payflo.common_lib.config.AesEncryptionConfig;
+import com.project.payflo.common_lib.config.SecretConfigurationChecker;
 import com.project.payflo.common_lib.context.MerchantContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ScopedProxyMode;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.encrypt.BytesEncryptor;
 import org.springframework.web.context.annotation.RequestScope;
 
@@ -16,6 +18,13 @@ public class SharedSecurityAutoConfiguration {
     @Bean
     public SignerUtil signerUtil() {
         return new SignerUtil();
+    }
+
+    // Refuses (or, in development, warns about) the secrets committed to this repository.
+    @Bean(initMethod = "check")
+    public SecretConfigurationChecker secretConfigurationChecker(Environment environment) {
+        return new SecretConfigurationChecker(environment::getProperty,
+                environment.getProperty("app.security.enforce-strong-secrets", Boolean.class, false));
     }
 
     // Secure unless a development setting opts in (see config-repo/application.yaml).
