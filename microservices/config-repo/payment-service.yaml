@@ -62,6 +62,15 @@ app:
 payment:
   order:
     default-order-expiry-minutes: 30
+  timeout:
+    # PaymentTimeoutSweeper: a payment the bank hasn't answered for this long is failed (the simulator
+    # answers in seconds; chaos-mode TIMEOUT never does) ...
+    authorizing-minutes: 15
+    # ... one that stays authorized without being captured lapses ...
+    authorized-minutes: 60
+    # ... and an unpaid order past its expires_at is expired, looking back only this far.
+    order-expiry-lookback-days: 7
+    sweep-interval-ms: 60000
   simulator:
     poll-interval-ms: 5000
     # Callbacks resolved at once; each holds a database connection, so keep it well under the pool size.

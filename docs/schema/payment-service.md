@@ -16,7 +16,7 @@ What is being paid for. A payment is always attempted against an order. (Named `
 | `customer_id` | Plain id → merchant-service `customer`, when the order carried a `customer` block. |
 | `amount_units`, `currency` | The order amount (`Money`). |
 | `receipt` | The merchant's own reference, up to 100 characters. Unique per merchant (`(merchant_id, receipt)` index). |
-| `order_status` | `OrderStatus` — `CREATED`, then `ATTEMPTED` on the first payment attempt, then `PAID` on capture. |
+| `order_status` | `OrderStatus` — `CREATED`, then `ATTEMPTED` on the first payment attempt, then `PAID` on capture. `EXPIRED` once `expires_at` passes unpaid (set by the timeout sweeper; indexed with it as `idx_order_status_expires_at`). |
 | `attempts` | How many payment attempts have been made against it. |
 | `notes` | Free-form merchant metadata, `jsonb`. |
 | `expires_at` | 30 minutes after creation unless the request sets it. Nothing expires orders yet. |

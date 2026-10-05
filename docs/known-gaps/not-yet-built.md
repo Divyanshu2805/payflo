@@ -23,7 +23,7 @@ Known missing features and open issues, grouped by area. Items marked *(from rea
 ## Payments
 
 - **Refunds aren't built.** The `refund` table, `RefundStatus`, the refund topic and the `REFUND_*` transitions exist; no service, endpoint or event does.
-- **Orders never expire and can't be cancelled.** `expires_at` is stored but nothing acts on it, and `CANCEL` / `CAPTURE_TIMEOUT` are never fired.
+- **Orders can't be cancelled by the merchant.** Unpaid orders expire on their own, but `OrderService.cancel` has no endpoint, so `CANCEL` is never fired.
 - **`WALLET` has no adapter or processor.**
 - **Capture always succeeds** — every adapter's `capture()` returns success unconditionally.
 - **The transition log's `actor` is always `SYSTEM`**, and there is no `reason` column (the monolith had one).

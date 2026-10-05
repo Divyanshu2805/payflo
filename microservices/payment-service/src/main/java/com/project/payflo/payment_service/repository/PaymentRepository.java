@@ -22,6 +22,9 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     List<Payment> findTop500ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(PaymentStatus paymentStatus, LocalDateTime globalWindow);
 
+    // For the timeout sweeper: the oldest payments still in a state they should have left by now.
+    List<Payment> findTop200ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(PaymentStatus paymentStatus, LocalDateTime before);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.id = :paymentId and p.merchantId = :merchantId")
     Optional<Payment> findByIdAndMerchantIdForUpdate(UUID paymentId, UUID merchantId);

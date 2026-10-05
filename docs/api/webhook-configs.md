@@ -22,8 +22,9 @@ operations-service POSTs the event's payload as JSON to `targetUrl`, with an HMA
 | Event | Sent when |
 |---|---|
 | `ORDER_CREATED` | An order is created |
+| `ORDER_EXPIRED` | An unpaid order passes its `expiresAt` |
 | `PAYMENT_CREATED` | A payment attempt is recorded, whatever its first outcome |
-| `PAYMENT_STATUS_CHANGED` | The simulated bank authorizes or declines a payment, or a capture completes |
+| `PAYMENT_STATUS_CHANGED` | The simulated bank authorizes or declines a payment, a capture completes, or a payment times out |
 | `PAYMENT_AUTHORIZATION_COMPENSATED` | A payment failed because the acquirer couldn't be reached |
 | `SETTLEMENT_PROCESSED`, `SETTLEMENT_FAILED` | A nightly payout completes or fails |
 

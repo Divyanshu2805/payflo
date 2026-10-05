@@ -13,9 +13,16 @@ Plain JUnit unit tests (no Spring context, no infrastructure — run them with `
 |---|---|
 | `common-lib` `IdempotencyFilterTest` | Replay, key scoped by merchant + method + path, nothing cached without a merchant, a failed request releases its key |
 | `common-lib` `WebhookUrlValidatorTest` | Which webhook URLs are refused (private, loopback, link-local, metadata, http, credentials) in strict and development mode |
+| `common-lib` `InternalApiAuthFilterTest`, `SecretConfigurationCheckerTest` | The `/internal/**` token (missing, wrong, blank) and the start-up refusal of default or weak secrets |
+| `api-gateway-service` `GatewayAuthFilterTest`, `HeaderAugmentingRequestWrapperTest`, `AuthFailureTrackerTest` | Identity headers stripped on every route, suspended merchants refused, failed-auth blocking and counting, signup/login limits, fail-open when Redis is down |
+| `merchant-service` `AuthServiceImplTest`, `LoginAttemptTrackerTest`, `ApiKeyServiceImplTest` | Login lockout, uniform timing for unknown emails, suspended merchants; key rotation grace periods and cache eviction after commit |
 | `payment-service` `OrderAmountTest` | Order amount and currency validation |
-| `payment-service` `PaymentAuthorizationRecorderTest` | One live payment per order; a failed attempt doesn't block a retry |
+| `payment-service` `PaymentAuthorizationRecorderTest` | One live payment per order; a failed attempt doesn't block a retry; an expired order isn't payable |
+| `payment-service` `PaymentServiceImplTest` | `methodDetails` validation, an ambiguous timeout left `AUTHORIZING`, no exception text returned to the merchant |
+| `payment-service` `PaymentTimeoutServiceTest`, `OutboxMaintenanceTest`, `PaymentTest` | Timeouts and order expiry re-checked under a lock; outbox requeue and purge; error fields cut to column width |
+| `vault-service` `VaultServiceImplTest` | A card token is only chargeable by the merchant that created it |
 | `operations-service` `SettlementTransactionExecutorTest` | Fee/GST arithmetic, int-overflow splitting, per-currency settlements, in-flight payments excluded, merchants without a bank account skipped |
+| `operations-service` `WebhookDeliveryRecorderTest`, `WebhookKafkaConsumerTest`, `WebhookDeliverySchedulerTest` | Delivery claim and lease, retry/backoff/dead-lettering; transient vs. permanent consumer failures (nack vs. DLQ); reconciling `FAILED` as well as `PENDING` |
 
 There are still **no integration tests** and no tests of the rest of the business logic (the state machine, the saga's compensation, the mock processors) — the largest gap in the codebase, tracked in [known gaps](../known-gaps/not-yet-built.md#platform).
 

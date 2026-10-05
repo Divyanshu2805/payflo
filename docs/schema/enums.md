@@ -15,7 +15,7 @@ Every enum lives in `common-lib`'s `enums` package, so all services speak the sa
 
 | Enum | Values | Used by |
 |---|---|---|
-| `OrderStatus` | `CREATED`, `ATTEMPTED`, `PAID`, `CANCELLED` | `order_record.order_status` |
+| `OrderStatus` | `CREATED`, `ATTEMPTED`, `PAID`, `CANCELLED`, `EXPIRED` | `order_record.order_status` |
 | `PaymentStatus` | `CREATED`, `AUTHORIZING`, `AUTHORIZED`, `CAPTURING`, `CAPTURED`, `FAILED`, `CANCELLED`, `REFUNDED`, `PARTIALLY_REFUNDED`, `SETTLED`, `AUTH_EXPIRED` | `payment.status`, `payment_transition_log.from_status` / `to_status` |
 | `PaymentEvent` | `AUTHORIZE_ATTEMPT`, `AUTHORIZE_SUCCESS`, `AUTHORIZE_FAIL`, `CAPTURE_REQUEST`, `CAPTURE_SUCCESS`, `CAPTURE_FAIL`, `REFUND_INIT`, `REFUND_COMPLETE`, `SETTLE`, `CANCEL`, `CAPTURE_TIMEOUT` | `payment_transition_log.event` |
 | `PaymentActor` | `CUSTOMER`, `MERCHANT`, `SYSTEM` | `payment_transition_log.actor` — always `SYSTEM` today |
