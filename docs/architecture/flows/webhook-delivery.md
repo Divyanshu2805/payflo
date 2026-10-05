@@ -13,18 +13,22 @@ All paths below are under `operations-service/src/main/java/com/project/payflo/o
 3. For each target it signs the payload with HMAC-SHA256 (`common-lib`'s `SignerUtil`, that target's secret) and saves a `WebhookEvent` in `PENDING` with the target URL copied in, so a later config change never rewrites history.
 4. It adds each event to the Redis sorted set `webhook-retry` (`webhook/WebhookRetryQueue`), scored by when it is due, then acknowledges the Kafka record.
 
-If processing a record fails with a database error, it is left unacknowledged so Kafka redelivers it. Any other failure — a malformed payload, merchant-service unreachable — writes the record straight to the DLQ with `WebhookDlqRecorder`, with no event link, and acknowledges it.
+All of a record's targets are saved in **one transaction** (`saveAll`), so a redelivery can't create a second copy for a target that already had one. A failure to queue an event in Redis doesn't fail the record: the event is saved, and the reconciler below queues it once it is overdue.
+
+What happens when processing fails depends on what failed (`WebhookKafkaConsumer.isTransient`):
+
+- **A dependency is down** — the database, Redis, or merchant-service (a connection error, a timeout, a `5xx`, an open circuit breaker). The record is **not acknowledged**: `nack` seeks back to it and Kafka redelivers it after 5 seconds, repeatedly, until the dependency is back. Acknowledging a later record would commit past it and lose it, which is what used to happen.
+- **The record itself is bad** — a malformed payload or an unparseable id. It is written to the DLQ with `WebhookDlqRecorder`, with no event link, and acknowledged.
 
 ## Delivering
 
-`webhook/WebhookDeliveryScheduler` drains the queue every second (ShedLock-guarded), taking up to 100 due entries and handing each to its own **virtual thread**. `webhook/WebhookDeliverExecutor` then:
+`webhook/WebhookDeliveryScheduler` drains the queue every second (ShedLock-guarded), taking up to 100 due entries and handing each to its own **virtual thread**. `webhook/WebhookDeliverExecutor` then delivers it in three steps, **with no database transaction open during the HTTP call** — a slow merchant endpoint holds a thread, not a connection, so it can't starve everyone else:
 
-- POSTs the payload to the target URL with the signature in `X-PayFlo-Signature`, a 3-second connect and 5-second read timeout;
-- on a `2xx`, marks the event `DELIVERED` with `delivered_at`;
-- on anything else, records the attempt (`attempts`, `last_attempt_at`, `last_response_code`, `last_response_body`), marks it `FAILED`, and schedules the next attempt after **1 min, 5 min, 30 min, 2 h, 8 h, then 24 h**;
-- on the **seventh** failed attempt, hands it to `WebhookDlqRecorder`, which marks it `DEAD` and writes a `DlqEvent` with the final error and the payload, in its own transaction.
+1. **Claim** (`webhook/WebhookDeliveryRecorder.claim`, a short transaction): lock the row, skip it if it is `DELIVERED`, `DEAD`, or not yet due, count the attempt, and set `next_retry_at` two minutes ahead as a **lease**. A duplicate queue entry, or the reconciler, finds it not due and backs off, so one event is never delivered twice at once.
+2. **POST** the payload to the target URL with the signature in `X-PayFlo-Signature`, a 3-second connect and 5-second read timeout. The URL is validated again first ([webhook targets](../security-model.md#webhook-targets)).
+3. **Record** the outcome (a second short transaction): on a `2xx`, `DELIVERED` with `delivered_at`; on anything else, `last_response_code` / `last_response_body` are saved, the status becomes `FAILED`, and the next attempt is scheduled after **1 min, 5 min, 30 min, 2 h, 8 h, then 24 h**; on the **seventh** failed attempt the event becomes `DEAD` and a `DlqEvent` with the final error and the payload is written in the same transaction.
 
-A second scheduler pass every 10 seconds re-queues any `FAILED` row whose `next_retry_at` has passed with no queue entry — covering a lost enqueue or a Redis restart.
+The Redis queue is only a fast path; the database is the truth. A second scheduler pass every 10 seconds (`reconcileFromDatabase`) re-queues any **`PENDING` or `FAILED`** row whose `next_retry_at` is more than 30 seconds in the past with no queue entry — a lost enqueue, a Redis restart, or a crash mid-delivery once its lease has run out. (It used to cover only `PENDING`, so a `FAILED` event that lost its queue entry was never retried or dead-lettered.) Delivery is at-least-once: a crash after the merchant answered but before the result was saved means one more delivery, so receivers should de-duplicate.
 
 ## Trying it locally
 

@@ -12,7 +12,8 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "webhook_event")
+// The reconciler reads PENDING/FAILED events whose retry time has passed.
+@Table(name = "webhook_event", indexes = @Index(name = "idx_webhook_event_status_next_retry", columnList = "status, next_retry_at"))
 @Builder
 @Getter
 @Setter

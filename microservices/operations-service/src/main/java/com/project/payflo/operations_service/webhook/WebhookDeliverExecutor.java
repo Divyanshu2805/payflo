@@ -1,129 +1,97 @@
 package com.project.payflo.operations_service.webhook;
 
-import com.project.payflo.common_lib.enums.WebhookEventStatus;
 import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
 import com.project.payflo.common_lib.util.WebhookUrlValidator;
-import com.project.payflo.operations_service.entity.WebhookEvent;
-import com.project.payflo.operations_service.repository.WebhookEventRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Delivers one webhook event. Deliberately not transactional: the HTTP call to the merchant can take
+ * seconds, and holding a database connection for it would let one slow endpoint starve every other
+ * delivery. The database work happens in {@link WebhookDeliveryRecorder}'s two short transactions.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class WebhookDeliverExecutor {
 
-    private final WebhookEventRepository webhookEventRepository;
+    private final WebhookDeliveryRecorder recorder;
     private final WebhookRetryQueue webhookRetryQueue;
     private final RestClient restClient;
-    private final WebhookDlqRecorder webhookDlqRecorder;
     private final MeterRegistry meterRegistry;
     private final WebhookUrlValidator webhookUrlValidator;
-
-    private static final List<Duration> BACKOFF = List.of(
-            Duration.ofMinutes(1), Duration.ofMinutes(5), Duration.ofMinutes(30),
-            Duration.ofHours(2), Duration.ofHours(8), Duration.ofHours(24));
-
-    private final int MAX_ATTEMPTS = 7;
 
     @Value("${webhook.delivery.signature-header:X-PayFlo-Signature}")
     private String signatureHeader;
 
-    @Transactional
     public void deliver(UUID webhookEventId) {
-        Optional<WebhookEvent> webhookEvent = webhookEventRepository.findById(webhookEventId);
-
-        if(webhookEvent.isEmpty()) {
-            log.warn("No webhook event found for this id: {}", webhookEventId);
+        var claimed = recorder.claim(webhookEventId);
+        if (claimed.isEmpty()) {
             return;
         }
-
-        WebhookEvent event = webhookEvent.get();
-
-        if(event.getStatus() == WebhookEventStatus.DELIVERED || event.getStatus() == WebhookEventStatus.DEAD) {
-            log.warn("Cannot deliver the event {} in status: {}", webhookEventId, event.getStatus());
-            return;
-        }
-
-        event.setAttempts(event.getAttempts()+1);
-        event.setLastAttemptAt(LocalDateTime.now());
+        WebhookDeliveryRecorder.Attempt attempt = claimed.get();
 
         // Checked again at delivery: the config was validated when saved, but a hostname can resolve
         // somewhere else by now, and configs saved before this check existed were never validated.
         try {
-            webhookUrlValidator.validate(event.getTargetUrl());
+            webhookUrlValidator.validate(attempt.targetUrl());
         } catch (BusinessRuleViolationException blocked) {
             log.warn("Webhook target blocked for event {}: {}", webhookEventId, blocked.getMessage());
-            handleAttemptFailed(event, WebhookUrlValidator.ERROR_CODE + ": " + blocked.getMessage());
+            failed(webhookEventId, null, WebhookUrlValidator.ERROR_CODE + ": " + blocked.getMessage());
             return;
         }
 
         try {
             var response = restClient.post()
-                    .uri(event.getTargetUrl())
-                    .header(signatureHeader, event.getSignature())
+                    .uri(attempt.targetUrl())
+                    .header(signatureHeader, attempt.signature())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of(
-                            "event", event.getEventType(), "payload", event.getPayload()
-                    )).retrieve()
+                    .body(Map.of("event", attempt.eventType(), "payload", attempt.payload()))
+                    .retrieve()
                     .toBodilessEntity();
 
             int statusCode = response.getStatusCode().value();
-            event.setLastResponseCode(statusCode);
-
             if (response.getStatusCode().is2xxSuccessful()) {
-                event.setStatus(WebhookEventStatus.DELIVERED);
-                event.setDeliveredAt(LocalDateTime.now());
-                webhookEventRepository.save(event);
+                recorder.recordSuccess(webhookEventId, statusCode);
                 countDelivery("delivered");
                 log.info("Successfully called the merchant for webhook event: {}", webhookEventId);
-                return;
+            } else {
+                failed(webhookEventId, statusCode, "HTTP" + statusCode);
             }
-
-            handleAttemptFailed(event, "HTTP"+statusCode);
-
-        } catch (RestClientException e) {
-            event.setLastResponseBody(e.getMessage());
-            handleAttemptFailed(event, e.getMessage());
-            log.error("Got RestClientException", e);
+        } catch (RestClientResponseException e) { // a 4xx or 5xx answer
+            failed(webhookEventId, e.getStatusCode().value(), "HTTP" + e.getStatusCode().value());
+        } catch (RestClientException e) { // could not connect, timed out, ...
+            log.warn("Webhook delivery failed for event {}: {}", webhookEventId, e.getMessage());
+            failed(webhookEventId, null, e.getMessage());
         }
     }
 
-    private void handleAttemptFailed(WebhookEvent event, String error) {
-        event.setLastResponseBody(error);
-
-        if (event.getAttempts() >= MAX_ATTEMPTS) {
-            event.setStatus(WebhookEventStatus.DEAD);
-            webhookDlqRecorder.recordAfterAttemptsExhausted(event, error);
+    private void failed(UUID webhookEventId, Integer statusCode, String error) {
+        WebhookDeliveryRecorder.FailureOutcome outcome = recorder.recordFailure(webhookEventId, statusCode, error);
+        if (outcome.dead()) {
             countDelivery("dead");
+            log.error("Webhook event {} is dead after exhausting its attempts: {}", webhookEventId, error);
             return;
         }
 
-        Duration backoff = BACKOFF.get(event.getAttempts()-1);
-        LocalDateTime nextRetryAt = LocalDateTime.now().plus(backoff);
-        event.setStatus(WebhookEventStatus.FAILED);
-        event.setNextRetryAt(nextRetryAt);
-        webhookEventRepository.save(event);
-
-        webhookRetryQueue.enqueue(event.getId(), nextRetryAt);
         countDelivery("retry");
-
-        log.error("Handling attempt failed for webhook event {} with attempts: {}, Next Retry at: {}",
-                event.getId(), event.getAttempts(), nextRetryAt);
+        log.warn("Webhook event {} failed ({}), next retry at {}", webhookEventId, error, outcome.retryAt());
+        try {
+            webhookRetryQueue.enqueue(webhookEventId, outcome.retryAt());
+        } catch (Exception e) {
+            // The retry time is already saved; the reconciler re-queues it once it is overdue.
+            log.warn("Could not queue webhook event {} for retry, the reconciler will", webhookEventId, e);
+        }
     }
 
     private void countDelivery(String outcome) {

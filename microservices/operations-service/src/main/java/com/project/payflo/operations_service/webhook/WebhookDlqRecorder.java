@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
@@ -23,7 +22,9 @@ public class WebhookDlqRecorder {
     private final WebhookEventRepository webhookEventRepository;
     private final DlqEventRepository dlqEventRepository;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    // Joins the caller's transaction. It used to open its own, which would now wait forever on the row
+    // lock the delivery recorder holds on this same webhook event.
+    @Transactional
     public void recordAfterAttemptsExhausted(WebhookEvent webhookEvent, String finalError) {
         log.debug("Recording the dlq event with webhookEventID: {}", webhookEvent.getId());
 

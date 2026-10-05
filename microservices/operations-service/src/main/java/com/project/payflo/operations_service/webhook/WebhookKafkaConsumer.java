@@ -5,6 +5,9 @@ import com.project.payflo.common_lib.enums.WebhookEventStatus;
 import com.project.payflo.common_lib.util.SignerUtil;
 import com.project.payflo.operations_service.entity.WebhookEvent;
 import com.project.payflo.operations_service.repository.WebhookEventRepository;
+import feign.FeignException;
+import feign.RetryableException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -15,15 +18,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.CannotCreateTransactionException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class WebhookKafkaConsumer {
+
+    // How long to wait before the same record is delivered again after a transient failure.
+    private static final Duration REDELIVERY_DELAY = Duration.ofSeconds(5);
 
     private final WebhookTargetCache webhookTargetCache;
     private final ObjectMapper objectMapper;
@@ -63,54 +72,65 @@ public class WebhookKafkaConsumer {
             Map<String, Object> signatureData = Map.of("event", eventType, "payload", data);
             String signatureJson = objectMapper.writeValueAsString(signatureData);
 
-            for (WebhookTarget target : targets) {
-                String signature = signerUtil.sign(signatureJson, target.webhookSecret());
+            List<WebhookEvent> events = targets.stream()
+                    .map(target -> WebhookEvent.builder()
+                            .merchantId(merchantId)
+                            .eventType(eventType)
+                            .payload(data)
+                            .targetUrl(target.targetUrl())
+                            .signature(signerUtil.sign(signatureJson, target.webhookSecret()))
+                            .status(WebhookEventStatus.PENDING)
+                            .nextRetryAt(LocalDateTime.now())
+                            .build())
+                    .toList();
 
-                WebhookEvent webhookEvent = WebhookEvent.builder()
-                        .merchantId(merchantId)
-                        .eventType(eventType)
-                        .payload(data)
-                        .targetUrl(target.targetUrl())
-                        .signature(signature)
-                        .status(WebhookEventStatus.PENDING)
-                        .nextRetryAt(LocalDateTime.now())
-                        .build();
+            // One transaction for every target of this record: it is either all saved or none, so a
+            // redelivery after a failure can't create a second copy for a target that already had one.
+            events = webhookEventRepository.saveAll(events);
 
-                webhookEvent = webhookEventRepository.save(webhookEvent);
-
-                retryQueue.enqueue(webhookEvent.getId(), webhookEvent.getNextRetryAt());
-                log.info("Created a webhook event with id: {}", webhookEvent.getId());
+            for (WebhookEvent webhookEvent : events) {
+                try {
+                    retryQueue.enqueue(webhookEvent.getId(), webhookEvent.getNextRetryAt());
+                    log.info("Created a webhook event with id: {}", webhookEvent.getId());
+                } catch (Exception queueDown) {
+                    // The event is saved; the reconciler queues it once it is overdue.
+                    log.warn("Could not queue webhook event {}, the reconciler will", webhookEvent.getId(), queueDown);
+                }
             }
             ack.acknowledge();
-        } catch (DataAccessException | CannotCreateTransactionException dbDown) {
-            log.error("Webhook consumer failed due to DB down, Could not process the record, offset: {}", record.offset(), dbDown);
-        } catch (Exception logicError) {
-            log.error("Webhook consumer failed due to logical error, Could not process the record, offset: {}", record.offset(), logicError);
-            dlqRecorder.recordConsumerFailed(record, logicError.getMessage());
+        } catch (Exception e) {
+            if (isTransient(e)) {
+                // A dependency is down, not the record. Don't acknowledge: nack seeks back so this
+                // record is delivered again after a pause. Acknowledging a later record would commit
+                // past it and lose it.
+                log.error("Webhook consumer hit a transient failure, will retry the record, topic: {}, offset: {}",
+                        record.topic(), record.offset(), e);
+                ack.nack(REDELIVERY_DELAY);
+                return;
+            }
+            log.error("Webhook consumer failed due to logical error, Could not process the record, offset: {}", record.offset(), e);
+            dlqRecorder.recordConsumerFailed(record, e.getMessage());
             ack.acknowledge();
         }
     }
+
+    // A failure of something the consumer depends on (database, merchant-service, Redis), as opposed to
+    // a record it can never process. Looks through the causes, since these are often wrapped.
+    static boolean isTransient(Throwable failure) {
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            if (t instanceof DataAccessException
+                    || t instanceof CannotCreateTransactionException
+                    || t instanceof RetryableException
+                    || t instanceof CallNotPermittedException
+                    || t instanceof IOException
+                    || t instanceof TimeoutException) {
+                return true;
+            }
+            if (t instanceof FeignException feign && (feign.status() >= 500 || feign.status() < 0)) {
+                return true;
+            }
+            if (t.getCause() == t) break;
+        }
+        return false;
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
