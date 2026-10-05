@@ -46,8 +46,9 @@ public class NetBankingAdapter implements PaymentAdapter {
 
             };
         } catch(Exception e) {
-            log.warn("NetBanking failed, paymentId: {}", request.paymentId());
-            return new PaymentResult.Failure("NBK_FAILED", e.getMessage());
+            // The cause is logged, not returned: this text reaches the merchant in errorDescription.
+            log.warn("NetBanking failed, paymentId: {}", request.paymentId(), e);
+            return new PaymentResult.Failure("NBK_FAILED", "The payment could not be started");
         }
     }
 

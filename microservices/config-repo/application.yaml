@@ -7,6 +7,15 @@ eureka:
     prefer-ip-address: true
 
 spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            # Feign's own defaults are 10s to connect and 60s to read: one hung service would hold a request
+            # thread for a minute per call. Slower calls are set per client (vault-service in payment-service.yaml).
+            connect-timeout: 2000
+            read-timeout: 5000
   jpa:
     # Open-Session-In-View holds a DB connection for the whole HTTP request once the first query
     # runs — including across remote Feign calls (payment -> vault, order -> merchant). Under load

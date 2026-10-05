@@ -45,6 +45,10 @@ Every Feign call is wrapped in a Resilience4j `@CircuitBreaker` and `@Retry`, wi
 
 Because the annotations sit on whole service methods — `OrderServiceImpl.create`, not just the Feign call inside it — the breaker and retry are told which exceptions mean *the dependency failed*: the breaker records only `feign.RetryableException`, 5xx responses (`FeignServerException`), I/O errors and timeouts, and the retry only re-attempts connection-level failures. A local problem, like payment-service's own database pool running out, no longer opens the breaker for a healthy merchant-service, and a `4xx` from the dependency (a correct answer) doesn't count. Under load testing, the 20-call window and record-everything default opened the breaker on momentary tail spikes.
 
+Every Feign client has explicit timeouts — 2 s to connect and 5 s to read by default, 8 s for payment-service's calls to vault-service (`spring.cloud.openfeign.client.config` in `config-repo`) — so one hung dependency holds a request thread for seconds, not Feign's default minute. Retries are limited to calls that are safe to repeat: the card charge has none, because a charge that timed out may have succeeded.
+
+Every call carries the shared `X-Internal-Token` (a `RequestInterceptor` in each calling service), which each service requires on `/internal/**`.
+
 When a breaker is open, the call is refused immediately and the client gets `503 DEPENDENCY_UNAVAILABLE` with `Retry-After: 10` — a temporary condition to retry, not a `500`.
 
 - **payment → vault** is the critical path of a card payment. If it fails, the [payment saga](flows/payment.md) compensates rather than leaving the payment in `AUTHORIZING`.

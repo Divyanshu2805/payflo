@@ -46,8 +46,9 @@ public class UpiPaymentAdapter implements PaymentAdapter {
 
             };
         } catch(Exception e) {
-            log.warn("UPI failed, paymentId: {}", request.paymentId());
-            return new PaymentResult.Failure("UPI_FAILED", e.getMessage());
+            // The cause is logged, not returned: this text reaches the merchant in errorDescription.
+            log.warn("UPI failed, paymentId: {}", request.paymentId(), e);
+            return new PaymentResult.Failure("UPI_FAILED", "The payment could not be started");
         }
     }
 

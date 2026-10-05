@@ -11,4 +11,7 @@ Rules no change may break. Each one protects a boundary described in the [securi
 7. **Public routes stay minimal.** `app.security.public-routes` is signup, login, the test webhook endpoint and health. Adding to it removes authentication from that path entirely.
 8. **Webhooks are always signed.** Every outbound delivery carries `X-PayFlo-Signature`, computed with that config's own secret.
 9. **Payment status changes go through the state machine**, so every move is validated and logged.
-10. **Development secret defaults stay development-only.** Never reuse them in a shared environment, and never commit a real value — use `secrets.env`, which is gitignored.
+10. **Development secret defaults stay development-only.** Never reuse them in a shared environment, and never commit a real value — use `secrets.env`, which is gitignored. In a shared environment set `ENFORCE_STRONG_SECRETS=true` so a service refuses to start on a default.
+11. **`/internal/**` requires the service token.** A new internal endpoint is covered automatically by `InternalApiAuthFilter`; a new Feign client needs the token interceptor (see `InternalAuthFeignConfig` in the calling service), or its calls get `401`.
+12. **Never trust an identity header the gateway didn't write.** `HeaderAugmentingRequestWrapper` drops `X-Merchant-Id`, `X-Key-Id`, `X-User-Role` and `X-Environment` from every inbound request; add any new identity header to its list.
+13. **No raw exception text in a response or stored error field.** Log the cause and give the merchant a fixed description (`errorDescription` reaches them and is shown in webhooks).
