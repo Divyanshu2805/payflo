@@ -35,6 +35,13 @@ A payment that fails at the acquirer is still a `201`, with `status: FAILED` and
 | `errorCode` | Meaning |
 |---|---|
 | `CARD_DECLINED`, `CARD_EXPIRED`, `UPI_REJECTED`, `BANK_REJECTED` | A [test failure value](mock-acquirer.md) |
-| `UPI_FAILED`, `NBK_FAILED` | The UPI or net-banking call threw — usually `vpa` or `bank` missing from `methodDetails` |
+| `UPI_FAILED`, `NBK_FAILED` | The UPI or net-banking call threw (the cause is logged, not returned) |
+| `CARD_TOKEN_INVALID` | The card token is unknown, revoked, or belongs to another merchant |
+| `PAYMENT_AUTHORIZATION_TIMEOUT` | The bank didn't answer within 15 minutes (`payment.timeout.authorizing-minutes`); set by the timeout sweeper. The order can be paid again |
+| `CAPTURE_TIMEOUT` | The payment was authorized but not captured within 60 minutes; status `AUTH_EXPIRED` |
 | `VAULT_CHARGE_FAILED` | vault-service couldn't decrypt or charge the card |
-| `PAYMENT_GATEWAY_ROUTER_UNREACHABLE` | The adapter threw — vault-service down, its circuit open, or an unknown or missing card token. The saga compensated and published `PAYMENT_AUTHORIZATION_COMPENSATED` |
+| `PAYMENT_GATEWAY_ROUTER_UNREACHABLE` | The processor could not be reached — vault-service down or its circuit open — and nothing was charged. The saga compensated and published `PAYMENT_AUTHORIZATION_COMPENSATED`. The description is fixed text, never the underlying exception |
+
+A call to the processor that **times out after it was sent** is different: the charge may have gone through, so the payment is not failed. It comes back `AUTHORIZING` like any other, and the bank's answer — or, failing that, the timeout sweeper — settles it. A card charge is never retried automatically for the same reason.
+
+An order whose `expiresAt` has passed can't be paid (`400 ORDER_EXPIRED`); unpaid orders past it become `EXPIRED` within a minute (only looking back 7 days), publishing `ORDER_EXPIRED`.

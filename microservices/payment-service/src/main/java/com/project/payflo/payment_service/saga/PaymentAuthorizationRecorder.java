@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,7 +34,7 @@ public class PaymentAuthorizationRecorder {
 
     // A payment in any of these states still counts as the order's payment. FAILED, CANCELLED and
     // AUTH_EXPIRED never took money, so the order can be paid again.
-    private static final List<PaymentStatus> LIVE_PAYMENT_STATUSES = List.of(
+    public static final List<PaymentStatus> LIVE_PAYMENT_STATUSES = List.of(
             PaymentStatus.CREATED, PaymentStatus.AUTHORIZING, PaymentStatus.AUTHORIZED,
             PaymentStatus.CAPTURING, PaymentStatus.CAPTURED, PaymentStatus.SETTLED,
             PaymentStatus.PARTIALLY_REFUNDED);
@@ -52,6 +53,11 @@ public class PaymentAuthorizationRecorder {
         if(order.getOrderStatus() != OrderStatus.CREATED && order.getOrderStatus() != OrderStatus.ATTEMPTED) {
             throw new BusinessRuleViolationException("ORDER_NOT_PAYABLE",
                     "Order cannot accept payment in status: "+order.getOrderStatus());
+        }
+
+        if (order.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessRuleViolationException("ORDER_EXPIRED",
+                    "Order has expired and can no longer be paid: "+order.getId());
         }
 
         // The order row is locked, so concurrent attempts queue here and each sees the previous one.

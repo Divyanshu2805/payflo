@@ -100,6 +100,16 @@ class PaymentAuthorizationRecorderTest {
     }
 
     @Test
+    void anExpiredOrderCannotBePaid() {
+        order.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+
+        assertThatThrownBy(() -> recorder.recordPayment(merchantId, request, null))
+                .isInstanceOfSatisfying(BusinessRuleViolationException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo("ORDER_EXPIRED"));
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
     void anOrderThatIsAlreadyPaidIsStillNotPayable() {
         order.setOrderStatus(OrderStatus.PAID);
 

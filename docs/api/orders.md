@@ -11,7 +11,7 @@ What a customer is paying for. **Service:** payment-service · **Controller:** `
 | `amount` | required | `Money` — `{ amountUnits, currency }`. `amountUnits` must be between 1 and 500,000,000 (INR 5,000,000) and `currency` must be `INR`; anything else is `400 VALIDATION_FAILED` |
 | `receipt` | at most 100 characters | The merchant's own order reference; unique per merchant |
 | `notes` | — | Any JSON object, stored as-is |
-| `expiresAt` | — | Defaults to 30 minutes from now (`payment.order.default-order-expiry-minutes`). Nothing expires orders yet |
+| `expiresAt` | — | Defaults to 30 minutes from now (`payment.order.default-order-expiry-minutes`). Once it passes the order can't be paid (`400 ORDER_EXPIRED`) and, unpaid, becomes `EXPIRED` within a minute |
 | `customer` | `name` ≤ 200, `email` a valid email ≤ 200, `phone` ≤ 20 | When `email` is present, the customer is found or created in merchant-service by merchant + email, and its id is returned as `customerId` |
 
 The customer is resolved **before** the order's transaction opens, so a slow merchant-service never holds a database connection — see the [payment flow](../architecture/flows/payment.md#creating-an-order).

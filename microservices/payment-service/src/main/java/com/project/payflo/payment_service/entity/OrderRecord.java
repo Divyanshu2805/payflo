@@ -17,7 +17,9 @@ import java.util.UUID;
 @Table(name = "order_record", indexes = {
         @Index(name = "idx_order_id_merchant_id", columnList = "id, merchant_id"),
         @Index(name = "idx_order_merchant_id", columnList = "merchant_id"),
-        @Index(name = "idx_order_merchant_receipt", columnList = "merchant_id, receipt", unique = true)
+        @Index(name = "idx_order_merchant_receipt", columnList = "merchant_id, receipt", unique = true),
+        // The expiry sweeper looks for unpaid orders whose expires_at has passed.
+        @Index(name = "idx_order_status_expires_at", columnList = "order_status, expires_at")
 })
 @Getter
 @Setter

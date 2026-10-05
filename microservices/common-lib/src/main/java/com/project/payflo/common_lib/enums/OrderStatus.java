@@ -5,4 +5,5 @@ public enum OrderStatus {
     ATTEMPTED,
     PAID,
     CANCELLED,
+    EXPIRED,
 }
