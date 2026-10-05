@@ -24,6 +24,10 @@ import java.util.concurrent.Executors;
 @RequiredArgsConstructor
 public class WebhookDeliveryScheduler {
 
+    // An event is only re-queued by the reconciler once its retry time is this far in the past, so
+    // an event still being delivered (it holds a lease in the future) is never delivered twice.
+    private static final long RECONCILE_GRACE_SECONDS = 30;
+
     private final WebhookRetryQueue retryQueue;
     private final WebhookEventRepository webhookEventRepository;
     private final WebhookDeliverExecutor deliverExecutor;
@@ -52,43 +56,33 @@ public class WebhookDeliveryScheduler {
 
         for (UUID webhookEventId: due) {
             virtualThreadExecutor.submit(() -> {
-                deliverExecutor.deliver(webhookEventId);
+                try {
+                    deliverExecutor.deliver(webhookEventId);
+                } catch (Exception e) {
+                    // Whatever went wrong, the event keeps its lease and the reconciler will retry it.
+                    log.error("Webhook delivery crashed for event {}", webhookEventId, e);
+                }
             });
         }
     }
 
+    // The Redis queue is only a fast path; the database is the truth. Anything PENDING or FAILED whose
+    // retry time has passed without being picked up (a lost queue entry, a restart, a crash mid-delivery)
+    // is put back on the queue here, so no event is stranded.
     @Scheduled(fixedDelay = 10000)
     @SchedulerLock(name = "operations-service-webhook-delivery-reconcile-from-db", lockAtMostFor = "10s", lockAtLeastFor = "1s")
     public void reconcileFromDatabase() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime overdueBefore = LocalDateTime.now().minusSeconds(RECONCILE_GRACE_SECONDS);
         List<WebhookEvent> due = webhookEventRepository
-                .findByStatusAndNextRetryAtBefore(WebhookEventStatus.PENDING, now);
+                .findTop500ByStatusInAndNextRetryAtBeforeOrderByNextRetryAtAsc(
+                        List.of(WebhookEventStatus.PENDING, WebhookEventStatus.FAILED), overdueBefore);
 
         for (WebhookEvent event: due) {
             retryQueue.enqueueIfAbsent(event.getId(), event.getNextRetryAt());
         }
+        if (!due.isEmpty()) {
+            log.info("Reconciled {} overdue webhook events back onto the retry queue", due.size());
+        }
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

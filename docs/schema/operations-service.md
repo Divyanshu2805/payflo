@@ -17,7 +17,7 @@ One delivery of one domain event to one merchant endpoint, with its retry bookke
 | `signature` | The HMAC-SHA256 signature sent as `X-PayFlo-Signature`. |
 | `status` | `WebhookEventStatus` — see [delivery status](enums.md#delivery-status). |
 | `attempts` | Delivery attempts so far; the seventh failure dead-letters it. |
-| `next_retry_at` | When the next attempt is due. Mirrors the Redis retry queue, so a lost queue entry can be rebuilt. |
+| `next_retry_at` | When the next attempt is due — and, while an attempt is in flight, a two-minute lease that stops anything else delivering it. Mirrors the Redis retry queue, so a lost queue entry can be rebuilt. Indexed with `status` (`idx_webhook_event_status_next_retry`) for the reconciler. |
 | `last_attempt_at`, `last_response_code`, `last_response_body` | The last attempt and what the merchant's endpoint answered — for debugging. |
 | `delivered_at` | When a `2xx` came back. |
 
