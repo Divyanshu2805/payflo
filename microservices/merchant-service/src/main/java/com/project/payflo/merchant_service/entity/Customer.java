@@ -10,7 +10,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "customer", indexes = {
         @Index(name = "idx_customer_merchant_id", columnList = "merchant_id"),
-        @Index(name = "idx_customer_email", columnList = "email")
+        @Index(name = "idx_customer_email", columnList = "email"),
+        // One customer per email per merchant: two simultaneous orders for a new customer used to create two.
+        @Index(name = "idx_customer_merchant_email", columnList = "merchant_id, email", unique = true)
 })
 @Getter
 @Setter

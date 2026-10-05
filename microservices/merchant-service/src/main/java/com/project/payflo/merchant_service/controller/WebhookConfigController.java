@@ -41,6 +41,11 @@ public class WebhookConfigController {
         return ResponseEntity.ok(webhookConfigService.update(merchantContext.getMerchantId(), id, request));
     }
 
+    @PostMapping("/{id}/rotate-secret")
+    public ResponseEntity<WebhookConfigResponse> rotateSecret(@PathVariable UUID id) {
+        return ResponseEntity.ok(webhookConfigService.rotateSecret(merchantContext.getMerchantId(), id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         webhookConfigService.delete(merchantContext.getMerchantId(), id);

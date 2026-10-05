@@ -11,6 +11,9 @@ public interface MerchantLookupService {
 
     List<WebhookTarget> getActiveConfigsForEvent(UUID merchantId, String eventType);
 
+    /** One of the merchant's webhook configs, with its current signing secret, whether or not it is paused. */
+    WebhookTarget getWebhookTarget(UUID merchantId, UUID configId);
+
     List<UUID> listActiveMerchantIds();
 
     SettlementBankDetails getSettlementBankDetails(UUID merchantId);

@@ -1,6 +1,7 @@
 package com.project.payflo.merchant_service.service.impl;
 
 import com.project.payflo.common_lib.cache.ApiKeyCache;
+import com.project.payflo.common_lib.enums.AuditAction;
 import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
 import com.project.payflo.common_lib.exception.ResourceNotFoundException;
 import com.project.payflo.common_lib.util.RandomizerUtil;
@@ -13,6 +14,7 @@ import com.project.payflo.merchant_service.mapper.ApiKeyMapper;
 import com.project.payflo.merchant_service.repository.ApiKeyRepository;
 import com.project.payflo.merchant_service.repository.MerchantRepository;
 import com.project.payflo.merchant_service.service.ApiKeyService;
+import com.project.payflo.merchant_service.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,6 +25,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -38,6 +41,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
     private BCryptPasswordEncoder BCRPYT = new BCryptPasswordEncoder();
     private final ApiKeyCache apiKeyCache;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -57,6 +61,8 @@ public class ApiKeyServiceImpl implements ApiKeyService {
 
         apiKey = apiKeyRepository.save(apiKey);
 
+        auditLogService.record(AuditAction.API_KEY_CREATED, merchantId, "API_KEY", apiKey.getId().toString(),
+                Map.of("keyId", keyId, "environment", request.environment().name()));
         return new ApiKeyCreateResponse(apiKey.getId(), keyId, rawSecret, request.environment());
     }
 
@@ -73,6 +79,8 @@ public class ApiKeyServiceImpl implements ApiKeyService {
                 .orElseThrow(() -> new ResourceNotFoundException("ApiKey", keyId));
 
         key.setEnabled(false);
+        auditLogService.record(AuditAction.API_KEY_REVOKED, merchantId, "API_KEY", keyId.toString(),
+                Map.of("keyId", key.getKeyId()));
         evictAfterCommit(key.getKeyId());
     }
 
@@ -98,6 +106,8 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         apiKey.setGracePeriodExpiresAt(now.plusHours(graceHours));
         apiKey = apiKeyRepository.save(apiKey);
 
+        auditLogService.record(AuditAction.API_KEY_ROTATED, merchantId, "API_KEY", apiKey.getId().toString(),
+                Map.of("keyId", apiKey.getKeyId(), "gracePeriodHours", graceHours));
         evictAfterCommit(apiKey.getKeyId());
 
         return new ApiKeyCreateResponse(apiKey.getId(), apiKey.getKeyId(),

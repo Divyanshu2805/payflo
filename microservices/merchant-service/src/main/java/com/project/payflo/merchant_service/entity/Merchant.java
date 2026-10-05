@@ -6,6 +6,7 @@ import com.project.payflo.common_lib.enums.MerchantStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -44,7 +45,18 @@ public class Merchant  extends BaseEntity {
 
     @Column(length = 200, nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private MerchantStatus status = MerchantStatus.PENDING_KYC;
+
+    // Set by the admin API's suspend call, and cleared by reactivate (which restores the status the merchant had).
+    private LocalDateTime suspendedAt;
+
+    @Column(length = 255)
+    private String suspensionReason;
+
+    @Column(length = 50)
+    @Enumerated(EnumType.STRING)
+    private MerchantStatus statusBeforeSuspension;
 
     @Column(length = 20)
     private String gstId;

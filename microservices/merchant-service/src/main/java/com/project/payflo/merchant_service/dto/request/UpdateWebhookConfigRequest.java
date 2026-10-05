@@ -7,12 +7,17 @@ import jakarta.validation.constraints.Size;
 public record UpdateWebhookConfigRequest(
 
         @NotBlank(message = "Webhook URL is required")
-        @Size(max = 500)
+        // 255, the width of webhook_event.target_url in operations-service (it copies the URL)
+        @Size(max = 255)
         @Pattern(regexp = "^https?://.+", message = "Webhook URL must be a valid http(s) URL")
         String targetUrl,
 
         // Comma-separated fine-grained event type names (e.g. "PAYMENT_STATUS_CHANGED,REFUND_CREATED").
         // Null/blank/"ALL" subscribes to every event type.
         @Size(max = 1000)
-        String eventTypes
+        String eventTypes,
+
+        // Update only: false pauses deliveries to this endpoint without deleting it, true resumes them.
+        // Omitted leaves it as it is; a new config is always enabled.
+        Boolean enabled
 ) {}

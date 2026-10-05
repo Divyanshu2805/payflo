@@ -22,12 +22,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
+    /** How long an access token lives. */
+    public static final long ACCESS_TOKEN_SECONDS = 60 * 100;
+
     public String generateAccessToken(String email, UUID merchantId, String role) {
         Instant now = Instant.now();
         return Jwts.builder()
+                .id(UUID.randomUUID().toString()) // lets this one token be revoked on logout
                 .subject(email)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusSeconds(60*100)))
+                .expiration(Date.from(now.plusSeconds(ACCESS_TOKEN_SECONDS)))
                 .claim("merchant_id", merchantId)
                 .claim("role", role)
                 .signWith(getSecretKey())
