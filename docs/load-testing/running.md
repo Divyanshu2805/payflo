@@ -14,6 +14,8 @@ Two settings would otherwise dominate the result:
 | Variable | Set to | Why |
 |---|---|---|
 | `API_KEY_RATE_LIMIT_PER_MINUTE` (gateway) | e.g. `10000000` | The default is 200 requests per minute per key — 50 keys cap the whole test at ~170 req/s of `429`s |
+| `PUBLIC_AUTH_RATE_LIMIT_PER_MINUTE` (gateway) | e.g. `100000`, when provisioning more than ~50 merchants | `provision_keys.py` signs up and logs in each merchant from one address: 2 requests per merchant against a default of 120 a minute per address, after which it gets `429`s |
+| `JWT_RATE_LIMIT_PER_MINUTE` (gateway) | e.g. `10000000`, if the test uses dashboard (JWT) logins instead of API keys | The default is 600 requests per minute per merchant |
 | `TRACING_SAMPLING_PROBABILITY` (every service) | e.g. `0.1` | Tracing every request means reporting every span; sample instead |
 
 Set them in the environment of the services you start (locally) or in the ConfigMap (on kind), and restart.

@@ -38,9 +38,20 @@ app:
       - /v1/auth/signup
       - /v1/auth/login
       - /webhook/**
+    # Set to the header your proxy / load balancer fills with the real client address (e.g. X-Forwarded-For)
+    # so the per-address limits below see clients, not the proxy. Leave empty when clients connect directly.
+    client-ip-header: ${CLIENT_IP_HEADER:}
+    # Signup and login, per client address per minute. Raise it (PUBLIC_AUTH_RATE_LIMIT_PER_MINUTE) when
+    # provisioning many merchants from one machine, as the load test does.
+    public-auth-requests-per-minute: ${PUBLIC_AUTH_RATE_LIMIT_PER_MINUTE:120}
+    # Failed authentications per client address per minute before further attempts are refused.
+    max-failed-auth-per-minute: ${MAX_FAILED_AUTH_PER_MINUTE:30}
   rate-limit:
     method: fixed
     use-case:
       api-key:
         # Per API key. Raise it (API_KEY_RATE_LIMIT_PER_MINUTE) for load tests, or every key tops out at 200/min.
         requests-per-minute: ${API_KEY_RATE_LIMIT_PER_MINUTE:200}
+      jwt:
+        # Per merchant, for dashboard (JWT) traffic.
+        requests-per-minute: ${JWT_RATE_LIMIT_PER_MINUTE:600}

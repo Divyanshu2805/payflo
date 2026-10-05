@@ -6,6 +6,7 @@ import com.project.payflo.common_lib.cache.ApiKeyCacheEntry;
 import com.project.payflo.common_lib.exception.RateLimitException;
 import com.project.payflo.common_lib.ratelimit.RateLimitResult;
 import com.project.payflo.common_lib.ratelimit.RateLimiter;
+import feign.FeignException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 
 @Slf4j
@@ -29,6 +31,11 @@ public class ApiKeyAuthHandler {
     private static final String BASIC_PREFIX = "Basic ";
     private static final String SECRET_VERIFY_PREFIX = "apikey:secret-verified:";
     private static final Duration SECRET_VERIFY_TTL = Duration.ofSeconds(30);
+    private static final String MISSING_KEY_PREFIX = "apikey:missing:";
+    private static final Duration MISSING_KEY_TTL = Duration.ofSeconds(60);
+    // pf_<environment>_<random>: what create() issues. Anything else can't be a key id, so it is
+    // refused before touching Redis or merchant-service.
+    private static final Pattern KEY_ID_FORMAT = Pattern.compile("^pf_[a-z]{1,10}_[A-Za-z0-9_-]{1,64}$");
     private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder();
 
     private final ApiKeyCache apiKeyCache;
@@ -47,6 +54,10 @@ public class ApiKeyAuthHandler {
 
         String keyId = credentials[0];
         String rawSecret = credentials[1];
+
+        if (!KEY_ID_FORMAT.matcher(keyId).matches()) {
+            throw new GatewayAuthenticationException("Invalid or missing API key");
+        }
 
         ApiKeyCacheEntry entry = apiKeyCache.get(keyId).orElseGet(() -> loadAndCache(keyId));
 
@@ -70,13 +81,36 @@ public class ApiKeyAuthHandler {
     }
 
     private ApiKeyCacheEntry loadAndCache(String keyId) {
+        if (knownToBeMissing(keyId)) {
+            return null;
+        }
         try {
             ApiKeyCacheEntry entry = apiKeyLookupClient.findByKeyId(keyId);
             apiKeyCache.put(keyId, entry);
             return entry;
+        } catch (FeignException.NotFound e) {
+            // Remember it, so repeated guesses at the same id don't each cost a database lookup.
+            rememberMissing(keyId);
+            return null;
         } catch (Exception e) {
             log.warn("API key lookup failed keyId={}", keyId, e);
             return null;
+        }
+    }
+
+    private boolean knownToBeMissing(String keyId) {
+        try {
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(MISSING_KEY_PREFIX + keyId));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void rememberMissing(String keyId) {
+        try {
+            stringRedisTemplate.opsForValue().set(MISSING_KEY_PREFIX + keyId, "1", MISSING_KEY_TTL);
+        } catch (Exception e) {
+            log.warn("Could not remember a missing API key id");
         }
     }
 

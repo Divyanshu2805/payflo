@@ -2,6 +2,7 @@ package com.project.payflo.merchant_service.controller;
 
 import com.project.payflo.common_lib.dto.SettlementBankDetails;
 import com.project.payflo.common_lib.dto.WebhookTarget;
+import com.project.payflo.common_lib.enums.MerchantStatus;
 import com.project.payflo.merchant_service.api.MerchantLookupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,11 @@ public class InternalMerchantController {
     @GetMapping("/active-ids")
     public List<UUID> listActiveMerchantIds() {
         return merchantLookupService.listActiveMerchantIds();
+    }
+
+    @GetMapping("/{merchantId}/status")
+    public MerchantStatus getStatus(@PathVariable UUID merchantId) {
+        return merchantLookupService.getStatus(merchantId);
     }
 
     @GetMapping("/{merchantId}/settlement-bank-details")

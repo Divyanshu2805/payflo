@@ -10,7 +10,6 @@ Known missing features and open issues, grouped by area. Items marked *(from rea
 - **Development secrets are committed.** The JWT key, vault master key and webhook encryption key default to fixed values in `config-repo/`, and `k8s/secrets.env.example` holds the same. Losing or rotating the master key without re-encryption makes every vaulted card unreadable. A real deployment needs a secret store.
 - **The decrypted card number lives on the heap as a `String`.** vault-service zeroes the byte array after use, but the `String` copy can't be zeroed.
 - **`api_key.last_used_at` is never written.**
-- **Failed authentication attempts aren't throttled** — the rate limit applies only after a key verifies.
 
 ## API
 
@@ -18,7 +17,6 @@ Known missing features and open issues, grouped by area. Items marked *(from rea
 - **A webhook config can't be disabled** without deleting it.
 - **The idempotency key isn't tied to the request body** — reusing a key with a different payload replays the first response. And a malformed stored value would fall through to a parse error, since `replay` doesn't return after reporting it. *(from reading the code)*
 - **The four rate limiters differ.** The Lua-based two fail open when Redis is down; `fixed` (the default) and `sliding` don't. `fixed` sets `INCR` and `EXPIRE` separately, so a crash between them leaves a counter that never expires, and `sliding` checks and adds separately, so concurrent requests can both pass at the limit.
-- **Rotating a revoked key is a `500`** — it throws a bare `RuntimeException`.
 
 ## Payments
 
