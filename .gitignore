@@ -1,4 +1,3 @@
-HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -40,6 +39,14 @@ docs/assets/diagrams/src/out/
 __pycache__/
 
 ### Load test ###
-microservices/load-test/keys.csv
+microservices/load-test/keys*.csv
 microservices/load-test/results/
 microservices/load-test/temp/
+
+# Crash and outage test output
+microservices/chaos/logs/
+microservices/chaos/results/
+
+# One-command demo: service logs, pids, and the demo merchant's API key
+microservices/demo/logs/
+microservices/demo/.run/
