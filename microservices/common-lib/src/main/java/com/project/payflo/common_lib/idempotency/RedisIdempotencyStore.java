@@ -17,9 +17,9 @@ public class RedisIdempotencyStore implements IdempotencyStore {
     private final StringRedisTemplate redis;
 
     @Override
-    public boolean setIfAbsent(String key, Duration ttl) {
+    public boolean setIfAbsent(String key, String placeholder, Duration ttl) {
         try {
-            Boolean set = redis.opsForValue().setIfAbsent(PREFIX+key, IN_PROGRESS, ttl);
+            Boolean set = redis.opsForValue().setIfAbsent(PREFIX+key, placeholder, ttl);
             return Boolean.TRUE.equals(set);
         } catch (DataAccessException e) {
             log.warn("Idempotency store unavailable, failing open for key={}", key, e);

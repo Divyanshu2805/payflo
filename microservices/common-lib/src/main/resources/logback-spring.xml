@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spring Boot's default console logging, with card numbers masked in every message and stack trace
+  (see com.project.payflo.common_lib.logging). It overrides Boot's message and exception conversion words
+  (%m, %msg, %message and %wEx), so the usual pattern, including the trace-id correlation, is unchanged.
+  Lives in common-lib, so every service picks it up. A service can still change the pattern or levels with
+  logging.pattern.console and logging.level.*; it does not write a log file, as Boot's default doesn't either.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <conversionRule conversionWord="m" class="com.project.payflo.common_lib.logging.MaskedMessageConverter"/>
+    <conversionRule conversionWord="msg" class="com.project.payflo.common_lib.logging.MaskedMessageConverter"/>
+    <conversionRule conversionWord="message" class="com.project.payflo.common_lib.logging.MaskedMessageConverter"/>
+    <conversionRule conversionWord="wEx" class="com.project.payflo.common_lib.logging.MaskedThrowableConverter"/>
+
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

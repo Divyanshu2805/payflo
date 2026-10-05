@@ -7,7 +7,8 @@ public interface IdempotencyStore {
 
     String IN_PROGRESS = "__IN_PROGRESS__";
 
-    boolean setIfAbsent(String key, Duration ttl);
+    // Claims the key with a placeholder (IN_PROGRESS plus the request fingerprint) if nobody has.
+    boolean setIfAbsent(String key, String placeholder, Duration ttl);
 
     void store(String key, String value, Duration ttl);
 

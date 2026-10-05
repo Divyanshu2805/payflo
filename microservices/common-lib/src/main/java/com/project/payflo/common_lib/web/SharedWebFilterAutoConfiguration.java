@@ -34,6 +34,17 @@ public class SharedWebFilterAutoConfiguration {
         return registration;
     }
 
+    // Every /v1/admin/** request must carry the header the gateway sets once it has checked the admin key. Off in the
+    // gateway itself, which is the one that sets it (it has trust-inbound-headers=false, like for X-Merchant-Id).
+    @Bean
+    @ConditionalOnProperty(name = "app.security.trust-inbound-headers", havingValue = "true", matchIfMissing = true)
+    public FilterRegistrationBean<Filter> platformAdminRegistration() {
+        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(new PlatformAdminFilter());
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE+1);
+        registration.addUrlPatterns("/v1/admin/*");
+        return registration;
+    }
+
     @Bean
     public FilterRegistrationBean<Filter> requestContextFilterRegistration() {
         FilterRegistrationBean<Filter> registration =

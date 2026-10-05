@@ -11,5 +11,6 @@ public enum PaymentEvent {
     REFUND_COMPLETE,
     SETTLE,
     CANCEL,
-    CAPTURE_TIMEOUT
+    CAPTURE_TIMEOUT,
+    REFUND_FAIL
 }

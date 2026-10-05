@@ -31,6 +31,17 @@ class SecretConfigurationCheckerTest {
     }
 
     @Test
+    void theAdminKeyIsCheckedLikeTheOtherSecrets() {
+        assertThat(checker(false, Map.of("app.security.admin-api-key", "dev-admin-api-key-change-me")).problems())
+                .singleElement().asString().contains("app.security.admin-api-key").contains("committed default");
+        assertThat(checker(false, Map.of("app.security.admin-api-key", "too-short")).problems())
+                .singleElement().asString().contains("shorter than 24");
+        assertThat(checker(true, Map.of("app.security.admin-api-key", "x".repeat(40))).problems()).isEmpty();
+        // a service that doesn't have the key (everything but the gateway) is not asked about it
+        assertThat(checker(true, Map.of()).problems()).isEmpty();
+    }
+
+    @Test
     void acceptsRealSecrets() {
         var strong = checker(true, Map.of(
                 "jwt.secret-key", "a-long-random-value-that-nobody-has-committed-anywhere-0123456789",
