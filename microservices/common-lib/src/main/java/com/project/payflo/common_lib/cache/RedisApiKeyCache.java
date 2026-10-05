@@ -47,7 +47,12 @@ public class RedisApiKeyCache implements ApiKeyCache {
 
     @Override
     public void evict(String keyId) {
-        stringRedisTemplate.delete(PREFIX+keyId);
+        try {
+            stringRedisTemplate.delete(PREFIX+keyId);
+        } catch (Exception e) {
+            // The entry then lives out its TTL (5 minutes), so a revoked key can still work for that long.
+            log.error("ApiKey cache evict failed, keyId: {}", keyId, e);
+        }
     }
 }
 

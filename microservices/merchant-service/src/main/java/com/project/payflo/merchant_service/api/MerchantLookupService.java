@@ -2,6 +2,7 @@ package com.project.payflo.merchant_service.api;
 
 import com.project.payflo.common_lib.dto.SettlementBankDetails;
 import com.project.payflo.common_lib.dto.WebhookTarget;
+import com.project.payflo.common_lib.enums.MerchantStatus;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,5 +14,7 @@ public interface MerchantLookupService {
     List<UUID> listActiveMerchantIds();
 
     SettlementBankDetails getSettlementBankDetails(UUID merchantId);
+
+    MerchantStatus getStatus(UUID merchantId);
 
 }

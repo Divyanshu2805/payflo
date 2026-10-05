@@ -1,6 +1,8 @@
 package com.project.payflo.api_gateway_service.security;
 
 import com.project.payflo.common_lib.exception.RateLimitException;
+import com.project.payflo.common_lib.ratelimit.RateLimitResult;
+import com.project.payflo.common_lib.ratelimit.RateLimiter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,11 +28,17 @@ public class GatewayAuthFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String BASIC_PREFIX = "Basic ";
+    private static final String PUBLIC_AUTH_PREFIX = "/v1/auth/";
 
     private final JwtAuthHandler jwtAuthHandler;
     private final ApiKeyAuthHandler apiKeyAuthHandler;
     private final PublicRouteMatcher publicRouteMatcher;
     private final ObjectMapper objectMapper;
+    private final RateLimiter rateLimiter;
+    private final AuthFailureTracker authFailureTracker;
+    private final ClientIpResolver clientIpResolver;
+    private final MerchantStatusChecker merchantStatusChecker;
+    private final SecurityRouteProperties securityRouteProperties;
 
 
     @Override
@@ -39,8 +47,23 @@ public class GatewayAuthFilter extends OncePerRequestFilter {
 
         log.info("Incoming request: {}", request.getRequestURI());
 
+        String clientIp = clientIpResolver.resolve(request);
+
         if (publicRouteMatcher.isPublic(request.getRequestURI())) {
-            filterChain.doFilter(request, response);
+            if (request.getRequestURI().startsWith(PUBLIC_AUTH_PREFIX) && !publicAuthAllowed(clientIp, response)) {
+                return;
+            }
+            // Public or not, a client never gets to choose the identity headers a service trusts.
+            filterChain.doFilter(new HeaderAugmentingRequestWrapper(request), response);
+            return;
+        }
+
+        // Too many failed attempts from this address: refuse before spending a bcrypt check on it.
+        int blockedFor = authFailureTracker.blockedForSeconds(clientIp);
+        if (blockedFor > 0) {
+            response.setHeader("Retry-After", String.valueOf(blockedFor));
+            reject(response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED",
+                    "Too many failed authentication attempts");
             return;
         }
 
@@ -53,9 +76,12 @@ public class GatewayAuthFilter extends OncePerRequestFilter {
             } else if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
                 identityHeaders = jwtAuthHandler.authenticate(authHeader.substring(BEARER_PREFIX.length()));
             } else {
+                authFailureTracker.recordFailure(clientIp);
                 reject(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Missing or invalid Authorization header");
                 return;
             }
+
+            merchantStatusChecker.requireNotSuspended(identityHeaders.get("X-Merchant-Id"));
 
             HeaderAugmentingRequestWrapper wrapped = new HeaderAugmentingRequestWrapper(request);
             identityHeaders.forEach(wrapped::putHeader);
@@ -64,13 +90,35 @@ public class GatewayAuthFilter extends OncePerRequestFilter {
         } catch (RateLimitException e) {
             response.setHeader("Retry-After", String.valueOf(e.getRetryAfterSeconds()));
             reject(response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", e.getMessage());
+        } catch (MerchantSuspendedException e) {
+            reject(response, HttpStatus.FORBIDDEN, "MERCHANT_SUSPENDED", e.getMessage());
         } catch (GatewayAuthenticationException e) {
+            authFailureTracker.recordFailure(clientIp);
             reject(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
         } catch (Exception e) {
             log.warn("Gateway auth failed for path={}", request.getRequestURI(), e);
+            authFailureTracker.recordFailure(clientIp);
             reject(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials");
         }
 
+    }
+
+    // Signup and login are public, so anyone can call them; limit how fast one address can.
+    private boolean publicAuthAllowed(String clientIp, HttpServletResponse response) throws IOException {
+        RateLimitResult result;
+        try {
+            result = rateLimiter.check("public-auth:" + clientIp,
+                    securityRouteProperties.getPublicAuthRequestsPerMinute(), 60);
+        } catch (Exception e) {
+            log.warn("Public route rate limit unavailable, allowing the request", e);
+            return true;
+        }
+        if (result.isAllowed()) {
+            return true;
+        }
+        response.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds()));
+        reject(response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", "Too many requests");
+        return false;
     }
 
     private void reject(HttpServletResponse response, HttpStatus status, String errorCode, String message)
@@ -80,28 +128,3 @@ public class GatewayAuthFilter extends OncePerRequestFilter {
         objectMapper.writeValue(response.getWriter(), Map.of("errorCode", errorCode, "errorDescription", message));
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

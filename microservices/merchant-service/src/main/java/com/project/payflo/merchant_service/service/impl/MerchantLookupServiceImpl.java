@@ -47,6 +47,13 @@ public class MerchantLookupServiceImpl implements MerchantLookupService {
     }
 
     @Override
+    public MerchantStatus getStatus(UUID merchantId) {
+        return merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Merchant", merchantId))
+                .getStatus();
+    }
+
+    @Override
     public SettlementBankDetails getSettlementBankDetails(UUID merchantId) {
         Merchant merchant = merchantRepository.findById(merchantId).orElseThrow(
                 () -> new ResourceNotFoundException("Merchant", merchantId));

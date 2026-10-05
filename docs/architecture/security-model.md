@@ -20,7 +20,14 @@ Both credentials resolve to the same thing — a merchant id — and every endpo
 
 Downstream, `common-lib`'s `MerchantContextFilter` reads `X-Merchant-Id` and `X-Key-Id` into the request-scoped `MerchantContext`, and controllers read the merchant only from there — never from a path, a query parameter or a body. The gateway itself runs with `app.security.trust-inbound-headers: false`, so its own `MerchantContextFilter` never trusts client-supplied headers.
 
-Failures are answered by the gateway directly, in the same `{ errorCode, errorDescription }` shape as every service: `401 UNAUTHORIZED` for a missing, malformed or wrong credential, `429 RATE_LIMIT_EXCEEDED` with `Retry-After` over the per-key limit.
+Failures are answered by the gateway directly, in the same `{ errorCode, errorDescription }` shape as every service: `401 UNAUTHORIZED` for a missing, malformed or wrong credential, `403 MERCHANT_SUSPENDED` for a valid credential belonging to a suspended merchant, and `429 RATE_LIMIT_EXCEEDED` with `Retry-After` over a limit.
+
+The gateway also bounds guessing and abuse of the credentials themselves:
+
+- **Failed attempts are counted per client address** (30 a minute by default); past that, the address is refused before any credential is checked, so a wrong key can't be tried at bcrypt speed. A key id that doesn't look like `pf_<env>_<random>` is refused without any lookup, and an id that doesn't exist is remembered for a minute so repeated guesses don't each reach the database.
+- **Signup and login are limited per client address**, JWT traffic per merchant, API-key traffic per key. Settings and defaults are in [idempotency and rate limits](../api/idempotency-and-rate-limits.md#rate-limits). Behind a proxy set `CLIENT_IP_HEADER`, or every client shares the proxy's address.
+- **A suspended merchant is refused whatever it presents** — an API key, or a JWT issued before the suspension. The status is looked up from merchant-service and cached for 60 seconds, so a suspension takes effect within a minute; if the lookup fails the request is let through, so a merchant-service outage doesn't stop everyone paying.
+- **Login locks after 10 wrong passwords** for an email within 15 minutes (`429`), counted whether or not the email is registered, and an unknown email costs the same bcrypt check as a wrong password.
 
 ## Tenancy
 
@@ -28,7 +35,7 @@ There is one tenant boundary: the merchant. Every query that reads merchant data
 
 ## Trusted identity headers
 
-Business services believe `X-Merchant-Id` because only the gateway can reach them. That holds on Kubernetes, where every Service except the gateway's is `ClusterIP`, and locally only by convention. The gateway overwrites the identity headers it sets, but it does not strip the others a client may send — see [known gaps](../known-gaps/not-yet-built.md#security) for what that leaves open.
+Business services believe `X-Merchant-Id` because only the gateway can reach them. That holds on Kubernetes, where every Service except the gateway's is `ClusterIP`, and locally only by convention. The gateway drops `X-Merchant-Id`, `X-Key-Id`, `X-User-Role` and `X-Environment` from every inbound request — on public routes too — before adding the ones it has verified, so a client can never get an identity header of its own through (`HeaderAugmentingRequestWrapper`).
 
 ## Internal API
 

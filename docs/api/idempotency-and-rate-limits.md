@@ -16,7 +16,15 @@ The key is not tied to the request body: reusing a key with a different payload 
 
 ## Rate limits
 
-Only API-key traffic is limited, at the gateway: **200 requests per minute per key** by default (`app.rate-limit.use-case.api-key.requests-per-minute`, overridable with `API_KEY_RATE_LIMIT_PER_MINUTE`). JWT traffic is not limited.
+Three limits, all at the gateway, all answered `429 RATE_LIMIT_EXCEEDED` with `Retry-After`:
+
+| Limit | Default | Setting |
+|---|---|---|
+| Per API key | 200 / minute | `API_KEY_RATE_LIMIT_PER_MINUTE` |
+| Per merchant, for JWT (dashboard) traffic | 600 / minute | `JWT_RATE_LIMIT_PER_MINUTE` |
+| Per client address, on signup and login | 120 / minute | `PUBLIC_AUTH_RATE_LIMIT_PER_MINUTE` |
+
+And failed authentications are limited too: an address with 30 in a minute (`MAX_FAILED_AUTH_PER_MINUTE`) is refused outright for the rest of that minute, before any credential is checked — the per-key limit above only applies once a key has verified. Behind a proxy or load balancer, set `CLIENT_IP_HEADER` (for example `X-Forwarded-For`) so these see clients rather than the proxy; leave it empty when clients connect directly, since a client could otherwise choose its own address.
 
 Every API-key response carries:
 

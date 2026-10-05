@@ -16,5 +16,5 @@ public interface ApiKeyService {
 
     void revoke(UUID merchantId, UUID keyId);
 
-    @Nullable ApiKeyCreateResponse rotate(UUID merchantId, UUID keyId);
+    @Nullable ApiKeyCreateResponse rotate(UUID merchantId, UUID keyId, Integer gracePeriodHours);
 }

@@ -14,6 +14,7 @@ The service-to-service API. It is not part of the merchant contract and is **nev
 | `GET` | `/internal/api-keys/{keyId}` | — | `ApiKeyCacheEntry` — key id, both secret hashes, grace-period expiry, merchant id, environment, enabled | gateway, on a Redis cache miss |
 | `POST` | `/internal/customers/find-or-create` | `FindOrCreateCustomerRequest { merchantId, email, name, phone }` | the customer's `UUID` | payment-service, creating an order |
 | `GET` | `/internal/merchants/{merchantId}/webhook-targets?eventType=` | — | `List<WebhookTarget>` — config id, target URL, **decrypted** signing secret | operations-service, fanning out an event |
+| `GET` | `/internal/merchants/{merchantId}/status` | — | `MerchantStatus` | gateway, to refuse a suspended merchant (cached for 60 s) |
 | `GET` | `/internal/merchants/active-ids` | — | `List<UUID>` | operations-service, starting settlement |
 | `GET` | `/internal/merchants/{merchantId}/settlement-bank-details` | — | `SettlementBankDetails { accountNumber, ifsc, … }` | operations-service, paying out |
 

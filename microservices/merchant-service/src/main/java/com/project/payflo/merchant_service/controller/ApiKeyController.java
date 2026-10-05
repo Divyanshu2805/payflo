@@ -2,6 +2,7 @@ package com.project.payflo.merchant_service.controller;
 
 import com.project.payflo.common_lib.context.MerchantContext;
 import com.project.payflo.merchant_service.dto.request.CreateApiKeyRequest;
+import com.project.payflo.merchant_service.dto.request.RotateApiKeyRequest;
 import com.project.payflo.merchant_service.dto.response.ApiKeyCreateResponse;
 import com.project.payflo.merchant_service.dto.response.ApiKeyResponse;
 import com.project.payflo.merchant_service.service.ApiKeyService;
@@ -40,8 +41,10 @@ public class ApiKeyController {
     }
 
     @PostMapping("/{keyId}/rotate")
-    public ResponseEntity<ApiKeyCreateResponse> rotateKey( @PathVariable UUID keyId) {
-        return ResponseEntity.ok(apiKeyService.rotate(merchantContext.getMerchantId(), keyId));
+    public ResponseEntity<ApiKeyCreateResponse> rotateKey(@PathVariable UUID keyId,
+                                                          @Valid @RequestBody(required = false) RotateApiKeyRequest request) {
+        Integer gracePeriodHours = request != null ? request.gracePeriodHours() : null;
+        return ResponseEntity.ok(apiKeyService.rotate(merchantContext.getMerchantId(), keyId, gracePeriodHours));
     }
 
 

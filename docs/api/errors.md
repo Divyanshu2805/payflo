@@ -25,6 +25,7 @@ Every error response from every service has the same JSON shape, produced by one
 | `MethodArgumentNotValidException` | 400 | `VALIDATION_FAILED`, with `fieldErrors` |
 | `BusinessRuleViolationException` | 400 | Its own code — `ORDER_NOT_PAYABLE`, … |
 | `InvalidCredentialsException` | 401 | `INVALID_CREDENTIALS` — login with an unknown email or a wrong password (deliberately indistinguishable) |
+| `AccountSuspendedException` | 403 | `MERCHANT_SUSPENDED` — login with the right password for a suspended merchant |
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST_BODY` |
 | `MethodArgumentTypeMismatchException` | 400 | `INVALID_PARAMETER` — e.g. a path id that isn't a UUID |
 | `ResourceNotFoundException` | 404 | `<RESOURCE>_NOT_FOUND` — `ORDER_NOT_FOUND`, `PAYMENT_NOT_FOUND`, `APIKEY_NOT_FOUND`, … |
@@ -32,7 +33,7 @@ Every error response from every service has the same JSON shape, produced by one
 | `InvalidStateTransitionException` | 409 | `INVALID_STATE_TRANSITION` |
 | `IdempotencyConflictException` | 409 | `IDEMPOTENCY_CONFLICT` — the same key is still being processed |
 | `DataIntegrityViolationException` | 409 | `DATA_INTEGRITY_VIOLATION` — a unique index caught a duplicate |
-| `RateLimitException` | 429 | `RATE_LIMIT_EXCEEDED`, with `Retry-After` |
+| `RateLimitException` | 429 | `RATE_LIMIT_EXCEEDED`, with `Retry-After` — also a login locked after too many wrong passwords |
 | `CallNotPermittedException` (payment-service) | 503 | `DEPENDENCY_UNAVAILABLE`, with `Retry-After: 10` — a circuit breaker to merchant- or vault-service is open; retry shortly |
 | `Exception` (anything else) | 500 | `INTERNAL_ERROR` |
 
@@ -41,7 +42,8 @@ Every error response from every service has the same JSON shape, produced by one
 | Status | `errorCode` | When |
 |---|---|---|
 | 401 | `UNAUTHORIZED` | No `Authorization` header, an unsupported scheme, or a bad, expired, unknown or revoked credential |
-| 429 | `RATE_LIMIT_EXCEEDED` | Over the per-API-key limit; `Retry-After` gives the seconds to wait |
+| 403 | `MERCHANT_SUSPENDED` | The credential is valid but the merchant is suspended (takes effect within a minute) |
+| 429 | `RATE_LIMIT_EXCEEDED` | Over the per-API-key limit, the per-merchant limit for dashboard (JWT) traffic, the per-address limit on signup/login, or too many failed authentications from one address; `Retry-After` gives the seconds to wait |
 
 ## Failures inside a `201`
 
