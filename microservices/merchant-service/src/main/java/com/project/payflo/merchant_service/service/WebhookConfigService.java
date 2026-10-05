@@ -18,4 +18,6 @@ public interface WebhookConfigService {
 
     void delete(UUID merchantId, UUID configId);
 
+    WebhookConfigResponse rotateSecret(UUID merchantId, UUID configId);
+
 }

@@ -6,7 +6,9 @@ import com.project.payflo.common_lib.dto.WebhookTarget;
 import com.project.payflo.common_lib.enums.MerchantStatus;
 import com.project.payflo.merchant_service.api.MerchantLookupService;
 import com.project.payflo.merchant_service.entity.Merchant;
+import com.project.payflo.merchant_service.entity.MerchantWebhookConfig;
 import com.project.payflo.merchant_service.repository.MerchantRepository;
+import com.project.payflo.merchant_service.security.BankAccountCipher;
 import com.project.payflo.merchant_service.repository.WebhookConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,18 +28,28 @@ public class MerchantLookupServiceImpl implements MerchantLookupService {
     private final MerchantRepository merchantRepository;
     private final WebhookConfigRepository merchantWebhookConfigRepository;
     private final BytesEncryptor bytesEncryptor;
+    private final BankAccountCipher bankAccountCipher;
 
     @Override
     public List<WebhookTarget> getActiveConfigsForEvent(UUID merchantId, String eventType) {
         return merchantWebhookConfigRepository.findByMerchant_IdAndEnabledTrue(merchantId).stream()
                 .filter(config -> config.isSubscribedTo(eventType))
-                .map(config -> {
-                    byte[] cipherBytes = Base64.getDecoder().decode(config.getWebhookSecret());
-                    byte[] decryptedSecretBytes = bytesEncryptor.decrypt(cipherBytes);
-                    return new WebhookTarget(config.getId(), config.getTargetUrl(),
-                            new String(decryptedSecretBytes, StandardCharsets.UTF_8));
-                })
+                .map(this::toTarget)
                 .toList();
+    }
+
+    @Override
+    public WebhookTarget getWebhookTarget(UUID merchantId, UUID configId) {
+        return merchantWebhookConfigRepository.findByIdAndMerchant_Id(configId, merchantId)
+                .map(this::toTarget)
+                .orElseThrow(() -> new ResourceNotFoundException("MerchantWebhookConfig", configId));
+    }
+
+    private WebhookTarget toTarget(MerchantWebhookConfig config) {
+        byte[] cipherBytes = Base64.getDecoder().decode(config.getWebhookSecret());
+        byte[] decryptedSecretBytes = bytesEncryptor.decrypt(cipherBytes);
+        return new WebhookTarget(config.getId(), config.getTargetUrl(),
+                new String(decryptedSecretBytes, StandardCharsets.UTF_8));
     }
 
     @Override
@@ -59,7 +71,7 @@ public class MerchantLookupServiceImpl implements MerchantLookupService {
                 () -> new ResourceNotFoundException("Merchant", merchantId));
 
         return new SettlementBankDetails(
-                merchant.getSettlementBankAccount(),
+                bankAccountCipher.decrypt(merchant.getSettlementBankAccount()),
                 merchant.getSettlementBankIfsc(),
                 merchant.getSettlementBankAccountHolderName()
         );

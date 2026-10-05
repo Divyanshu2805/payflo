@@ -1,6 +1,7 @@
 package com.project.payflo.merchant_service.service;
 
 import com.project.payflo.common_lib.cache.ApiKeyCache;
+import com.project.payflo.common_lib.enums.AuditAction;
 import com.project.payflo.common_lib.enums.Environment;
 import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
 import com.project.payflo.merchant_service.dto.response.ApiKeyCreateResponse;
@@ -12,17 +13,20 @@ import com.project.payflo.merchant_service.repository.MerchantRepository;
 import com.project.payflo.merchant_service.service.impl.ApiKeyServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import com.project.payflo.merchant_service.service.AuditLogService;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,8 +36,9 @@ class ApiKeyServiceImplTest {
 
     private final ApiKeyRepository apiKeyRepository = mock(ApiKeyRepository.class);
     private final ApiKeyCache apiKeyCache = mock(ApiKeyCache.class);
+    private final AuditLogService audit = mock(AuditLogService.class);
     private final ApiKeyServiceImpl service = new ApiKeyServiceImpl(
-            mock(MerchantRepository.class), apiKeyRepository, mock(ApiKeyMapper.class), apiKeyCache);
+            mock(MerchantRepository.class), apiKeyRepository, mock(ApiKeyMapper.class), apiKeyCache, audit);
 
     private final UUID merchantId = UUID.randomUUID();
     private ApiKey key;
@@ -107,6 +112,26 @@ class ApiKeyServiceImplTest {
         TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
 
         verify(apiKeyCache).evict("pf_test_abc");
+    }
+
+    @Test
+    void revokingAndRotatingAreRecordedInTheAuditLogWithTheKeysPublicIdAndNeverASecret() {
+        service.rotate(merchantId, key.getId(), 2);
+        service.revoke(merchantId, key.getId());
+
+        verify(audit).record(eq(AuditAction.API_KEY_ROTATED), eq(merchantId), eq("API_KEY"), eq(key.getId().toString()),
+                eq(Map.of("keyId", "pf_test_abc", "gracePeriodHours", 2)));
+        verify(audit).record(eq(AuditAction.API_KEY_REVOKED), eq(merchantId), eq("API_KEY"), eq(key.getId().toString()),
+                eq(Map.of("keyId", "pf_test_abc")));
+    }
+
+    @Test
+    void aRotationThatIsRefusedLeavesNothingInTheAuditLog() {
+        key.setEnabled(false);
+
+        assertThatThrownBy(() -> service.rotate(merchantId, key.getId(), null)).isInstanceOf(BusinessRuleViolationException.class);
+
+        verify(audit, never()).record(any(AuditAction.class), any(), any(), any(), any());
     }
 
     @Test

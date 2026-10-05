@@ -23,6 +23,12 @@ public class InternalMerchantController {
         return merchantLookupService.getActiveConfigsForEvent(merchantId, eventType);
     }
 
+    // The secret as it is now: a delivery is signed when it is sent, so a rotation applies to retries too.
+    @GetMapping("/{merchantId}/webhook-targets/{configId}")
+    public WebhookTarget getWebhookTarget(@PathVariable UUID merchantId, @PathVariable UUID configId) {
+        return merchantLookupService.getWebhookTarget(merchantId, configId);
+    }
+
     @GetMapping("/active-ids")
     public List<UUID> listActiveMerchantIds() {
         return merchantLookupService.listActiveMerchantIds();
