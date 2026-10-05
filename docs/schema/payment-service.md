@@ -73,5 +73,5 @@ An event waiting to be published — see [decision 0005](../architecture/decisio
 | `aggregate_id` | The order or payment id. No foreign key: it can name either table. |
 | `event_type` | `ORDER_CREATED`, `PAYMENT_CREATED`, `PAYMENT_STATUS_CHANGED`, `PAYMENT_AUTHORIZATION_COMPENSATED`. |
 | `payload` | The event body, `jsonb`, published inside an envelope. |
-| `status` | `OutboxStatus` — `PENDING` → `PUBLISHED`, or `FAILED` after 3 attempts. Indexed with `created_at` (`idx_outbox_event_status_created_at`) for the poller's oldest-pending-first query. |
+| `status` | `OutboxStatus` — `PENDING` → `PUBLISHED`, or `FAILED` after 3 attempts. A `FAILED` row goes back to `PENDING` after 5 minutes, so an outage longer than a few polls delays an event instead of stranding it; `PUBLISHED` rows are deleted after 7 days (`app.outbox.retention-days`). Indexed with `created_at` (`idx_outbox_event_status_created_at`) for the poller's oldest-pending-first query and the purge. |
 | `attempts`, `last_error`, `published_at` | Publishing bookkeeping. |

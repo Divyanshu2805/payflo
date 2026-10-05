@@ -24,9 +24,10 @@ spring:
         order_inserts: true
   task:
     scheduling:
-      # One thread per scheduled job, so no job waits behind another (see SchedulingConfig).
+      # One thread per scheduled job, so no job waits behind another (see SchedulingConfig). Raise it when a
+      # service gains scheduled jobs.
       pool:
-        size: 4
+        size: 8
   kafka:
     bootstrap-servers: ${KAFKA_BROKERS:localhost:29092}
     # Carry trace context through Kafka headers (producer -> consumer spans in Zipkin).
