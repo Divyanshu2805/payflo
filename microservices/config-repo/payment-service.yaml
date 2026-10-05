@@ -27,7 +27,15 @@ spring:
       # One thread per scheduled job, so no job waits behind another (see SchedulingConfig). Raise it when a
       # service gains scheduled jobs.
       pool:
-        size: 4
+        size: 8
+  cloud:
+    openfeign:
+      client:
+        config:
+          vault-service:
+            # vault-service gives its own card processor 5 seconds; wait a little longer than that, so a slow
+            # charge is reported by vault-service rather than cut off here with an unknown outcome.
+            read-timeout: 8000
   kafka:
     bootstrap-servers: ${KAFKA_BROKERS:localhost:29092}
     # Carry trace context through Kafka headers (producer -> consumer spans in Zipkin).
@@ -98,6 +106,8 @@ resilience4j:
         base-config: default
       vault-service:
         base-config: default
+  # Only merchant-service lookups are retried (find-or-create is safe to repeat). A card charge is not:
+  # a timed-out charge may have succeeded, and repeating it could charge twice.
   retry:
     configs:
       default:
@@ -112,6 +122,4 @@ resilience4j:
           - java.io.IOException
     instances:
       merchant-service:
-        base-config: default
-      vault-service:
         base-config: default

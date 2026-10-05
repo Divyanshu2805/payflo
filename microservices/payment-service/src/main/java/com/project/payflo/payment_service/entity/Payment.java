@@ -78,4 +78,18 @@ public class Payment extends BaseEntity {
     private LocalDateTime refundedAt;
 
     private LocalDateTime settledAt;
+
+    // Cut to the column's width, so a long message from a processor can never make the row fail to save
+    // (which would leave a payment stuck mid-flow).
+    public void setErrorCode(String errorCode) {
+        this.errorCode = truncate(errorCode, 100);
+    }
+
+    public void setErrorDescription(String errorDescription) {
+        this.errorDescription = truncate(errorDescription, 255);
+    }
+
+    private static String truncate(String value, int max) {
+        return value != null && value.length() > max ? value.substring(0, max) : value;
+    }
 }

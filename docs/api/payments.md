@@ -14,7 +14,9 @@ Paying an order, and capturing an authorized payment. **Service:** payment-servi
 | `CARD` | `{ "token": "tok_…" }` | A token from [`POST /v1/vault/tokenize`](vault.md). Charged by vault-service — payment-service never sees the card number |
 | `UPI` | `{ "vpa": "name@bank" }` | Required |
 | `NETBANKING` | `{ "bank": "<code>" }` | Required |
-| `WALLET` | — | In the enum but not supported — no adapter exists |
+| `WALLET` | — | In the enum but not supported — `400 PAYMENT_METHOD_NOT_SUPPORTED` |
+
+A missing or blank detail — or a `token`, `vpa` or `bank` that isn't a string of at most 200 characters — is `400 INVALID_PAYMENT_DETAILS`, before any payment is created.
 
 `amount` is always copied from the order; it can't be set here.
 

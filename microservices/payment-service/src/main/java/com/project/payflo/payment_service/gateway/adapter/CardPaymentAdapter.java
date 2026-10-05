@@ -7,7 +7,6 @@ import com.project.payflo.payment_service.gateway.PaymentAdapter;
 import com.project.payflo.payment_service.gateway.dto.PaymentRequest;
 import com.project.payflo.payment_service.gateway.dto.PaymentResult;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,9 +19,12 @@ public class CardPaymentAdapter implements PaymentAdapter {
     private final VaultServiceClient vaultServiceClient;
 
     @Override
+    // No @Retry: a charge that timed out may still have gone through, and sending it again could charge the
+    // card twice. The circuit breaker stays; an ambiguous outcome is left for the callback or the timeout
+    // sweeper to settle (see PaymentServiceImpl).
     @CircuitBreaker(name = "vault-service")
-    @Retry(name = "vault-service")
     public PaymentResult initiate(PaymentRequest request) {
+        // PaymentServiceImpl has already checked that methodDetails carries a string token.
         String token = (String) request.methodDetails().get("token");
 
         PaymentProcessorResponse response = vaultServiceClient.charge(

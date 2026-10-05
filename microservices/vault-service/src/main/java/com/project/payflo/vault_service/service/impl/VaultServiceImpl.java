@@ -103,8 +103,9 @@ public class VaultServiceImpl implements VaultService {
 
             return response;
         } catch (Exception e) {
-            log.warn("Vault charge failed, token={}****", token.substring(0, 4));
-            return new PaymentProcessorResponse.Failure("VAULT_CHARGE_FAILED", e.getMessage());
+            // The cause is logged, not returned: the description travels on to the merchant.
+            log.warn("Vault charge failed, token={}****", token.substring(0, 4), e);
+            return new PaymentProcessorResponse.Failure("VAULT_CHARGE_FAILED", "The card charge could not be completed");
         } finally {
             if (panBytes != null) Arrays.fill(panBytes, (byte) 0);
         }
