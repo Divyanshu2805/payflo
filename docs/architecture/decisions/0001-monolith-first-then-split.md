@@ -8,7 +8,7 @@ PayFlo's domains — merchants and credentials, orders and payments, card storag
 
 ## Decision
 
-Build the whole system as a single Spring Boot application first (the repository root, `com.project.payflo`), while holding three conventions that keep a later split cheap:
+Build the whole system as a single Spring Boot application first (`com.project.payflo`), while holding three conventions that keep a later split cheap:
 
 - **Domain-oriented packages** — `common`, `merchant`, `payment`, `vault`, `operations` — rather than layer packages, so each domain is already a candidate service.
 - **No cross-domain foreign keys** — a reference into another domain is a plain UUID.
@@ -19,6 +19,6 @@ Once the monolith covered onboarding, credentials, orders, payments, vaulting an
 ## Consequences
 
 - The split was mostly mechanical: each domain package became a service with little redesign, and the no-FK convention meant no schema had to be untangled.
-- The monolith stays in the repository as a frozen reference. Nothing new is built there, and a few of its endpoints (refresh tokens, order reads and cancel) haven't been ported — see [known gaps](../../known-gaps/not-yet-built.md#ported-from-the-monolith).
+- Once every endpoint had been carried over, the monolith was removed from the tree. It remains in the repository's history (up to commit `6345a34`) for anyone who wants to see what the services were extracted from.
 - Settlement was never built in the monolith; it was built directly in operations-service.
 - In-process calls became network calls, which brought the need for [the saga](0006-payment-initiation-as-a-saga.md), [the outbox](0005-transactional-outbox-for-events.md) and resilience wrappers.

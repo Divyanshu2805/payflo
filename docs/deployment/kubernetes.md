@@ -44,6 +44,8 @@ Every application is one Deployment and one Service with the same shape:
 - requests `250m` CPU / `512Mi`, limits `1` CPU / `1Gi`;
 - startup (up to 5 minutes), readiness and liveness probes on `/actuator/health` — for the gateway, on its management port `9081`, since its public port answers `401` to anything without credentials.
 
+The two services that take the traffic, **the gateway and payment-service**, are built to run as several replicas ([scaling](scaling.md)): a `RollingUpdate` strategy that starts a new pod and waits for it to be ready before stopping an old one (`maxSurge: 1`, `maxUnavailable: 0`), a 5-second `preStop` sleep and `terminationGracePeriodSeconds: 40` so a pod stops receiving requests before it stops serving them (with `server.shutdown: graceful`, 20 s, in `config-repo/application.yaml`), and a `PodDisruptionBudget` (`services/pod-disruption-budgets.yaml`, `maxUnavailable: 1`) so a drain or an upgrade takes one pod at a time. The base runs one replica of each; `microservices/k8s-scaled` runs three.
+
 | Service | Secrets it gets | Service type |
 |---|---|---|
 | `config-service` | — | ClusterIP; runs with `SPRING_PROFILES_ACTIVE=native,k8s` ([why](../practices/gotchas/kubernetes.md#config-service-needs-nativek8s-not-just-k8s)) |
@@ -71,4 +73,4 @@ Kustomize applies everything at once. Ordering comes from the services themselve
 
 ## Not included
 
-One replica per service, no Ingress controller, no HorizontalPodAutoscaler, no `NetworkPolicy`, no alerting rules, no image registry or CI — see [known gaps](../known-gaps/not-yet-built.md#platform).
+One replica per service by default (several for the gateway and payment-service with `k8s-scaled`), no Ingress controller, no HorizontalPodAutoscaler, no `NetworkPolicy`, no alerting rules, and images loaded into kind rather than pushed to a registry. It is a local cluster for showing that the system runs and scales on Kubernetes, not a production manifest set.

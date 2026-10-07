@@ -4,12 +4,14 @@ Everything about how PayFlo is built, run and changed. Start with the section th
 
 ## Getting started
 
-- [Local development](local-development/README.md) — prerequisites, configuration, running the services, troubleshooting, and the frozen monolith.
+- [The demo and the dashboard](local-development/demo-and-dashboard.md) — one command that starts everything and seeds a merchant, and a web dashboard over the API.
+- [Local development](local-development/README.md) — prerequisites, configuration, running the services, troubleshooting.
 - [Tech stack](tech-stack.md) — the languages, frameworks and services in use.
 
 ## Understanding the system
 
-- [Requirements](requirements.md) — what the system is designed to do, and the targets it's designed for.
+- [What was built and what it measured](project-summary.md) — the idea, each design decision and optimisation, and its effect. Start here.
+- [Requirements](requirements.md) — what the system set out to do, and what it measured.
 - [Architecture](architecture/README.md) — services, module map, request flows, security model.
 - [Architecture decisions](architecture/decisions/README.md) — why the system is shaped the way it is.
 - [Data model](schema/README.md) — the four databases, their entities, the state machines, and schema conventions.
@@ -17,12 +19,13 @@ Everything about how PayFlo is built, run and changed. Start with the section th
 ## Operating it
 
 - [Observability](observability/README.md) — tracing across services, metrics, and the queries for throughput, latency and availability.
+- [Crash and outage tests](reliability/crash-and-outage-tests.md) — what happens to a payment when a service is killed or PostgreSQL, Redis or Kafka goes away, and how that was checked.
 - [Load testing](load-testing/README.md) — the JMeter plan, how to run it, how each non-functional target is measured, and the [results](load-testing/results.md).
 
 ## Reference
 
-- [API reference](api/README.md) — every endpoint, the mock acquirer's test values, idempotency, rate limits and errors.
-- [Known gaps](known-gaps/README.md) — constraints, trade-offs, and what isn't built yet.
+- [API reference](api/README.md) — every endpoint, the mock acquirer's test values, idempotency, rate limits and errors; the [OpenAPI spec](api/openapi.yaml) and a Postman collection.
+- [Design trade-offs and scope](architecture/trade-offs.md) — what the design accepts, and what the project leaves out.
 
 ## Contributing
 

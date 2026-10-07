@@ -1,23 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1470" height="1046" viewBox="0 0 1470 1046"><defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/></filter><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.1" fill="#1a2232"/></pattern><marker id="ae3b341" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#e3b341"/></marker><marker id="abc8cff" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#bc8cff"/></marker><marker id="a8b98a9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#8b98a9"/></marker><marker id="aff7b72" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#ff7b72"/></marker><marker id="af0883e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#f0883e"/></marker></defs><rect width="1470" height="1046" rx="18" fill="#0b0f17"/><rect width="1470" height="1046" fill="url(#dots)"/><text x="36" y="46" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#e6edf3">Flow — webhook delivery</text><text x="36" y="70" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#8b98a9">A domain event becomes one HMAC-signed delivery per subscribed target, retried for up to 24 hours</text>
-<path d="M172.5,194 L172.5,1016" stroke="rgba(227,179,65,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
-<path d="M397.5,194 L397.5,1016" stroke="rgba(63,185,80,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
-<path d="M622.5,194 L622.5,1016" stroke="rgba(63,185,80,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
-<path d="M847.5,194 L847.5,1016" stroke="rgba(255,123,114,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
-<path d="M1072.5,194 L1072.5,1016" stroke="rgba(255,123,114,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
-<path d="M1297.5,194 L1297.5,1016" stroke="rgba(240,136,62,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
-<rect x="78.0" y="636" width="1314.0" height="82" rx="10" fill="rgba(63,185,80,0.05)" stroke="rgba(63,185,80,0.5)" stroke-width="1.2" stroke-dasharray="5 4"/>
-<rect x="78.0" y="636" width="66" height="20" rx="6" fill="rgba(63,185,80,0.18)"/>
-<text x="87.0" y="650" text-anchor="start" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#3fb950">ALT  2xx</text>
-<rect x="78.0" y="738" width="1314.0" height="128" rx="10" fill="rgba(255,123,114,0.05)" stroke="rgba(255,123,114,0.5)" stroke-width="1.2" stroke-dasharray="5 4"/>
-<rect x="78.0" y="738" width="145" height="20" rx="6" fill="rgba(255,123,114,0.18)"/>
-<text x="87.0" y="752" text-anchor="start" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#ff7b72">ALT  error or timeout</text>
-<rect x="78.0" y="502" width="1314.0" height="378" rx="10" fill="rgba(240,136,62,0.05)" stroke="rgba(240,136,62,0.5)" stroke-width="1.2" stroke-dasharray="5 4"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1470" height="1138" viewBox="0 0 1470 1138"><defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/></filter><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.1" fill="#1a2232"/></pattern><marker id="ae3b341" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#e3b341"/></marker><marker id="abc8cff" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#bc8cff"/></marker><marker id="a8b98a9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#8b98a9"/></marker><marker id="aff7b72" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#ff7b72"/></marker><marker id="af0883e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="#f0883e"/></marker></defs><rect width="1470" height="1138" rx="18" fill="#0b0f17"/><rect width="1470" height="1138" fill="url(#dots)"/><text x="36" y="46" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#e6edf3">Flow — webhook delivery</text><text x="36" y="70" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#8b98a9">A domain event becomes one HMAC-signed delivery per subscribed target, retried for up to 24 hours</text>
+<path d="M172.5,194 L172.5,1108" stroke="rgba(227,179,65,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
+<path d="M397.5,194 L397.5,1108" stroke="rgba(63,185,80,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
+<path d="M622.5,194 L622.5,1108" stroke="rgba(63,185,80,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
+<path d="M847.5,194 L847.5,1108" stroke="rgba(255,123,114,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
+<path d="M1072.5,194 L1072.5,1108" stroke="rgba(255,123,114,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
+<path d="M1297.5,194 L1297.5,1108" stroke="rgba(240,136,62,0.45)" stroke-width="1.3" stroke-dasharray="4 6"/>
+<rect x="78.0" y="728" width="1314.0" height="82" rx="10" fill="rgba(63,185,80,0.05)" stroke="rgba(63,185,80,0.5)" stroke-width="1.2" stroke-dasharray="5 4"/>
+<rect x="78.0" y="728" width="66" height="20" rx="6" fill="rgba(63,185,80,0.18)"/>
+<text x="87.0" y="742" text-anchor="start" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#3fb950">ALT  2xx</text>
+<rect x="78.0" y="830" width="1314.0" height="128" rx="10" fill="rgba(255,123,114,0.05)" stroke="rgba(255,123,114,0.5)" stroke-width="1.2" stroke-dasharray="5 4"/>
+<rect x="78.0" y="830" width="145" height="20" rx="6" fill="rgba(255,123,114,0.18)"/>
+<text x="87.0" y="844" text-anchor="start" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#ff7b72">ALT  error or timeout</text>
+<rect x="78.0" y="502" width="1314.0" height="470" rx="10" fill="rgba(240,136,62,0.05)" stroke="rgba(240,136,62,0.5)" stroke-width="1.2" stroke-dasharray="5 4"/>
 <rect x="78.0" y="502" width="447" height="20" rx="6" fill="rgba(240,136,62,0.18)"/>
 <text x="87.0" y="516" text-anchor="start" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="700" fill="#f0883e">LOOP  WebhookDeliveryScheduler · every 1 s · ShedLock · virtual threads</text>
-<path d="M402.5,832.0 L841.5,832.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
-<path d="M402.5,786.0 L1066.5,786.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
-<path d="M402.5,684.0 L1066.5,684.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
-<path d="M402.5,596.0 L1291.5,596.0" fill="none" stroke="#f0883e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#af0883e)"/>
+<path d="M402.5,924.0 L841.5,924.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
+<path d="M402.5,878.0 L1066.5,878.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
+<path d="M402.5,776.0 L1066.5,776.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
+<path d="M402.5,688.0 L1291.5,688.0" fill="none" stroke="#f0883e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#af0883e)"/>
+<path d="M617.5,642.0 L403.5,642.0" fill="none" stroke="#8b98a9" stroke-width="1.6" stroke-dasharray="6 5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a8b98a9)"/>
+<path d="M402.5,596.0 L616.5,596.0" fill="none" stroke="#bc8cff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#abc8cff)"/>
 <path d="M402.5,550.0 L841.5,550.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
 <path d="M392.5,462.0 L178.5,462.0" fill="none" stroke="#8b98a9" stroke-width="1.6" stroke-dasharray="6 5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#a8b98a9)"/>
 <path d="M402.5,416.0 L841.5,416.0" fill="none" stroke="#ff7b72" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#aff7b72)"/>
@@ -65,8 +67,8 @@
 <rect x="396.3" y="303.0" width="227.4" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
 <text x="510.0" y="315" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8b98a9">targets + decrypted signing secrets</text>
 <circle cx="383.5" cy="370" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="373.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">4</text>
-<rect x="577.9" y="349.0" width="314.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
-<text x="735.0" y="361" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">one WebhookEvent PENDING per target · HMAC-SHA256</text>
+<rect x="562.3" y="349.0" width="345.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
+<text x="735.0" y="361" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">one WebhookEvent PENDING per target · body + config id</text>
 <circle cx="383.5" cy="416" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="419.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">5</text>
 <rect x="583.3" y="395.0" width="78.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
 <text x="622.5" y="407" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">ZADD due-at</text>
@@ -76,19 +78,25 @@
 <circle cx="383.5" cy="550" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="553.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">7</text>
 <rect x="583.3" y="529.0" width="78.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
 <text x="622.5" y="541" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">due entries</text>
-<circle cx="383.5" cy="596" r="9" fill="rgba(240,136,62,0.2)" stroke="#f0883e" stroke-width="1"/><text x="383.5" y="599.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#f0883e">8</text>
-<rect x="674.8" y="575.0" width="345.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
-<text x="847.5" y="587" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">POST payload + X-PayFlo-Signature · 3 s / 5 s timeouts</text>
-<circle cx="383.5" cy="684" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="687.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">9</text>
-<rect x="655.5" y="663.0" width="159.0" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
-<text x="735.0" y="675" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">DELIVERED · delivered_at</text>
-<circle cx="383.5" cy="786" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="789.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">10</text>
-<rect x="577.9" y="765.0" width="314.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
-<text x="735.0" y="777" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">FAILED · next_retry_at = 1m, 5m, 30m, 2h, 8h, 24h</text>
-<circle cx="383.5" cy="832" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="835.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">11</text>
-<rect x="592.7" y="811.0" width="59.7" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
-<text x="622.5" y="823" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">re-queue</text>
-<rect x="327.5" y="890" width="815.0" height="30" rx="8" fill="rgba(255,123,114,0.12)" stroke="rgba(255,123,114,0.55)" stroke-width="1.1"/>
-<text x="735.0" y="910" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#ff7b72">7th failure → WebhookDlqRecorder: DEAD + DlqEvent (own transaction)</text>
-<rect x="327.5" y="940" width="590.0" height="30" rx="8" fill="rgba(227,179,65,0.12)" stroke="rgba(227,179,65,0.55)" stroke-width="1.1"/>
-<text x="622.5" y="960" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e3b341">every 10 s: rows whose next_retry_at passed with no queue entry are re-queued</text></svg>
+<circle cx="383.5" cy="596" r="9" fill="rgba(188,140,255,0.2)" stroke="#bc8cff" stroke-width="1"/><text x="383.5" y="599.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#bc8cff">8</text>
+<rect x="352.9" y="575.0" width="314.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
+<text x="510.0" y="587" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">GET …/webhook-targets/{configId} · the secret now</text>
+<circle cx="636.5" cy="642" r="9" fill="rgba(139,152,169,0.2)" stroke="#8b98a9" stroke-width="1"/><text x="636.5" y="645.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#8b98a9">9</text>
+<rect x="461.5" y="621.0" width="96.9" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
+<text x="510.0" y="633" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#8b98a9">signing secret</text>
+<circle cx="383.5" cy="688" r="9" fill="rgba(240,136,62,0.2)" stroke="#f0883e" stroke-width="1"/><text x="383.5" y="691.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#f0883e">10</text>
+<rect x="646.9" y="667.0" width="401.2" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
+<text x="847.5" y="679" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">POST body + X-PayFlo-Timestamp + Signature · signed per attempt</text>
+<circle cx="383.5" cy="776" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="779.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">11</text>
+<rect x="655.5" y="755.0" width="159.0" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
+<text x="735.0" y="767" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">DELIVERED · delivered_at</text>
+<circle cx="383.5" cy="878" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="881.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">12</text>
+<rect x="577.9" y="857.0" width="314.3" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
+<text x="735.0" y="869" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">FAILED · next_retry_at = 1m, 5m, 30m, 2h, 8h, 24h</text>
+<circle cx="383.5" cy="924" r="9" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/><text x="383.5" y="927.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#ff7b72">13</text>
+<rect x="592.7" y="903.0" width="59.7" height="16" rx="4" fill="#0b0f17" opacity="0.85"/>
+<text x="622.5" y="915" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e6edf3">re-queue</text>
+<rect x="327.5" y="982" width="815.0" height="30" rx="8" fill="rgba(255,123,114,0.12)" stroke="rgba(255,123,114,0.55)" stroke-width="1.1"/>
+<text x="735.0" y="1002" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#ff7b72">7th failure → WebhookDlqRecorder: DEAD + DlqEvent (own transaction)</text>
+<rect x="327.5" y="1032" width="590.0" height="30" rx="8" fill="rgba(227,179,65,0.12)" stroke="rgba(227,179,65,0.55)" stroke-width="1.1"/>
+<text x="622.5" y="1052" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="11.5" fill="#e3b341">every 10 s: rows whose next_retry_at passed with no queue entry are re-queued</text></svg>

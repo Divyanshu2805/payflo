@@ -31,4 +31,4 @@ The opaque stand-in for a vaulted card — the only thing a merchant ever holds.
 | `vault_card_id` | FK → `vault_card`. |
 | `customer` | Plain id → merchant-service `customer`, if the merchant supplied one. |
 | `merchant` | Plain id → merchant-service `merchant`. |
-| `revoked_at` | When the token was revoked; nothing revokes tokens yet. |
+| `revoked_at` | For revoking a token. Nothing sets or reads it: tokens can't be revoked through the API. |

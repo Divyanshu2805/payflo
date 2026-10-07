@@ -27,6 +27,10 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 | Change who receives which event | merchant `service/impl/WebhookConfigServiceImpl.java` (subscriptions); operations `webhook/WebhookKafkaConsumer.java` (fan-out) |
 | Change retry timing or the DLQ | operations `webhook/WebhookDeliverExecutor.java` (backoff, max attempts), `WebhookDeliveryScheduler.java`, `WebhookDlqRecorder.java` |
 | Change settlement amounts or timing | operations `settlement/SettlementTransactionExecutor.java` (fee and GST rates), `SettlementEngine.java` (the cron) |
+| Change how a webhook is signed | `common-lib` `util/WebhookSignatures.java` (the signed string and the check receivers run); operations `webhook/WebhookDeliverExecutor.java` (where it is signed, per attempt) and `WebhookSecretResolver.java` |
+| Run a settlement by hand, or suspend a merchant | The [admin API](../api/admin.md): operations `controller/AdminSettlementController.java` and `service/AdminSettlementService.java`; merchant `controller/AdminController.java` and `service/AdminMerchantService.java` |
+| Record another sensitive action in the audit log | Add a constant to `common-lib` `enums/AuditAction` **and widen `audit_log_action_check` in a new merchant-service migration**, then call `AuditLogService.record(...)` inside the transaction that makes the change |
+| Make a payment's capture fail on purpose | payment `simulator/CaptureSimulator.java` and the `payment.simulator.capture.*` settings; the test values are set by the processors (`processor/strategy/`, vault's `CardPaymentProcessor`) |
 | Publish a new domain event | The owning service's `outbox/OutboxEventPublisher` inside the same transaction as the change; a topic in `config-repo` if the aggregate type is new |
 
 ## API, data and auth
@@ -36,7 +40,7 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 | Add a public endpoint | The owning service's `controller/` and DTOs, the [API reference](../api/README.md) — and, if the path prefix is new, a route in `config-repo/api-gateway-service.yaml` **and** `api-gateway-service-k8s.yaml` |
 | Make an endpoint public (no credential) | `app.security.public-routes` in `config-repo/api-gateway-service.yaml` — think twice |
 | Add a service-to-service call | An `Internal*Controller` endpoint in the owner, a Feign client method in the caller's `client/` with Resilience4j annotations and a `config-repo` instance, a `common-lib` DTO if shared, and the table in [service communication](service-communication.md#internal-api) |
-| Add a column or table | The entity (Hibernate adds it on the next start), then the [data model](../schema/README.md) and the ER diagram |
+| Add a column or table | A Flyway migration in the owning service (`src/main/resources/db/migration`) and the entity, then the [data model](../schema/README.md) and the ER diagram |
 | Change authentication | api-gateway `security/` (`GatewayAuthFilter`, `JwtAuthHandler`, `ApiKeyAuthHandler`); token issuing in merchant `security/JwtUtil.java` |
 | Change rate limits | `app.rate-limit.*` in `config-repo/api-gateway-service.yaml`; algorithms in `common-lib` `ratelimit/` |
 | Change the error shape or a status mapping | `common-lib` `exception/GlobalExceptionHandler.java` — every service picks it up |

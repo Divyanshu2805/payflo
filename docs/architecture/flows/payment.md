@@ -10,18 +10,18 @@ All paths below are under `payment-service/src/main/java/com/project/payflo/paym
 
 1. **`controller/OrderController.create`** — `POST /v1/orders`, merchant from `MerchantContext`.
 2. **`service/impl/OrderServiceImpl.create`** — rejects a receipt this merchant already used (`409 ORDER_RECEIPT_DUPLICATE`); then, if the request carries a `customer` with an email, resolves it first with `client/CustomerServiceClient` → merchant-service `POST /internal/customers/find-or-create` (circuit breaker + retry). This remote call happens **before** any transaction opens.
-3. **`service/impl/OrderPersistenceService.persist`** — one transaction: saves the order as `CREATED` with `attempts = 0` and `expiresAt` defaulting to 30 minutes out, and writes an `ORDER_CREATED` outbox row. The `(merchant_id, receipt)` unique index backs up the receipt check against a race (`409 DATA_INTEGRITY_VIOLATION`).
+3. **`service/impl/OrderPersistenceService.persist`** — one transaction: saves the order as `CREATED` with `attempts = 0` and `expiresAt` defaulting to 15 minutes out, and writes an `ORDER_CREATED` outbox row. The `(merchant_id, receipt)` unique index backs up the receipt check against a race (`409 DATA_INTEGRITY_VIOLATION`).
 
 ## Initiating a payment
 
 `POST /v1/payments` is a small saga in `saga/PaymentAuthorizationRecorder`, so no remote call runs inside a transaction ([decision 0006](../decisions/0006-payment-initiation-as-a-saga.md)):
 
-0. **Validation.** `methodDetails` must carry what the method needs (`token`, `vpa`, `bank`) — `400 INVALID_PAYMENT_DETAILS` — and `WALLET` is `400 PAYMENT_METHOD_NOT_SUPPORTED`. Nothing is written for a request that can never work.
+0. **Validation.** `methodDetails` must carry what the method needs (`token`, `vpa`, `bank`, `wallet`) — `400 INVALID_PAYMENT_DETAILS`. Nothing is written for a request that can never work.
 1. **Replay check.** With an `X-Idempotency-Key`, `findExistingAttempt` returns the payment already created under that key for this merchant, if any.
 2. **`recordPayment` — transaction 1.** Locks the order (`findByIdAndMerchantIdForUpdate`, `SELECT … FOR UPDATE`) so concurrent attempts on one order serialize; requires it to be `CREATED` or `ATTEMPTED` (`400 ORDER_NOT_PAYABLE` otherwise), not past its `expires_at` (`400 ORDER_EXPIRED`) and to have no other payment in flight or completed (`400 ORDER_PAYMENT_IN_PROGRESS` — the lock makes concurrent attempts see each other); marks it `ATTEMPTED` and increments `attempts`; creates the `Payment` (`CREATED`, amount copied from the order); fires `AUTHORIZE_ATTEMPT` → `AUTHORIZING`.
 3. **The gateway call — no transaction.** `gateway/PaymentGatewayRouter` picks the method's `PaymentAdapter`:
    - `CardPaymentAdapter` → vault-service `POST /internal/vault/charge` with the paying merchant's id, the token and the amount only; vault-service charges the token only if that merchant created it, decrypts the card and runs its mock acquirer behind a bulkhead.
-   - `UpiPaymentAdapter`, `NetBankingAdapter` → the local `PaymentProcessor` for that method.
+   - `UpiPaymentAdapter`, `NetBankingAdapter`, `WalletPaymentAdapter` → the local `PaymentProcessor` for that method.
 
    Every processor answers `Pending` (with a processor reference) or `Failure` (with an error code) — see [mock acquirer](../../api/mock-acquirer.md).
 4. **`applyGatewayResult` — transaction 2.** `Pending` records the processor reference and leaves the payment `AUTHORIZING`; `Failure` fires `AUTHORIZE_FAIL` → `FAILED` with the error code. Either way a `PAYMENT_CREATED` outbox row is written.
@@ -33,13 +33,23 @@ The response is `201` with the payment, usually `AUTHORIZING`.
 
 ## Authorization and capture
 
-`simulator/BankCallbackSimulator` stands in for the bank's asynchronous answer. Every 5 seconds (ShedLock-guarded) it picks up `AUTHORIZING` payments older than their method's simulated delay, oldest first in slices of 500 for up to 30 seconds per run, and calls `PaymentServiceImpl.resolveAuthorization` for each — `payment.simulator.concurrency` (16) at a time, on virtual threads:
+`simulator/BankCallbackSimulator` stands in for the bank's asynchronous answer. Every second (ShedLock-guarded) it picks up `AUTHORIZING` payments older than their method's simulated delay, oldest first in slices of 500 for up to 30 seconds per run, and resolves them **in batches**: `payment.simulator.batch-size` (50) payments per transaction through `PaymentServiceImpl.resolveAuthorizations`, `payment.simulator.concurrency` (4) batches at a time, on virtual threads. A batch locks its payments in one query (in id order), loads their orders in one more, applies the answer to each, and writes everything in JDBC batches with one commit, so the cost of a round trip and a log flush is shared by 50 payments instead of paid by each. If a batch fails, its payments are resolved one at a time (`resolveAuthorization`) so one bad payment cannot hold the others back. For each payment:
 
 - By the method's success rate (card 90%, UPI 95%, net banking 80%, or forced by `chaos-mode`), fires `AUTHORIZE_SUCCESS` → `AUTHORIZED` or `AUTHORIZE_FAIL` → `FAILED`.
 - On approval it **auto-captures**: `CAPTURE_REQUEST` → `CAPTURING`, the adapter's `capture()`, then `CAPTURE_SUCCESS` → `CAPTURED` (setting `captured_at`, and the order to `PAID`) or `CAPTURE_FAIL` → back to `AUTHORIZED`.
 - The outcome writes one `PAYMENT_STATUS_CHANGED` outbox row.
 
-`POST /v1/payments/{paymentId}/capture` runs the same capture step on demand for a payment that is `AUTHORIZED`; anything else is `409 INVALID_STATE_TRANSITION`.
+`POST /v1/payments/{paymentId}/capture` runs the same capture step on demand for a payment that is `AUTHORIZED`; anything else is `409 INVALID_STATE_TRANSITION`. A successful manual capture marks the order `PAID` and clears the error of an attempt that failed, as the automatic one does.
+
+A capture can be refused. `PaymentGatewayRouter.capture` asks `simulator/CaptureSimulator` first (a real adapter would return its own `Failure`); a refusal is `CAPTURE_FAIL` → back to `AUTHORIZED` with `CAPTURE_DECLINED`, the order stays `ATTEMPTED`, and the `PAYMENT_STATUS_CHANGED` event carries the `errorCode`. The order can't take another payment while the authorization is held. The merchant retries the capture, or the sweeper lapses it after 60 minutes. The test values are in the [mock acquirer](../../api/mock-acquirer.md#3-capture--the-acquirer-can-refuse-it).
+
+## Refunds
+
+`service/RefundService` (see [refunds](../../api/refunds.md)) is deliberately a *request*, not a remote call, so nothing slow runs in its transaction:
+
+1. **Create** — one transaction. Locks the payment (`FOR UPDATE`, so refunds of one payment queue up), requires `CAPTURED` or `PARTIALLY_REFUNDED` (a `SETTLED` payment has been paid out and is refused), and works out what is left: the payment's amount minus every refund that is pending or processed. Saves a `Refund` in `PENDING`, fires `REFUND_INIT` (`CAPTURED` → `PARTIALLY_REFUNDED`), and writes `REFUND_CREATED` (and `PAYMENT_STATUS_CHANGED` if the status moved) to the outbox. An `X-Idempotency-Key` is stored with the refund and re-checked under the lock.
+2. **Resolve** — `simulator/RefundResolver` (every 5 s, ShedLock) hands each `PENDING` refund older than `payment.refund.delay-seconds` to `RefundProcessingService`, one transaction each: it locks the payment, then the refund (the same order creation uses), and either marks it `PROCESSED` — and, if the processed refunds now equal the payment's amount, fires `REFUND_COMPLETE` (→ `REFUNDED`) — or `FAILED`, in which case the payment returns to `CAPTURED` (`REFUND_FAIL`) unless other refunds are pending or done. The outcome comes from the refund id's hash and `payment.refund.success-rate` (95%), like a payment's bank callback.
+3. **Settlement** nets completed refunds off the payout; see the [settlement flow](settlement.md#refunds).
 
 ## Timeouts and expiry
 

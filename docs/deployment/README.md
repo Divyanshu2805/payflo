@@ -9,7 +9,7 @@ How PayFlo runs on Kubernetes: every service, PostgreSQL, Redis and Kafka in one
 - **One public entry point.** Only the gateway's Service is a `NodePort` (`30080`, published on `localhost:8080` by kind). Every other Service is `ClusterIP`, so `/internal/**` is unreachable from outside the cluster.
 - **No Dockerfiles.** Images are built by Jib from each module's `pom.xml`.
 - **Secrets from a gitignored file.** Kustomize's `secretGenerator` turns `k8s/secrets.env` into the `app-secrets` Secret, and each pod gets only the secrets it needs — vault-service alone gets the master key.
-- **Local only.** There is no registry, CI pipeline, Ingress or autoscaling yet — see [known gaps](../known-gaps/not-yet-built.md#platform).
+- **Local only.** One kind node, a NodePort instead of an Ingress, no registry and no autoscaling. It does run several replicas of the two services that take the traffic ([scaling](scaling.md)).
 
 ## Contents
 
@@ -17,6 +17,7 @@ How PayFlo runs on Kubernetes: every service, PostgreSQL, Redis and Kafka in one
 |---|---|
 | [Running on kind](running-on-kind.md) | Build the images, create the cluster, deploy, use it, tear it down |
 | [Kubernetes manifests](kubernetes.md) | `k8s/` layout, workloads, Services, probes, resources, the stateful components |
+| [Scaling](scaling.md) | Running several replicas of the gateway and payment-service, what makes that safe, and the measured throughput at 1, 2 and 3 |
 | [Container images](container-images.md) | How Jib builds each image, and config-service's baked-in configuration |
 | [Configuration](configuration.md) | The ConfigMap, the Secret, the `k8s` profile and the `-k8s.yaml` overrides |
 

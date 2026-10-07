@@ -5,7 +5,7 @@ The entities, tables, state machines and conventions behind PayFlo's four databa
 Data is split across **four PostgreSQL databases, one per business service**. Two consequences run through every page here:
 
 - A service can only join its own tables. A reference into another service's data is a plain id column, never a foreign key.
-- The schema is created and altered by Hibernate (`ddl-auto: update`) from the entities; there are no migration files yet.
+- The schema is owned by Flyway: each service has versioned migrations in `src/main/resources/db/migration`, and Hibernate only validates the entities against them (`ddl-auto: validate`). See [schema conventions](conventions.md#changing-the-schema).
 
 ## Contents
 
@@ -20,4 +20,4 @@ Data is split across **four PostgreSQL databases, one per business service**. Tw
 | [Enums and state machines](enums.md) | Every status and type value, and the payment, settlement and delivery lifecycles |
 | [Conventions](conventions.md) | Entities, money, enums, soft delete, and how to change the schema |
 
-Keep these pages and the ER diagrams in step with each service's `entity/` package: update them in the same change as any entity edit. The frozen monolith's schema is not documented here — it differs in a few columns (for example a `refresh_token` table) and is kept only as a reference.
+Keep these pages and the ER diagrams in step with each service's `entity/` package: update them in the same change as any entity edit.

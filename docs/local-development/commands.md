@@ -6,10 +6,15 @@ On Windows, use `mvnw.cmd` in place of `./mvnw`.
 
 | Command | Purpose |
 |---|---|
+| `python demo/demo.py` | Start everything, seed a demo merchant and serve the dashboard; `seed`, `status`, `stop`, `--build`, `--port-offset N` ([the demo](demo-and-dashboard.md)) |
+| `python dashboard/serve.py` | Only the dashboard and Swagger UI, on <http://localhost:5173>, against a gateway that is already running |
 | `./mvnw clean install -DskipTests` | Build every module and install `common-lib` locally |
 | `../mvnw spring-boot:run` (from a module directory) | Run one service — see the [start order](setup.md#4-start-the-services-in-order) |
 | `./mvnw -pl common-lib,<module> compile` | Compile one service against `common-lib` from source |
-| `./mvnw -pl <module> test` | That module's tests — a `contextLoads` that needs discovery, config and the infrastructure running |
+| `./mvnw -pl <module> test` | That module's unit and integration tests. The integration tests start PostgreSQL, Redis and Kafka themselves with Testcontainers, so they need only Docker: not the config server, not Eureka, not the compose stack |
+| `./mvnw verify` | Every test in every module, as CI runs it |
+| `python ../docs/api/check_openapi.py` | Check that `docs/api/openapi.yaml` names exactly the endpoints the controllers have |
+| `python chaos/crash_and_outage_test.py` | The crash and outage tests (from `microservices/`; needs the whole stack running). See [the results](../reliability/crash-and-outage-tests.md) |
 | `./mvnw -DskipTests jib:dockerBuild -pl <module>` | Build a container image into the local Docker daemon ([container images](../deployment/container-images.md)) |
 
 ## Checking a running stack
@@ -31,7 +36,3 @@ On Windows, use `mvnw.cmd` in place of `./mvnw`.
 | `docker compose -f microservices/observability/docker-compose.yaml up -d` | Start Zipkin (`:9411`), Prometheus (`:9090`) and Grafana (`:3000`) — see [observability](../observability/dashboards.md) |
 | `docker exec -it pgvector-payflo psql -U user -d payflo_payment` | A SQL shell on one service's database |
 | `docker exec -it redis redis-cli -p 6379` | The Redis CLI (`KEYS apikey:*`, `ZRANGE …` for the webhook retry queue) |
-
-## The monolith (repository root)
-
-See [the monolith](the-monolith.md).

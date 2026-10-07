@@ -14,6 +14,8 @@ The service-to-service API. It is not part of the merchant contract and is **nev
 | `GET` | `/internal/api-keys/{keyId}` | — | `ApiKeyCacheEntry` — key id, both secret hashes, grace-period expiry, merchant id, environment, enabled | gateway, on a Redis cache miss |
 | `POST` | `/internal/customers/find-or-create` | `FindOrCreateCustomerRequest { merchantId, email, name, phone }` | the customer's `UUID` | payment-service, creating an order |
 | `GET` | `/internal/merchants/{merchantId}/webhook-targets?eventType=` | — | `List<WebhookTarget>` — config id, target URL, **decrypted** signing secret | operations-service, fanning out an event |
+| `GET` | `/internal/merchants/{merchantId}/webhook-targets/{configId}` | — | `WebhookTarget` — the one config with its **decrypted** signing secret as it is now (`404` once the merchant has deleted it) | operations-service, signing each delivery attempt |
+| `POST` | `/internal/audit` | `AuditEntryRequest { action, actorType, actor, merchantId?, targetType?, targetId?, details?, clientIp? }` | `204` | operations-service, recording the operator's settlement run in the [audit log](audit-log.md) that merchant-service owns, before running it |
 | `GET` | `/internal/merchants/{merchantId}/status` | — | `MerchantStatus` | gateway, to refuse a suspended merchant (cached for 60 s) |
 | `GET` | `/internal/merchants/active-ids` | — | `List<UUID>` | operations-service, starting settlement |
 | `GET` | `/internal/merchants/{merchantId}/settlement-bank-details` | — | `SettlementBankDetails { accountNumber, ifsc, … }` | operations-service, paying out |
@@ -22,8 +24,8 @@ The service-to-service API. It is not part of the merchant contract and is **nev
 
 | Method | Path | Request | Response | Caller |
 |---|---|---|---|---|
-| `GET` | `/internal/payments/unsettled-captured?merchantId=` | — | `List<PaymentSettlementView>` — payment id, amount, currency, … | operations-service, settlement |
-| `POST` | `/internal/payments/mark-settled` | `List<UUID>` payment ids | `200` | operations-service, after a payout succeeds. Sets `SETTLED` directly, without the state machine |
+| `GET` | `/internal/payments/unsettled-captured?merchantId=&capturedBefore=&page=&size=` | — | `List<PaymentSettlementView>` — payment id, amount, **refunded amount**, currency | operations-service, settlement. Oldest first and paged (`size` up to 5000). Only `CAPTURED` and `PARTIALLY_REFUNDED` payments not yet paid out, captured before `capturedBefore` (the T+N hold), and with no refund still waiting on the bank |
+| `POST` | `/internal/payments/mark-settled` | `List<UUID>` payment ids | `200` | operations-service, after a payout succeeds. Moves each through the state machine (`SETTLE`), with a transition-log row. Safe to repeat: a payment that isn't `CAPTURED` or `PARTIALLY_REFUNDED` any more is skipped |
 
 ## vault-service
 
