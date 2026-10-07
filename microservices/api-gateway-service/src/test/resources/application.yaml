@@ -1,0 +1,15 @@
+# Used by the tests instead of the module's own application.yaml (which points at the config server): the same
+# settings the gateway really runs on, read straight from config-repo. Redis comes from a container.
+spring:
+  application:
+    name: api-gateway-service
+  config:
+    import: file:../config-repo/application.yaml,file:../config-repo/api-gateway-service.yaml
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+eureka:
+  client:
+    enabled: false

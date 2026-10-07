@@ -70,6 +70,10 @@ public class Settlement extends BaseEntity {
 
     private LocalDateTime processedAt;
 
+    // When payment-service confirmed the covered payments are SETTLED. A PROCESSED settlement without this is
+    // not finished: its payments are still held back from new payouts, and the recovery job completes it.
+    private LocalDateTime paymentsSettledAt;
+
     private String failureReason;
 
 }

@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -26,21 +28,30 @@ public class WebhookRetryQueue {
     public void enqueue(UUID webhookEventId, LocalDateTime retryAt) {
         long time = getTime(retryAt);
         redisTemplate.opsForZSet().add(key, webhookEventId.toString(), time);
-        log.info("Enqueued a webhook event with id: {}", webhookEventId);
+        log.debug("Enqueued a webhook event with id: {}", webhookEventId);
     }
 
+    /** Queues many events in one Redis call (one ZADD with many members). */
+    public void enqueueAll(Map<UUID, LocalDateTime> dueAt) {
+        if (dueAt.isEmpty()) return;
+        Set<ZSetOperations.TypedTuple<String>> tuples = new LinkedHashSet<>();
+        dueAt.forEach((id, retryAt) ->
+                tuples.add(ZSetOperations.TypedTuple.of(id.toString(), (double) getTime(retryAt))));
+        redisTemplate.opsForZSet().add(key, tuples);
+        log.debug("Enqueued {} webhook events", dueAt.size());
+    }
+
+    /** Takes up to {@code limit} events that are due off the queue, in one read and one removal. */
     public Set<UUID> pollDue(int limit) {
         long now = getTime(LocalDateTime.now());
-        Set<ZSetOperations.TypedTuple<String>> due = redisTemplate
-                .opsForZSet().rangeByScoreWithScores(key, 0, now, 0, limit);
+        Set<String> due = redisTemplate.opsForZSet().rangeByScore(key, 0, now, 0, limit);
 
         if (due == null || due.isEmpty()) return Set.of();
 
-        due.forEach(tuple -> redisTemplate.opsForZSet()
-                .remove(key, tuple.getValue()));
+        redisTemplate.opsForZSet().remove(key, due.toArray());
 
         return due.stream()
-                .map(tuple -> UUID.fromString(tuple.getValue()))
+                .map(UUID::fromString)
                 .collect(Collectors.toSet());
     }
 
@@ -52,23 +63,3 @@ public class WebhookRetryQueue {
         return retryAt.toInstant(ZoneOffset.UTC).toEpochMilli();
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -22,7 +22,9 @@ public class HeaderAugmentingRequestWrapper extends HttpServletRequestWrapper {
 
     /** Headers only the gateway may set (compared case-insensitively). */
     static final Set<String> IDENTITY_HEADERS = Set.of(
-            "x-merchant-id", "x-key-id", "x-user-role", "x-environment");
+            "x-merchant-id", "x-key-id", "x-user-role", "x-user-email", "x-environment",
+            // set only after the admin key is checked, and the caller's address as the gateway saw it
+            "x-platform-admin", "x-client-ip");
 
     private final Map<String, String> extraHeaders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 

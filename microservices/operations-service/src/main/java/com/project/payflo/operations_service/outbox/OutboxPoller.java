@@ -11,6 +11,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,9 +59,15 @@ public class OutboxPoller {
                 String key = extractMerchantId(event.getPayload());
 
                 Map<String, Object> envelope = Map.of(
+                        // The outbox row's id: the same however many times the event is published or
+                        // consumed, so receivers can use it to drop duplicates.
+                        "eventId", event.getId().toString(),
                         "eventType", event.getEventType(),
                         "aggregateType", event.getAggregateType().name(),
                         "aggregateId", event.getAggregateId().toString(),
+                        // When the change happened (the outbox row is written in its transaction): the start of the
+                        // clock for the webhook delivery SLA.
+                        "occurredAt", occurredAtMillis(event),
                         "data", event.getPayload()
                 );
 
@@ -84,6 +93,11 @@ public class OutboxPoller {
         }
     }
 
+
+    private static long occurredAtMillis(OutboxEvent event) {
+        LocalDateTime createdAt = event.getCreatedAt();
+        return (createdAt != null ? createdAt.atZone(ZoneId.systemDefault()).toInstant() : Instant.now()).toEpochMilli();
+    }
 
     private String extractMerchantId(Map<String, Object> payload) {
         Object value = payload.get("merchantId");

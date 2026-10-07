@@ -26,4 +26,11 @@ public class SecurityRouteProperties {
 
     /** Failed authentications per minute per client address before further attempts are refused. */
     private int maxFailedAuthPerMinute = 30;
+
+    /**
+     * The key that opens {@code /v1/admin/**}, sent as {@code X-Admin-Key} (the platform operator's, not a merchant's).
+     * Blank turns the admin API off. The development default is replaced in any shared environment
+     * ({@code ADMIN_API_KEY}); {@code ENFORCE_STRONG_SECRETS} refuses to start on it.
+     */
+    private String adminApiKey = "";
 }

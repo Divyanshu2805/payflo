@@ -1,28 +1,26 @@
 package com.project.payflo.api_gateway_service.security;
 
 import com.project.payflo.api_gateway_service.client.ApiKeyLookupClient;
+import com.project.payflo.common_lib.cache.MerchantStatusCacheKey;
 import com.project.payflo.common_lib.enums.MerchantStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.UUID;
 
 /**
  * Refuses requests from a suspended merchant, whatever credential they carry — an API key or a JWT
- * that was issued before the suspension. The status is cached for a minute, so a suspension takes
- * effect within that time. If the status can't be looked up the request is let through: a
+ * that was issued before the suspension. The status is cached for a minute, so a suspension made
+ * any other way takes effect within that time; the admin API's suspend and reactivate write the
+ * cache themselves ({@link MerchantStatusCacheKey}), so those apply at once. If the status can't be looked up the request is let through: a
  * merchant-service outage shouldn't stop every merchant from taking payments.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class MerchantStatusChecker {
-
-    private static final String PREFIX = "merchant:status:";
-    private static final Duration TTL = Duration.ofSeconds(60);
 
     private final StringRedisTemplate redis;
     private final ApiKeyLookupClient lookupClient;
@@ -34,7 +32,7 @@ public class MerchantStatusChecker {
     }
 
     private MerchantStatus statusOf(String merchantId) {
-        String cacheKey = PREFIX + merchantId;
+        String cacheKey = MerchantStatusCacheKey.of(merchantId);
         try {
             String cached = redis.opsForValue().get(cacheKey);
             if (cached != null) {
@@ -53,7 +51,7 @@ public class MerchantStatusChecker {
         }
 
         try {
-            redis.opsForValue().set(cacheKey, status.name(), TTL);
+            redis.opsForValue().set(cacheKey, status.name(), MerchantStatusCacheKey.TTL);
         } catch (Exception e) {
             log.warn("Merchant status cache put failed, merchantId: {}", merchantId);
         }

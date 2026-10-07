@@ -14,6 +14,7 @@ import com.project.payflo.vault_service.entity.VaultCard;
 import com.project.payflo.vault_service.processor.CardPaymentProcessor;
 import com.project.payflo.vault_service.repository.CardTokenRepository;
 import com.project.payflo.vault_service.repository.VaultCardRepository;
+import com.project.payflo.vault_service.service.TokenizeVelocityGuard;
 import com.project.payflo.vault_service.service.VaultService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,10 +38,13 @@ public class VaultServiceImpl implements VaultService {
     private final VaultCardRepository vaultCardRepository;
     private final BytesEncryptor dekEncrypter;
     private final CardPaymentProcessor cardPaymentProcessor;
+    private final TokenizeVelocityGuard tokenizeVelocityGuard;
 
     @Override
     @Transactional
     public TokenizeResponse tokenize(TokenizeRequest request, UUID merchantId) {
+        // Before anything is encrypted or written: a merchant that is testing card numbers gets nothing from this.
+        tokenizeVelocityGuard.requireAllowed(merchantId);
 
         String lastFour = request.pan().substring(request.pan().length() - 4);
         String bin = request.pan().substring(0, 6);
