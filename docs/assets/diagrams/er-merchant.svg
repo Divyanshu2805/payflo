@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="820" viewBox="0 0 1480 820"><defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/></filter><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.1" fill="#1a2232"/></pattern></defs><rect width="1480" height="820" rx="18" fill="#0b0f17"/><rect width="1480" height="820" fill="url(#dots)"/><text x="36" y="46" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#e6edf3">merchant-service database — payflo_merchant</text><text x="36" y="70" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#8b98a9">Merchants, dashboard users, API keys, customers and webhook configs · schema by Hibernate ddl-auto: update</text>
-<path d="M880.0,474.0 L880.0,560.0 L1100.0,560.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="990" viewBox="0 0 1480 990"><defs><filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/></filter><pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.1" fill="#1a2232"/></pattern></defs><rect width="1480" height="990" rx="18" fill="#0b0f17"/><rect width="1480" height="990" fill="url(#dots)"/><text x="36" y="46" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#e6edf3">merchant-service database — payflo_merchant</text><text x="36" y="70" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#8b98a9">Merchants, dashboard users, API keys, customers, webhook configs and the audit log · schema by Flyway migrations</text>
+<path d="M880.0,540.0 L880.0,560.0 L1100.0,560.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
 <path d="M940.0,220.0 L1100.0,220.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
-<path d="M620.0,474.0 L620.0,564.0 L360.0,564.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M620.0,540.0 L620.0,564.0 L360.0,564.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
 <path d="M560.0,209.0 L360.0,209.0" fill="none" stroke="#8b98a9" stroke-width="1.6"/>
-<rect x="560" y="120" width="380" height="354" rx="11" fill="#121826" stroke="rgba(88,166,255,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<rect x="560" y="120" width="380" height="420" rx="11" fill="#121826" stroke="rgba(88,166,255,0.6)" stroke-width="1.3" filter="url(#sh)"/>
 <path d="M560,131 a11,11 0 0 1 11,-11 h358 a11,11 0 0 1 11,11 v27 h-380 z" fill="rgba(88,166,255,0.16)"/>
 <g transform="translate(572.0,130.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#58a6ff" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#58a6ff" stroke-width="1.8"/></g>
 <text x="598" y="144" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="13" font-weight="700" fill="#e6edf3">merchant</text>
@@ -43,7 +43,15 @@
 <text x="928" y="416" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
 <text x="610" y="438" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">settlement_bank_account_holder_name</text>
 <text x="928" y="438" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
-<text x="574" y="464" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">+ BaseEntity audit columns</text>
+<rect x="561" y="445" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="460" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">suspended_at</text>
+<text x="928" y="460" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">timestamp</text>
+<text x="610" y="482" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">suspension_reason</text>
+<text x="928" y="482" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(255)</text>
+<rect x="561" y="489" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="504" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">status_before_suspension</text>
+<text x="928" y="504" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(50)</text>
+<text x="574" y="530" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">+ BaseEntity audit columns</text>
 <rect x="60" y="120" width="300" height="178" rx="11" fill="#121826" stroke="rgba(63,185,80,0.6)" stroke-width="1.3" filter="url(#sh)"/>
 <path d="M60,131 a11,11 0 0 1 11,-11 h278 a11,11 0 0 1 11,11 v27 h-300 z" fill="rgba(63,185,80,0.16)"/>
 <g transform="translate(72.0,130.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#3fb950" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#3fb950" stroke-width="1.8"/></g>
@@ -151,11 +159,45 @@
 <text x="1150" y="624" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">event_types</text>
 <text x="1408" y="624" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
 <text x="1114" y="650" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">secret AES-encrypted at rest</text>
+<rect x="560" y="640" width="380" height="288" rx="11" fill="#121826" stroke="rgba(255,123,114,0.6)" stroke-width="1.3" filter="url(#sh)"/>
+<path d="M560,651 a11,11 0 0 1 11,-11 h358 a11,11 0 0 1 11,11 v27 h-380 z" fill="rgba(255,123,114,0.16)"/>
+<g transform="translate(572.0,650.0) scale(0.7500)"><ellipse cx="12" cy="5.5" rx="8" ry="3" fill="none" stroke="#ff7b72" stroke-width="1.8"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" fill="none" stroke="#ff7b72" stroke-width="1.8"/></g>
+<text x="598" y="664" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="13" font-weight="700" fill="#e6edf3">audit_log</text>
+<rect x="574" y="683" width="18" height="14" rx="4" fill="rgba(227,179,65,0.18)"/>
+<text x="582.9" y="693" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#e3b341">PK</text>
+<text x="610" y="694" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">id</text>
+<text x="928" y="694" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<rect x="561" y="701" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<rect x="574" y="705" width="18" height="14" rx="4" fill="rgba(188,140,255,0.18)"/>
+<text x="582.9" y="715" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="8.5" font-weight="700" fill="#bc8cff">ID</text>
+<text x="610" y="716" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">merchant_id</text>
+<text x="928" y="716" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">uuid</text>
+<text x="610" y="738" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">actor_type</text>
+<text x="928" y="738" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(20)</text>
+<rect x="561" y="745" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="760" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">actor</text>
+<text x="928" y="760" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar</text>
+<text x="610" y="782" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">action</text>
+<text x="928" y="782" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(40)</text>
+<rect x="561" y="789" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="804" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">target_type</text>
+<text x="928" y="804" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(40)</text>
+<text x="610" y="826" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">target_id</text>
+<text x="928" y="826" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(100)</text>
+<rect x="561" y="833" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="848" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">details</text>
+<text x="928" y="848" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">jsonb</text>
+<text x="610" y="870" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">client_ip</text>
+<text x="928" y="870" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">varchar(64)</text>
+<rect x="561" y="877" width="378" height="22" fill="#ffffff" opacity="0.025"/>
+<text x="610" y="892" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="11.5" fill="#e6edf3">occurred_at</text>
+<text x="928" y="892" text-anchor="end" font-family="'Cascadia Code', 'JetBrains Mono', Consolas, 'SFMono-Regular', monospace" font-size="10.5" fill="#8b98a9">timestamp</text>
+<text x="574" y="918" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" font-style="italic" fill="#8b98a9">append-only: a trigger refuses UPDATE, DELETE, TRUNCATE</text>
 <path d="M552.0,216.0 L552.0,202.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M547.0,216.0 L547.0,202.0" stroke="#8b98a9" stroke-width="1.6"/>
 <path d="M374.0,209.0 L360.0,201.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,209.0 L360.0,217.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,209.0 L360.0,209.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="382.0" cy="209.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
 <rect x="427.5" y="200.0" width="65.0" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
 <text x="460.0" y="212.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">has users</text>
-<path d="M627.0,482.0 L613.0,482.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M627.0,487.0 L613.0,487.0" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M627.0,548.0 L613.0,548.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M627.0,553.0 L613.0,553.0" stroke="#8b98a9" stroke-width="1.6"/>
 <path d="M374.0,564.0 L360.0,556.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,564.0 L360.0,572.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M374.0,564.0 L360.0,564.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="382.0" cy="564.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
 <rect x="470.3" y="555.0" width="59.4" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
 <text x="500.0" y="567.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">has keys</text>
@@ -163,9 +205,9 @@
 <path d="M1086.0,220.0 L1100.0,228.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,220.0 L1100.0,212.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,220.0 L1100.0,220.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="1078.0" cy="220.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
 <rect x="1004.5" y="211.0" width="31.0" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
 <text x="1020.0" y="223.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">has</text>
-<path d="M887.0,482.0 L873.0,482.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M887.0,487.0 L873.0,487.0" stroke="#8b98a9" stroke-width="1.6"/>
+<path d="M887.0,548.0 L873.0,548.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M887.0,553.0 L873.0,553.0" stroke="#8b98a9" stroke-width="1.6"/>
 <path d="M1086.0,560.0 L1100.0,568.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,560.0 L1100.0,552.0" stroke="#8b98a9" stroke-width="1.6"/><path d="M1086.0,560.0 L1100.0,560.0" stroke="#8b98a9" stroke-width="1.6"/><circle cx="1078.0" cy="560.0" r="4.5" fill="#0b0f17" stroke="#8b98a9" stroke-width="1.5"/>
 <rect x="944.6" y="551.0" width="70.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
 <text x="980.0" y="563.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">configures</text>
-<rect x="455.2" y="771.0" width="569.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
-<text x="740.0" y="783.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">customers, orders and cards elsewhere reference merchant.id as a plain uuid — no cross-database FK</text></svg>
+<rect x="455.2" y="946.0" width="569.7" height="18" rx="9" fill="#0b0f17" stroke="rgba(139,152,169,0.35)" stroke-width="1"/>
+<text x="740.0" y="958.6" text-anchor="middle" font-family="'Segoe UI', 'Inter', system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="10.5" fill="#8b98a9">customers, orders and cards elsewhere reference merchant.id as a plain uuid — no cross-database FK</text></svg>

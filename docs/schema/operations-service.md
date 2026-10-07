@@ -13,8 +13,12 @@ One delivery of one domain event to one merchant endpoint, with its retry bookke
 | `merchant_id` | Plain id → merchant-service. |
 | `event_type` | The domain event, e.g. `PAYMENT_STATUS_CHANGED`. |
 | `payload` | The body sent to the merchant, `jsonb`. |
-| `target_url` | Copied from the webhook config when the event was created, so a later config change never rewrites history. |
-| `signature` | The HMAC-SHA256 signature sent as `X-PayFlo-Signature`. |
+| `target_url` | Copied from the webhook config when the event was created, so a later config change never rewrites history. At most 255 characters, which the config's URL is limited to. |
+| `request_body` | The exact JSON string that is sent, and signed on every attempt (`text`). Null on rows from before it was stored. |
+| `event_id` | The event's stable id, the same for every delivery and retry of it; sent as `X-PayFlo-Event-Id` and as `id` in the body. |
+| `event_occurred_at` | When the change this event reports happened: the creation time of the outbox row, carried in the Kafka envelope as `occurredAt` (added by migration `V3`). The webhook delivery latency, and so the 30-second SLA, runs from here to the `2xx` answer. Null on rows from before `V3`. |
+| `config_id` | The merchant's webhook config the event was created for (a plain id → merchant-service). A delivery asks merchant-service for that config's current secret and signs the body with it at send time, with a fresh timestamp; the secret is never stored here. Null on rows from before V2. |
+| `signature` | Only on rows created before V2 (`config_id` is null on them): the HMAC-SHA256 computed when the event was created, sent as `X-PayFlo-Signature` without a timestamp. Null on newer rows, which are signed at send time. |
 | `status` | `WebhookEventStatus` — see [delivery status](enums.md#delivery-status). |
 | `attempts` | Delivery attempts so far; the seventh failure dead-letters it. |
 | `next_retry_at` | When the next attempt is due — and, while an attempt is in flight, a two-minute lease that stops anything else delivering it. Mirrors the Redis retry queue, so a lost queue entry can be rebuilt. Indexed with `status` (`idx_webhook_event_status_next_retry`) for the reconciler. |
@@ -32,7 +36,7 @@ A webhook that exhausted its retries, or a Kafka record that couldn't be turned 
 | `final_error` | The last error recorded. |
 | `payload` | The event data, preserved for a replay. |
 | `moved_at` | When it was dead-lettered. |
-| `replayed_at` | When it was replayed — there is no replay endpoint yet. |
+| `replayed_at` | When it was replayed, through `POST /v1/webhook-deliveries/{id}/replay`. |
 
 ## SETTLEMENT
 
@@ -49,7 +53,8 @@ One merchant's payout from one nightly run.
 | `status` | `SettlementStatus` — see [settlement status](enums.md#settlement-status). |
 | `bank_reference` | The transfer reference returned by the (mock) bank. Null until the payout is registered (`TRANSFER_PENDING`). |
 | `processed_at` | When the bank confirmed the payout. |
-| `failure_reason` | Why it failed, if it did. |
+| `payments_settled_at` | When payment-service confirmed the covered payments are `SETTLED`. A `PROCESSED` settlement without it isn't finished: its payments are still held back from new payouts, and the recovery job completes it. |
+| `failure_reason` | Why it failed, if it did: `TRANSFER_NOT_STARTED : <exception class>`, `SIM_PAYOUT_DECLINED : …` or `TRANSFER_TIMEOUT : …`. |
 
 Each amount is its own `Money` pair (`*_units`, `*_currency`).
 

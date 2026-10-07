@@ -26,11 +26,12 @@ Where a duplicate must be impossible, the table has a unique index rather than a
 
 ## Changing the schema
 
-There is no migration tool. Each service runs Hibernate with `ddl-auto: update`, which **adds** tables and columns from the entities on startup but never drops or renames anything and records no history. So:
+The schema is owned by **Flyway**. Each service has its own migrations in `src/main/resources/db/migration` (`V1__baseline.sql`, `V2__….sql`, …), and runs them on start-up against its own database. Hibernate only *checks* the result (`ddl-auto: validate`): an entity with no matching column fails the start, not a request later. So:
 
-1. **Change the entity**; the next start adds the column. Give a new non-null column a default, or existing rows will fail it.
-2. **A rename or a removal needs a manual step** in every environment — Hibernate leaves the old column in place.
-3. **Never join another service's data.** A new reference to a merchant, customer or payment is a plain id.
-4. **Update these pages and the ER diagram** in the same change.
+1. **Write a migration**, `V<next>__what_it_does.sql`, in the owning service. Never edit one that has been applied: Flyway refuses a changed migration. A new non-null column needs a default (or a backfill), or existing rows will fail it.
+2. **Change the entity to match.** `contextLoads` runs every migration on an empty PostgreSQL and lets Hibernate validate the entities against it, so a migration and an entity that disagree fail the build.
+3. **A new enum constant widens its check constraint in the same migration** (Hibernate used to leave the old list in place, which failed at runtime). `PaymentMethodTest` and the enum tests fail until you do.
+4. **Never join another service's data.** A new reference to a merchant, customer or payment is a plain id.
+5. **Update these pages and the ER diagram** in the same change.
 
-Moving to Flyway or Liquibase is tracked in [known gaps](../known-gaps/not-yet-built.md#platform).
+A database that existed before Flyway was baselined at version 1 (`baseline-on-migrate`), so it keeps its data and only runs what came after. `V1__baseline.sql` is the schema as it stood, and builds it on an empty database.

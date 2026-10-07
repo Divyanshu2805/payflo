@@ -1,9 +1,8 @@
 # Requirements
 
-What PayFlo is designed to do, and the targets it is designed for. This is the design target — a plan, not a
-contract: some items are built, some are partly built, and some aren't started. What isn't satisfied yet is
-tracked in [known gaps](known-gaps/README.md); what each built piece does is in the [architecture](architecture/README.md)
-and [API reference](api/README.md).
+What PayFlo set out to do. Every functional item below is built, against a simulated bank; what each piece does is
+in the [architecture](architecture/README.md) and the [API reference](api/README.md), and what the design leaves
+out is in [design trade-offs and scope](architecture/trade-offs.md).
 
 ## Functional
 
@@ -23,7 +22,7 @@ and [API reference](api/README.md).
 - **Get order by ID** — fetch a single order's full detail.
 - **Auto-expiry after 15 minutes** — an order that never gets paid automatically expires, so a stale
   checkout link can't be used to pay against an old order later.
-- **Idempotent order creation** (via `X-Idempotent-Header`) — if a create-order request is retried (say,
+- **Idempotent order creation** (via `X-Idempotency-Key`) — if a create-order request is retried (say,
   after a network timeout), the same header value returns the original order instead of creating a
   duplicate.
 
@@ -102,14 +101,18 @@ re-transmitted) on every payment.
 
 ## Non-Functional
 
-| Attribute | Target | What it means |
+What the system was built to hold to, and what it measured on one laptop running the load generator, the databases
+and every service together. The numbers and how each was obtained are in
+[what was built and what it measured](project-summary.md).
+
+| Attribute | Goal | Measured |
 |---|---|---|
-| Throughput | 10k TPS | The system should handle 10,000 transactions per second at peak load. |
-| Latency | p99 < 1 sec | 99% of requests finish in under 1 second — the slow 1% is what this bounds. |
-| Availability | 99.99% | Roughly 52 minutes of downtime allowed per year. |
-| Durability | Zero payment loss, even during failures | No payment should ever be lost or left in an unknown state, even if a server crashes mid-request. |
-| Idempotency | 24-hour window, every write API | Any write request can be safely retried within 24 hours without creating a duplicate side effect. |
-| Webhook SLA | 99% delivered within 30 seconds, 100% within 24 hours | Merchant notifications should normally be near-instant, with a hard guarantee they arrive within a day. |
-| Settlement | T+1 (within 24 hours of capture) | Merchants get paid out within a day of a payment being captured. |
-| Security | PCI DSS compliant, HMAC-signed webhooks | Meets the payment card industry's security standard; webhook payloads are independently verifiable. |
-| Observability | DLQ events visible/inspectable | Whoever's on support/ops can see what failed and why, not just that something failed somewhere. |
+| Throughput | As much as one machine gives, with the next bottleneck known | About 1,270 requests a second, up from 250 in the first run; 3.0× on three Kubernetes replicas |
+| Latency | p99 under 1 second | 171 ms for the slowest request type |
+| Availability | No failed requests under load or during a rollout | 0 failed in 227,613 under load; 19 of 226,834 during a rolling restart |
+| Durability | No payment lost, even when something crashes | Seven crash and outage scenarios: nothing lost, duplicated or stuck |
+| Idempotency | Any write can be retried safely for 24 hours | 33,600 duplicate requests, none took effect |
+| Webhook delivery | 99% within 30 seconds, retried for 24 hours | 99.85% within 30 seconds |
+| Settlement | Paid out within a day of capture | A nightly run settles every captured payment, net of refunds, fee and tax |
+| Security | Card data in one place; webhooks verifiable | Card numbers confined to vault-service and encrypted per card; webhooks HMAC-signed with a timestamp |
+| Observability | Failures can be seen and inspected | Every webhook delivery, including dead-lettered ones, is listed and replayable; traces, metrics and a dashboard |

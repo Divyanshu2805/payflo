@@ -14,5 +14,5 @@ A payment's status drives money movement: capturing an unauthorized payment, or 
 
 - An illegal move is rejected before anything happens, and every legal one is on record even though `payment.status` is overwritten.
 - Adding a status or event means updating the enum in `common-lib` and the table.
-- The table defines transitions nothing fires yet (cancel, capture timeout, refunds, settle). Settlement sets `SETTLED` directly, bypassing the machine and the log — see [known gaps](../../known-gaps/not-yet-built.md#settlement).
-- `actor` is always `SYSTEM` today.
+- Every transition is now fired by something: the saga and the bank callback, the timeout sweeper (`AUTH_EXPIRED`), refunds (`REFUND_*`) and settlement (`SETTLE`, once a payout is confirmed). Only `CANCEL` on a payment has no caller — an order is cancelled, not its payments.
+- `actor` is `SYSTEM` for background jobs, `MERCHANT` for a dashboard user and `CUSTOMER` for an API-key call.

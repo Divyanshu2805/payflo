@@ -26,7 +26,9 @@ kind create cluster --config microservices/k8s/kind-config.yaml
 for s in config-service merchant-service vault-service payment-service operations-service api-gateway-service; do kind load docker-image payflo/$s:latest --name payflo; done
 ```
 
-`kind-config.yaml` creates a single-node cluster named `payflo` and publishes the gateway on `localhost:8080`; change `hostPort` there if 8080 is taken.
+`kind-config.yaml` creates a single-node cluster named `payflo` and publishes the gateway on `localhost:8080`; change `hostPort` there if 8080 is taken (stop a locally running gateway first).
+
+The node has to have the third-party images too (`postgres:16`, `redis:7-alpine`, `confluentinc/confluent-local:7.5.0`, `grafana/grafana:12.1.1`, `prom/prometheus:v3.5.0`, `openzipkin/zipkin:3.5`), or it pulls them from the internet. If one of them is already in your Docker daemon but `kind load` fails with `content digest … not found` (Docker Desktop), import it directly: `docker save <image> -o x.tar`, `docker cp x.tar payflo-control-plane:/x.tar`, `docker exec payflo-control-plane ctr -n k8s.io images import /x.tar` ([the pitfall](../practices/gotchas/kubernetes.md#kind-load-docker-image-fails-with-content-digest--not-found-for-pulled-images)).
 
 ## 3. Create the secrets file
 
@@ -44,6 +46,12 @@ kubectl apply -k microservices/k8s
 
 ```bash
 kubectl -n payflo get pods -w
+```
+
+To run three replicas of the gateway and payment-service, with more room for PostgreSQL, Redis and Kafka, apply `microservices/k8s-scaled` instead ([scaling](scaling.md)):
+
+```bash
+kubectl apply -k microservices/k8s-scaled
 ```
 
 PostgreSQL, Redis, Kafka and config-service come up first. The other services fail fast and restart until config-service answers — a couple of restarts on the first deploy is expected. Everything is ready within a few minutes.

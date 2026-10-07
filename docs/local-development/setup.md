@@ -1,6 +1,6 @@
 # First-Time Setup
 
-Assumes the [prerequisites](prerequisites.md) are installed. Commands use `./mvnw`; on Windows use `mvnw.cmd`.
+The steps by hand. `python demo/demo.py` from `microservices/` does all of them in one go ([the demo and the dashboard](demo-and-dashboard.md)); this page is what it automates. Assumes the [prerequisites](prerequisites.md) are installed. Commands use `./mvnw`; on Windows use `mvnw.cmd`.
 
 ## 1. Start PostgreSQL, Redis and Kafka
 
@@ -15,10 +15,10 @@ This starts PostgreSQL on `5432`, Redis on `6380`, Kafka on `29092` (from the ho
 Each business service has its own database on the same PostgreSQL server. Create them once:
 
 ```bash
-docker exec -it pgvector-payflo psql -U user -d payflo-db -c "CREATE DATABASE payflo_merchant" -c "CREATE DATABASE payflo_payment" -c "CREATE DATABASE payflo_vault" -c "CREATE DATABASE payflo_operations"
+docker exec -it pgvector-payflo psql -U user -d postgres -c "CREATE DATABASE payflo_merchant" -c "CREATE DATABASE payflo_payment" -c "CREATE DATABASE payflo_vault" -c "CREATE DATABASE payflo_operations"
 ```
 
-Tables are created by Hibernate (`ddl-auto: update`) the first time each service starts.
+The tables are created by Flyway the first time each service starts (from its `db/migration` files); Hibernate then checks that they match the entities.
 
 ## 3. Build every module
 

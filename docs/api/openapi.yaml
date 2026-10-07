@@ -1,0 +1,1477 @@
+openapi: 3.0.3
+info:
+  title: PayFlo API
+  version: "1.0"
+  description: |
+    The public API of PayFlo, a payment gateway backend. Every call goes to the gateway, which authenticates it and
+    forwards it to the service that owns the path.
+
+    This file is written by hand and checked against the controllers by `docs/api/check_openapi.py` (CI runs it), so
+    an endpoint that is added, removed or moved fails the build until this file says so. The pages in `docs/api/`
+    explain the behaviour behind each endpoint; this is the contract.
+
+    **Conventions**
+
+    - **Money** is `{ "amountUnits": 49900, "currency": "INR" }`: an integer count of paise, never a decimal.
+    - **Lists** are newest first and paged with `page` and `size`, and answer `{ items, page, size, hasNext }`
+      with no total count.
+    - **Tenancy**: the merchant is always the authenticated caller's. Another merchant's resource is `404`.
+    - **Idempotency**: any write may carry `X-Idempotency-Key`. A retry with the same key and the same request
+      returns the first result; the same key with a different request is `422 IDEMPOTENCY_KEY_REUSED`.
+    - **Errors** share one shape (`Error`). Branch on the status and `errorCode`, never on the description.
+    - **The bank is simulated.** See the test values on `POST /v1/payments`.
+servers:
+  - url: /
+    description: Through the dashboard server (the same origin as this page)
+  - url: http://localhost:8080
+    description: The gateway directly
+tags:
+  - name: Authentication
+    description: Signup, login and sessions. merchant-service.
+  - name: Merchant account
+    description: Profile, payout account, KYC and team users. A dashboard login only. merchant-service.
+  - name: API keys
+    description: A merchant backend's credential. merchant-service.
+  - name: Orders
+    description: What a customer is paying for. payment-service.
+  - name: Payments
+    description: Paying an order, and capturing an authorized payment. payment-service.
+  - name: Refunds
+    description: Giving money back on a captured payment. payment-service.
+  - name: Vault
+    description: Turning a card into a token. vault-service, the only service that sees a card number.
+  - name: Analytics
+    description: A merchant's own numbers. payment-service.
+  - name: Settlements
+    description: Payouts to the merchant's bank account. operations-service.
+  - name: Webhooks
+    description: Endpoints (merchant-service) and deliveries (operations-service).
+  - name: Audit log
+    description: Sensitive actions on a merchant's account. merchant-service.
+  - name: Admin
+    description: The platform operator's API. Takes `X-Admin-Key` and never a merchant credential.
+security:
+  - bearerAuth: []
+  - apiKey: []
+paths:
+  /v1/auth/signup:
+    post:
+      tags: [Authentication]
+      summary: Create a merchant and its owner login
+      description: |
+        Public. The merchant starts `PENDING_KYC` with one `OWNER` user. An email that is already registered gets
+        the same `201` and the same body shape, with an `id` that belongs to no account, and nothing is created:
+        signup never reveals whether an email is registered.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MerchantSignupRequest' }
+      responses:
+        '201':
+          description: Created (or indistinguishably answered)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MerchantResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Log in
+      description: |
+        Public. Returns a JWT valid for 100 minutes and a single-use refresh token valid for 7 days. A wrong
+        password and an unknown email are the same `401 INVALID_CREDENTIALS`, in the same time. Ten wrong passwords
+        for an email within 15 minutes lock the login (`429`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Exchange a refresh token for a new pair
+      description: Public. The old refresh token is used up. `401 INVALID_REFRESH_TOKEN` if it is unknown, expired or used.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: A new access token and refresh token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /v1/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Log out
+      description: Dashboard login only. Revokes the access token it is called with, and the refresh token if given.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '204': { description: Logged out }
+        '401': { $ref: '#/components/responses/Error' }
+  /v1/auth/password:
+    post:
+      tags: [Authentication]
+      summary: Change the password
+      description: |
+        Dashboard login only. Ends every session of this user, including this one. A wrong current password is
+        `401 INVALID_CREDENTIALS`; the same password again is `400 PASSWORD_UNCHANGED`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8, maxLength: 100 }
+      responses:
+        '204': { description: Changed }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /v1/merchants/me:
+    get:
+      tags: [Merchant account]
+      summary: Read the merchant's profile
+      description: The PAN and the payout account number are masked.
+      responses:
+        '200':
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MerchantProfileResponse' }
+        '401': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Merchant account]
+      summary: Update the profile
+      description: "`OWNER` or `ADMIN`, dashboard login only. Every field is optional; only those sent change."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: The updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MerchantProfileResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '403': { $ref: '#/components/responses/Error' }
+  /v1/merchants/me/settlement-bank:
+    put:
+      tags: [Merchant account]
+      summary: Set the payout account
+      description: |
+        `OWNER` only, and the password again. A wrong password is `403 INCORRECT_PASSWORD`. The account number is
+        stored encrypted, and the change is written to the audit log.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettlementBankRequest' }
+      responses:
+        '200':
+          description: The updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MerchantProfileResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '403': { $ref: '#/components/responses/Error' }
+  /v1/merchants/me/kyc:
+    post:
+      tags: [Merchant account]
+      summary: Submit for KYC (simulated)
+      description: |
+        `OWNER` only. With a complete profile and a payout account the merchant becomes `ACTIVE` at once, which
+        makes it eligible for settlement. `400 KYC_INCOMPLETE` names what is missing; the PAN `AAAAA0000A` is
+        rejected with `400 KYC_REJECTED`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The profile, now `ACTIVE`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MerchantProfileResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+  /v1/merchants/users:
+    get:
+      tags: [Merchant account]
+      summary: List the merchant's users
+      description: "`OWNER` or `ADMIN`."
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserResponse' }
+        '403': { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Merchant account]
+      summary: Add a team user
+      description: "`OWNER` only. `409 DUPLICATE_USER_EMAIL` if the email already logs in anywhere."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /v1/merchants/users/{userId}/role:
+    put:
+      tags: [Merchant account]
+      summary: Change a user's role
+      description: "`OWNER` only. Ends that user's sessions."
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: '#/components/schemas/AssignableRole' }
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/merchants/users/{userId}:
+    delete:
+      tags: [Merchant account]
+      summary: Remove a user
+      description: "`OWNER` only. The owner can't be removed (`400 OWNER_PROTECTED`)."
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Removed }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/merchants/api-keys:
+    get:
+      tags: [API keys]
+      summary: List API keys
+      description: Never includes a secret.
+      responses:
+        '200':
+          description: The keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ApiKeyResponse' }
+    post:
+      tags: [API keys]
+      summary: Create an API key
+      description: "`keySecret` is shown only in this response and stored as a bcrypt hash."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                environment: { $ref: '#/components/schemas/Environment' }
+      responses:
+        '201':
+          description: The key and its secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiKeyCreateResponse' }
+  /v1/merchants/api-keys/{keyId}:
+    delete:
+      tags: [API keys]
+      summary: Revoke an API key
+      parameters:
+        - { name: keyId, in: path, required: true, description: "The key's row id, not its public keyId", schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Revoked }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/merchants/api-keys/{keyId}/rotate:
+    post:
+      tags: [API keys]
+      summary: Rotate a key's secret
+      description: The old secret keeps working for `gracePeriodHours` (24 by default; 0 stops it at once). Rotating a revoked key is `400 API_KEY_REVOKED`.
+      parameters:
+        - { name: keyId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                gracePeriodHours: { type: integer, minimum: 0, maximum: 24 }
+      responses:
+        '200':
+          description: The key with a new secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiKeyCreateResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/orders:
+    post:
+      tags: [Orders]
+      summary: Create an order
+      description: "`409 ORDER_RECEIPT_DUPLICATE` if this merchant already used the receipt. Publishes `ORDER_CREATED`."
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOrderRequest' }
+            example:
+              amount: { amountUnits: 49900, currency: INR }
+              receipt: order-1001
+              customer: { name: Demo Buyer, email: buyer@example.com }
+      responses:
+        '201':
+          description: The order, `CREATED`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    get:
+      tags: [Orders]
+      summary: List orders
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of orders, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/OrderResponse' } }
+  /v1/orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Read an order
+      parameters:
+        - { $ref: '#/components/parameters/OrderId' }
+      responses:
+        '200':
+          description: The order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/orders/{orderId}/payments:
+    get:
+      tags: [Orders]
+      summary: List every payment attempt on an order
+      parameters:
+        - { $ref: '#/components/parameters/OrderId' }
+      responses:
+        '200':
+          description: The attempts, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PaymentResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/orders/{orderId}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel an unpaid order
+      description: Only an unpaid order with no payment in flight or completed; otherwise `400 ORDER_CANNOT_CANCEL`.
+      parameters:
+        - { $ref: '#/components/parameters/OrderId' }
+      responses:
+        '200':
+          description: The order, `CANCELLED`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/payments:
+    post:
+      tags: [Payments]
+      summary: Pay an order
+      description: |
+        Usually comes back `AUTHORIZING`; within seconds the simulated bank authorizes and captures it (`CAPTURED`,
+        and the order `PAID`) or declines it (`FAILED`). A payment the acquirer refuses is still a `201`, with
+        `status: FAILED` and an `errorCode`.
+
+        `methodDetails` by method: `CARD` `{ "token": "tok_…" }` (from `POST /v1/vault/tokenize`), `UPI`
+        `{ "vpa": "name@bank" }`, `NETBANKING` `{ "bank": "HDFC" }`, `WALLET` `{ "wallet": "PAYTM" }`.
+
+        **Test values**
+
+        | Method | Value | Outcome |
+        |---|---|---|
+        | CARD | `4000000000000002` | `FAILED`, `CARD_DECLINED` |
+        | CARD | `4000000000000069` | `FAILED`, `CARD_EXPIRED` |
+        | CARD | `4000000000000341` | authorized, then the capture is refused |
+        | UPI | `fail@okaxis` | `FAILED`, `UPI_REJECTED` |
+        | UPI | `capturefail@okaxis` | authorized, then the capture is refused |
+        | NETBANKING | `BANK_CODE_FAIL` | `FAILED`, `BANK_REJECTED` |
+        | NETBANKING | `BANK_CODE_CAPTURE_FAIL` | authorized, then the capture is refused |
+        | WALLET | `wallet_fail` | `FAILED`, `WALLET_REJECTED` |
+        | WALLET | `wallet_capture_fail` | authorized, then the capture is refused |
+
+        Card payments are behind card-testing limits: `429 CARD_TESTING_SUSPECTED` when most of the merchant's
+        recent card payments were declined, `400 ORDER_CARD_ATTEMPTS_EXCEEDED` for a sixth card payment on an order.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentInitRequest' }
+            example:
+              orderId: 01a116d5-233a-7000-a3e8-24eff8ecb71a
+              method: UPI
+              methodDetails: { vpa: buyer@okaxis }
+      responses:
+        '201':
+          description: The payment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    get:
+      tags: [Payments]
+      summary: List payments
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PaymentStatus' } }
+        - { name: orderId, in: query, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of payments, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/PaymentResponse' } }
+  /v1/payments/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: Read a payment
+      description: The way to poll an outcome, alongside the webhooks.
+      parameters:
+        - { $ref: '#/components/parameters/PaymentId' }
+      responses:
+        '200':
+          description: The payment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/payments/{paymentId}/capture:
+    post:
+      tags: [Payments]
+      summary: Capture an authorized payment
+      description: |
+        `CAPTURED` on success. If the bank refuses, still `200`, with the payment back in `AUTHORIZED` and
+        `errorCode: CAPTURE_DECLINED`: call it again. Anything not `AUTHORIZED` is `409 INVALID_STATE_TRANSITION`.
+      parameters:
+        - { $ref: '#/components/parameters/PaymentId' }
+      responses:
+        '200':
+          description: The payment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+  /v1/payments/{paymentId}/refunds:
+    post:
+      tags: [Refunds]
+      summary: Refund a payment, in full or in part
+      description: |
+        The refund starts `PENDING`; the simulated bank answers a few seconds later. Omit `amountUnits` to refund
+        whatever is left. `400 PAYMENT_NOT_REFUNDABLE` unless the payment is `CAPTURED` or `PARTIALLY_REFUNDED`,
+        `400 PAYMENT_ALREADY_SETTLED` once it has been paid out, `400 REFUND_EXCEEDS_PAYMENT` past what is left.
+      parameters:
+        - { $ref: '#/components/parameters/PaymentId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRefundRequest' }
+      responses:
+        '201':
+          description: The refund, `PENDING`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RefundResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+    get:
+      tags: [Refunds]
+      summary: List the refunds of a payment
+      parameters:
+        - { $ref: '#/components/parameters/PaymentId' }
+      responses:
+        '200':
+          description: The refunds, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RefundResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/refunds:
+    get:
+      tags: [Refunds]
+      summary: List refunds
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/RefundStatus' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of refunds, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/RefundResponse' } }
+  /v1/refunds/{refundId}:
+    get:
+      tags: [Refunds]
+      summary: Read a refund
+      parameters:
+        - { name: refundId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: The refund
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RefundResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/vault/tokenize:
+    post:
+      tags: [Vault]
+      summary: Tokenize a card
+      description: |
+        The card number is encrypted with its own data key and never echoed back; the CVV is validated and never
+        stored. Use `token` as `methodDetails.token` in a `CARD` payment. A merchant may tokenize 30 cards a minute
+        and 600 an hour (`429 CARD_TOKENIZATION_LIMIT_EXCEEDED`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenizeRequest' }
+            example:
+              pan: "4111111111111111"
+              cvv: "123"
+              expiryMonth: 12
+              expiryYear: 2030
+              cardHolderName: Demo Buyer
+      responses:
+        '201':
+          description: The token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenizeResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /v1/analytics/dashboard:
+    get:
+      tags: [Analytics]
+      summary: Today and the last seven days
+      responses:
+        '200':
+          description: The dashboard figures, read live
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardResponse' }
+  /v1/analytics/report:
+    get:
+      tags: [Analytics]
+      summary: A report over a date range
+      description: Up to 366 days, both dates inclusive. Defaults to the last 30 days by day. `400 INVALID_DATE_RANGE` otherwise.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: granularity, in: query, schema: { type: string, enum: [DAY, WEEK, MONTH], default: DAY } }
+      responses:
+        '200':
+          description: The report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+
+  /v1/settlements:
+    get:
+      tags: [Settlements]
+      summary: List settlements
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/SettlementStatus' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of settlements, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/SettlementResponse' } }
+  /v1/settlements/{settlementId}:
+    get:
+      tags: [Settlements]
+      summary: Read a settlement
+      description: "`netAmount` = `grossAmount` − `refundAmount` − `feeAmount` − `gstAmount`."
+      parameters:
+        - { name: settlementId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: The settlement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettlementResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/settlements/{settlementId}/payments:
+    get:
+      tags: [Settlements]
+      summary: The payments a settlement covers
+      parameters:
+        - { name: settlementId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Payment ids
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string, format: uuid }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /v1/merchants/webhooks:
+    post:
+      tags: [Webhooks]
+      summary: Register a webhook endpoint
+      description: |
+        The server generates the signing secret; `webhookSecret` appears only in this response. Every delivery
+        carries `X-PayFlo-Timestamp` and `X-PayFlo-Signature`, the hex HMAC-SHA256, keyed with that secret, of
+        `<timestamp>.<raw body>`. The URL must be `https` and public unless private targets are allowed (the
+        development default): `400 WEBHOOK_URL_NOT_ALLOWED`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookConfigRequest' }
+      responses:
+        '200':
+          description: The endpoint and its secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookConfigResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+    get:
+      tags: [Webhooks]
+      summary: List webhook endpoints
+      responses:
+        '200':
+          description: The endpoints, without their secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WebhookConfigResponse' }
+  /v1/merchants/webhooks/{id}:
+    get:
+      tags: [Webhooks]
+      summary: Read a webhook endpoint
+      parameters:
+        - { $ref: '#/components/parameters/WebhookId' }
+      responses:
+        '200':
+          description: The endpoint
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookConfigResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+    put:
+      tags: [Webhooks]
+      summary: Update, pause or resume a webhook endpoint
+      description: "`enabled: false` pauses deliveries without deleting the endpoint. A change can take up to 30 seconds to apply."
+      parameters:
+        - { $ref: '#/components/parameters/WebhookId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookConfigRequest' }
+      responses:
+        '200':
+          description: The endpoint
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookConfigResponse' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Webhooks]
+      summary: Delete a webhook endpoint
+      parameters:
+        - { $ref: '#/components/parameters/WebhookId' }
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/merchants/webhooks/{id}/rotate-secret:
+    post:
+      tags: [Webhooks]
+      summary: Rotate a webhook's signing secret
+      description: Effective at once, and shown only here.
+      parameters:
+        - { $ref: '#/components/parameters/WebhookId' }
+      responses:
+        '200':
+          description: The endpoint with a new secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookConfigResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/webhook-deliveries:
+    get:
+      tags: [Webhooks]
+      summary: List webhook deliveries
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/WebhookDeliveryStatus' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of deliveries, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/WebhookDeliveryResponse' } }
+  /v1/webhook-deliveries/{deliveryId}:
+    get:
+      tags: [Webhooks]
+      summary: Read a webhook delivery
+      parameters:
+        - { name: deliveryId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: The delivery
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDeliveryResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/webhook-deliveries/{deliveryId}/replay:
+    post:
+      tags: [Webhooks]
+      summary: Send a delivery again
+      description: The same body, signed afresh, with a new set of attempts. A `PENDING` delivery is `400 WEBHOOK_DELIVERY_PENDING`.
+      parameters:
+        - { name: deliveryId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: The delivery, now `PENDING`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDeliveryResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /webhook/success:
+    post:
+      tags: [Webhooks]
+      summary: A local test receiver
+      description: Public. Answers `204` to any JSON body, so a webhook endpoint can be tried without a server of your own.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '204': { description: Received }
+
+  /v1/merchants/audit-log:
+    get:
+      tags: [Audit log]
+      summary: The merchant's own audit log
+      description: A dashboard login that is `OWNER` or `ADMIN`. A `TEAM` member or an API key is `403`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: action, in: query, schema: { $ref: '#/components/schemas/AuditAction' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of entries, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/AuditLogResponse' } }
+        '403': { $ref: '#/components/responses/Error' }
+
+  /v1/admin/merchants:
+    get:
+      tags: [Admin]
+      summary: List merchants
+      security:
+        - adminKey: []
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/MerchantStatus' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of merchants, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/AdminMerchantResponse' } }
+        '401': { $ref: '#/components/responses/Error' }
+  /v1/admin/merchants/{merchantId}:
+    get:
+      tags: [Admin]
+      summary: Read a merchant
+      security:
+        - adminKey: []
+      parameters:
+        - { $ref: '#/components/parameters/MerchantId' }
+      responses:
+        '200':
+          description: The merchant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminMerchantResponse' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/admin/merchants/{merchantId}/suspend:
+    post:
+      tags: [Admin]
+      summary: Suspend a merchant
+      description: |
+        Takes effect at once: the gateway refuses the merchant's API keys and sessions with
+        `403 MERCHANT_SUSPENDED`, and it is left out of settlement. Audited in the same transaction.
+        `400 MERCHANT_ALREADY_SUSPENDED`.
+      security:
+        - adminKey: []
+      parameters:
+        - { $ref: '#/components/parameters/MerchantId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, maxLength: 255 }
+      responses:
+        '200':
+          description: The merchant, `SUSPENDED`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminMerchantResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/admin/merchants/{merchantId}/reactivate:
+    post:
+      tags: [Admin]
+      summary: Reactivate a suspended merchant
+      description: Puts the merchant back to the status it had before. `400 MERCHANT_NOT_SUSPENDED`.
+      security:
+        - adminKey: []
+      parameters:
+        - { $ref: '#/components/parameters/MerchantId' }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, maxLength: 255 }
+      responses:
+        '200':
+          description: The merchant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminMerchantResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/admin/audit-log:
+    get:
+      tags: [Admin]
+      summary: The audit log across every merchant
+      security:
+        - adminKey: []
+      parameters:
+        - { name: merchantId, in: query, schema: { type: string, format: uuid } }
+        - { name: action, in: query, schema: { $ref: '#/components/schemas/AuditAction' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: A page of entries, newest first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Page' }
+                  - type: object
+                    properties:
+                      items: { type: array, items: { $ref: '#/components/schemas/AuditLogResponse' } }
+        '401': { $ref: '#/components/responses/Error' }
+  /v1/admin/settlements/run:
+    post:
+      tags: [Admin]
+      summary: Run a settlement now
+      description: |
+        The nightly job started by hand, under the same lock: `409 SETTLEMENT_RUN_IN_PROGRESS` while another run
+        holds it. Settles every `ACTIVE` merchant, or just the one named (`400 MERCHANT_NOT_ACTIVE`). Audited
+        before it starts; if that fails nothing runs (`503 AUDIT_LOG_UNAVAILABLE`).
+      security:
+        - adminKey: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                merchantId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: What the run did
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSettlementRunResponse' }
+        '400': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A dashboard login, from `POST /v1/auth/login`. For a merchant's staff.
+    apiKey:
+      type: http
+      scheme: basic
+      description: "An API key as HTTP Basic: the key id as the username, the key secret as the password. For a merchant's backend. Limited to 200 requests a minute per key."
+    adminKey:
+      type: apiKey
+      in: header
+      name: X-Admin-Key
+      description: The platform operator's key, for `/v1/admin/**` only.
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    IdempotencyKey:
+      name: X-Idempotency-Key
+      in: header
+      description: Makes a retry safe. At most 100 characters.
+      schema: { type: string, maxLength: 100 }
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    WebhookId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    MerchantId:
+      name: merchantId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Error:
+      description: An error, in the shape every service and the gateway share
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationFailed:
+      description: "`400 VALIDATION_FAILED`, listing every invalid field"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Too many requests. `Retry-After` gives the seconds to wait.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [errorCode, errorDescription]
+      properties:
+        errorCode: { type: string, example: ORDER_NOT_PAYABLE }
+        errorDescription: { type: string }
+        timestamp: { type: string, format: date-time }
+        fieldErrors:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    Page:
+      type: object
+      properties:
+        page: { type: integer }
+        size: { type: integer }
+        hasNext: { type: boolean }
+    Money:
+      type: object
+      required: [amountUnits, currency]
+      properties:
+        amountUnits: { type: integer, description: The smallest unit of the currency (paise), example: 49900 }
+        currency: { type: string, enum: [INR] }
+    BusinessType:
+      type: string
+      enum: [LLP, PROPRIETORSHIP, PARTNERSHIP, PRIVATE_LIMITED, PUBLIC_LIMITED, TRUST]
+    MerchantStatus:
+      type: string
+      enum: [PENDING_KYC, ACTIVE, SUSPENDED]
+    Environment:
+      type: string
+      enum: [TEST, LIVE]
+    UserRole:
+      type: string
+      enum: [OWNER, ADMIN, TEAM]
+    AssignableRole:
+      type: string
+      enum: [ADMIN, TEAM]
+    OrderStatus:
+      type: string
+      enum: [CREATED, ATTEMPTED, PAID, CANCELLED, EXPIRED]
+    PaymentMethod:
+      type: string
+      enum: [CARD, UPI, NETBANKING, WALLET]
+    PaymentStatus:
+      type: string
+      enum: [CREATED, AUTHORIZING, AUTHORIZED, CAPTURING, CAPTURED, FAILED, CANCELLED, REFUNDED, PARTIALLY_REFUNDED, SETTLED, AUTH_EXPIRED]
+    RefundStatus:
+      type: string
+      enum: [PENDING, PROCESSED, FAILED]
+    SettlementStatus:
+      type: string
+      enum: [INITIATED, TRANSFER_PENDING, PROCESSED, FAILED]
+    WebhookDeliveryStatus:
+      type: string
+      enum: [PENDING, DELIVERED, FAILED, DEAD]
+    AuditAction:
+      type: string
+      enum: [SETTLEMENT_BANK_CHANGED, KYC_VERIFIED, PASSWORD_CHANGED, API_KEY_CREATED, API_KEY_REVOKED, API_KEY_ROTATED, WEBHOOK_CONFIG_CREATED, WEBHOOK_CONFIG_UPDATED, WEBHOOK_CONFIG_DELETED, WEBHOOK_SECRET_ROTATED, USER_ADDED, USER_ROLE_CHANGED, USER_REMOVED, MERCHANT_SUSPENDED, MERCHANT_REACTIVATED, SETTLEMENT_RUN_TRIGGERED]
+    MerchantSignupRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, maxLength: 50 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        businessName: { type: string, maxLength: 50 }
+        businessType: { $ref: '#/components/schemas/BusinessType' }
+    MerchantResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        businessName: { type: string }
+        businessType: { $ref: '#/components/schemas/BusinessType' }
+        merchantStatus: { $ref: '#/components/schemas/MerchantStatus' }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresInSeconds: { type: integer }
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50 }
+        businessName: { type: string, minLength: 1, maxLength: 50 }
+        businessType: { $ref: '#/components/schemas/BusinessType' }
+        contactNumber: { type: string, pattern: '^[0-9+\- ]{7,20}$' }
+        websiteUrl: { type: string, maxLength: 200 }
+        gstId: { type: string, example: 27ABCDE1234F1Z5 }
+        panId: { type: string, example: ABCDE1234F }
+    SettlementBankRequest:
+      type: object
+      required: [accountNumber, ifsc, accountHolderName, currentPassword]
+      properties:
+        accountNumber: { type: string, pattern: '^[0-9]{9,18}$' }
+        ifsc: { type: string, example: HDFC0001234 }
+        accountHolderName: { type: string, maxLength: 200 }
+        currentPassword: { type: string }
+    MerchantProfileResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        businessName: { type: string }
+        businessType: { $ref: '#/components/schemas/BusinessType' }
+        contactNumber: { type: string }
+        websiteUrl: { type: string }
+        gstId: { type: string }
+        panId: { type: string, description: Masked }
+        status: { $ref: '#/components/schemas/MerchantStatus' }
+        settlementBank:
+          type: object
+          properties:
+            accountNumber: { type: string, description: Masked, example: XXXXXXXX9012 }
+            ifsc: { type: string }
+            accountHolderName: { type: string }
+    CreateUserRequest:
+      type: object
+      required: [email, password, role]
+      properties:
+        email: { type: string, format: email, maxLength: 200 }
+        password: { type: string, minLength: 8, maxLength: 100 }
+        role: { $ref: '#/components/schemas/AssignableRole' }
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/UserRole' }
+        createdAt: { type: string, format: date-time }
+    ApiKeyResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        keyId: { type: string, example: pf_test_UY1WtUjM30Xd78RD }
+        environment: { $ref: '#/components/schemas/Environment' }
+        enabled: { type: boolean }
+        lastUsedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    ApiKeyCreateResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        keyId: { type: string }
+        keySecret: { type: string, description: Shown only in this response }
+        environment: { $ref: '#/components/schemas/Environment' }
+    CreateOrderRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount: { $ref: '#/components/schemas/Money' }
+        receipt: { type: string, maxLength: 100, description: The merchant's own reference; unique per merchant }
+        notes: { type: object, additionalProperties: true }
+        expiresAt: { type: string, format: date-time, description: Defaults to 15 minutes from now }
+        customer:
+          type: object
+          properties:
+            name: { type: string, maxLength: 200 }
+            email: { type: string, format: email, maxLength: 200 }
+            phone: { type: string, maxLength: 20 }
+    OrderResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        merchantId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid, nullable: true }
+        receipt: { type: string, nullable: true }
+        amount: { $ref: '#/components/schemas/Money' }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        attempts: { type: integer }
+        notes: { type: object, additionalProperties: true, nullable: true }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    PaymentInitRequest:
+      type: object
+      required: [orderId, method]
+      properties:
+        orderId: { type: string, format: uuid }
+        method: { $ref: '#/components/schemas/PaymentMethod' }
+        methodDetails: { type: object, additionalProperties: true }
+    PaymentResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        orderId: { type: string, format: uuid }
+        merchantId: { type: string, format: uuid }
+        amount: { $ref: '#/components/schemas/Money' }
+        status: { $ref: '#/components/schemas/PaymentStatus' }
+        method: { $ref: '#/components/schemas/PaymentMethod' }
+        methodDetails: { type: object, additionalProperties: true }
+        errorCode: { type: string }
+        errorDescription: { type: string }
+        capturedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    CreateRefundRequest:
+      type: object
+      properties:
+        amountUnits: { type: integer, minimum: 1, maximum: 500000000, description: Omit to refund whatever is left }
+        notes: { type: object, additionalProperties: true }
+    RefundResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        paymentId: { type: string, format: uuid }
+        merchantId: { type: string, format: uuid }
+        amount: { $ref: '#/components/schemas/Money' }
+        status: { $ref: '#/components/schemas/RefundStatus' }
+        notes: { type: object, additionalProperties: true }
+        errorCode: { type: string }
+        errorDescription: { type: string }
+        processedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    TokenizeRequest:
+      type: object
+      required: [pan, cvv, expiryMonth, expiryYear]
+      properties:
+        pan: { type: string, pattern: '^[0-9]{13,19}$', description: Must pass the Luhn check }
+        cvv: { type: string, pattern: '^[0-9]{3,4}$', description: Validated, never stored }
+        expiryMonth: { type: integer, minimum: 1, maximum: 12 }
+        expiryYear: { type: integer, description: Not in the past }
+        customerId: { type: string, format: uuid }
+        cardHolderName: { type: string, minLength: 3 }
+    TokenizeResponse:
+      type: object
+      properties:
+        token: { type: string, example: tok_3f9c2a }
+        lastFour: { type: string, example: "1111" }
+        brand: { type: string, enum: [VISA, MASTERCARD, RUPAY, AMEX] }
+        expiryMonth: { type: integer }
+        expiryYear: { type: integer }
+    Summary:
+      type: object
+      properties:
+        periodStart: { type: string, format: date }
+        grossAmountUnits: { type: integer, format: int64 }
+        capturedCount: { type: integer, format: int64 }
+        refundedAmountUnits: { type: integer, format: int64 }
+        netAmountUnits: { type: integer, format: int64 }
+        paymentsCreated: { type: integer, format: int64 }
+        failedCount: { type: integer, format: int64 }
+        successRate: { type: number, description: captured ÷ (captured + failed); absent while no payment has an outcome }
+    MethodBreakdown:
+      type: object
+      properties:
+        method: { $ref: '#/components/schemas/PaymentMethod' }
+        capturedCount: { type: integer, format: int64 }
+        grossAmountUnits: { type: integer, format: int64 }
+    DashboardResponse:
+      type: object
+      properties:
+        currency: { type: string }
+        generatedAt: { type: string, format: date-time }
+        today: { type: string, format: date }
+        todaySummary: { $ref: '#/components/schemas/Summary' }
+        last7Days: { $ref: '#/components/schemas/Summary' }
+        daily: { type: array, items: { $ref: '#/components/schemas/Summary' } }
+        byMethod: { type: array, items: { $ref: '#/components/schemas/MethodBreakdown' } }
+    ReportResponse:
+      type: object
+      properties:
+        currency: { type: string }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        granularity: { type: string, enum: [DAY, WEEK, MONTH] }
+        totals: { $ref: '#/components/schemas/Summary' }
+        periods: { type: array, items: { $ref: '#/components/schemas/Summary' } }
+        byMethod: { type: array, items: { $ref: '#/components/schemas/MethodBreakdown' } }
+    SettlementResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/SettlementStatus' }
+        grossAmount: { $ref: '#/components/schemas/Money' }
+        refundAmount: { $ref: '#/components/schemas/Money' }
+        feeAmount: { $ref: '#/components/schemas/Money' }
+        gstAmount: { $ref: '#/components/schemas/Money' }
+        netAmount: { $ref: '#/components/schemas/Money' }
+        bankReference: { type: string, nullable: true }
+        processedAt: { type: string, format: date-time, nullable: true }
+        failureReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    WebhookConfigRequest:
+      type: object
+      required: [targetUrl]
+      properties:
+        targetUrl: { type: string, maxLength: 255, example: "http://localhost:8084/webhook/success" }
+        eventTypes: { type: string, maxLength: 1000, description: "Comma-separated event names; blank or ALL subscribes to every event", example: "PAYMENT_STATUS_CHANGED,ORDER_CREATED" }
+        enabled: { type: boolean }
+    WebhookConfigResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        targetUrl: { type: string }
+        webhookSecret: { type: string, description: Only in the create and rotate-secret responses }
+        enabled: { type: boolean }
+        eventTypes: { type: string }
+    WebhookDeliveryResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        eventId: { type: string, description: The same for every delivery and retry of one event }
+        eventType: { type: string }
+        targetUrl: { type: string }
+        status: { $ref: '#/components/schemas/WebhookDeliveryStatus' }
+        attempts: { type: integer }
+        nextRetryAt: { type: string, format: date-time, nullable: true }
+        lastAttemptAt: { type: string, format: date-time, nullable: true }
+        lastResponseCode: { type: integer, nullable: true }
+        lastResponseBody: { type: string, nullable: true }
+        deliveredAt: { type: string, format: date-time, nullable: true }
+        payload: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+    AuditLogResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        merchantId: { type: string, format: uuid }
+        actorType: { type: string, enum: [USER, API_KEY, PLATFORM_ADMIN, SYSTEM] }
+        actor: { type: string }
+        action: { $ref: '#/components/schemas/AuditAction' }
+        targetType: { type: string }
+        targetId: { type: string }
+        details: { type: object, additionalProperties: true }
+        clientIp: { type: string }
+        occurredAt: { type: string, format: date-time }
+    AdminMerchantResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        businessName: { type: string }
+        status: { $ref: '#/components/schemas/MerchantStatus' }
+        suspendedAt: { type: string, format: date-time }
+        suspensionReason: { type: string }
+        createdAt: { type: string, format: date-time }
+    AdminSettlementRunResponse:
+      type: object
+      properties:
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time }
+        merchants: { type: integer }
+        failedMerchants: { type: integer }
+        settlementsCreated: { type: integer, format: int64 }

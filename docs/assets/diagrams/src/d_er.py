@@ -12,13 +12,14 @@ AUDIT = "+ BaseEntity audit columns"
 
 
 def merchant():
-    e = ER(1480, 820, "merchant-service database — payflo_merchant",
-           "Merchants, dashboard users, API keys, customers and webhook configs · schema by Hibernate ddl-auto: update")
+    e = ER(1480, 990, "merchant-service database — payflo_merchant",
+           "Merchants, dashboard users, API keys, customers, webhook configs and the audit log · schema by Flyway migrations")
     m = e.entity("m", 560, 120, "merchant", [("id", "uuid", "PK"), ("name", "varchar(200)"), ("email", "varchar", "UK"),
                  ("contact_number", "varchar"), ("business_type", "varchar"), ("business_name", "varchar"),
                  ("website_url", "varchar"), ("status", "varchar"), ("gst_id", "varchar"), ("pan_id", "varchar"),
                  ("settlement_bank_account", "varchar"), ("settlement_bank_ifsc", "varchar"),
-                 ("settlement_bank_account_holder_name", "varchar")], B, w=380, note=AUDIT)
+                 ("settlement_bank_account_holder_name", "varchar"), ("suspended_at", "timestamp"),
+                 ("suspension_reason", "varchar(255)"), ("status_before_suspension", "varchar(50)")], B, w=380, note=AUDIT)
     u = e.entity("u", 60, 120, "app_user", [("id", "uuid", "PK"), ("merchant_id", "uuid", "FK"), ("email", "varchar", "UK"),
                  ("password_hash", "varchar"), ("role", "varchar")], G, w=300, note=AUDIT)
     k = e.entity("k", 60, 420, "api_key", [("id", "uuid", "PK"), ("merchant_id", "uuid", "FK"), ("key_id", "varchar(50)", "UK"),
@@ -35,7 +36,11 @@ def merchant():
     e.rel([(m.x + 60, m.y + m.h), (m.x + 60, k.cy), k.r()], "one", "zmany", "has keys", at=(m.x - 60, k.cy))
     e.rel([(m.x + m.w, c.cy), c.l()], "one", "zmany", "has")
     e.rel([(m.x + m.w - 60, m.y + m.h), (m.x + m.w - 60, w.cy), w.l()], "one", "zmany", "configures", at=(m.x + m.w + 40, w.cy))
-    e.s.pill(740, 780, "customers, orders and cards elsewhere reference merchant.id as a plain uuid — no cross-database FK", MUTED)
+    a = e.entity("a", 560, 640, "audit_log", [("id", "uuid", "PK"), ("merchant_id", "uuid", "ID"), ("actor_type", "varchar(20)"),
+                 ("actor", "varchar"), ("action", "varchar(40)"), ("target_type", "varchar(40)"), ("target_id", "varchar(100)"),
+                 ("details", "jsonb"), ("client_ip", "varchar(64)"), ("occurred_at", "timestamp")], R, w=380,
+                 note="append-only: a trigger refuses UPDATE, DELETE, TRUNCATE")
+    e.s.pill(740, 955, "customers, orders and cards elsewhere reference merchant.id as a plain uuid — no cross-database FK", MUTED)
     return e.s
 
 

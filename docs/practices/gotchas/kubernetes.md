@@ -34,4 +34,16 @@
 
 - **Symptom:** `kind create cluster` fails to bind the host port.
 - **Cause:** `kind-config.yaml` maps the gateway's NodePort `30080` to `localhost:8080`.
-- **Fix:** change `hostPort` in `kind-config.yaml`, or stop whatever holds 8080 (a local gateway or the monolith).
+- **Fix:** change `hostPort` in `kind-config.yaml`, or stop whatever holds 8080 (a locally running gateway, for instance).
+
+## `kind load docker-image` fails with "content digest … not found" for pulled images
+
+- **Symptom:** `kind load docker-image redis:7-alpine --name payflo` (or Postgres, Kafka, Grafana…) ends with `ctr: content digest sha256:…: not found`, although the image is in the local Docker daemon. The images Jib built load fine.
+- **Cause:** Docker Desktop's image store keeps only the platform you pulled, and `kind load` asks containerd to import the whole multi-platform index.
+- **Fix:** save and import it directly: `docker save <image> -o x.tar`, `docker cp x.tar payflo-control-plane:/x.tar`, `docker exec payflo-control-plane ctr -n k8s.io images import /x.tar`. An image the node can't find is pulled from the internet, so check `docker exec payflo-control-plane crictl images`.
+
+## A Kustomize overlay can't live inside the directory it extends
+
+- **Symptom:** `kubectl kustomize` fails with `cycle detected: candidate root … contains visited root …` for an overlay in `microservices/k8s/scaled` that lists `..` as a resource.
+- **Cause:** Kustomize treats a directory containing another kustomization root as a cycle.
+- **Fix:** the overlay is a sibling, `microservices/k8s-scaled`, with `resources: [../k8s]`. (A wrapper that changes an image for one machine also has to use a relative path; absolute ones are refused.)

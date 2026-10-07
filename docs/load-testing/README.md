@@ -7,8 +7,8 @@ Everything lives in `microservices/load-test/`:
 | File | What it does |
 |---|---|
 | `payflo-load-test.jmx` | The Apache JMeter plan: each virtual user is one merchant's backend creating orders and paying them through the gateway |
-| `provision_keys.py` | Signs up N test merchants through the gateway and writes their API keys to `keys.csv` (gitignored) |
-| `run_load_test.py` | Runs the plan headless, writes JMeter's HTML report, and grades the run against the three targets |
+| `provision_keys.py` | Signs up N test merchants through the gateway and writes their API keys to `keys.csv` (gitignored); with `--webhook-url` it also registers a webhook for each, for the webhook SLA |
+| `run_load_test.py` | Runs the plan headless, writes JMeter's HTML report, and grades the run against the three targets; reads Prometheus to also report how far the bank-callback capture and the webhook delivery fell behind (and the webhook SLA) |
 | `idempotency_replay_test.py` | Sends the same order and payment requests many times under one `X-Idempotency-Key` and checks each took effect once |
 
 ## What one virtual user does
@@ -19,19 +19,21 @@ Everything lives in `microservices/load-test/`:
 4. **Initiates a payment** for the order (`POST /v1/payments`) with a fresh `X-Idempotency-Key` — 40% UPI, 30% netbanking, 30% card. A card payment goes gateway → payment-service → vault-service.
 5. Repeats until the test's duration is up.
 
-A request passes only with `200` or `201`. A payment the mock bank declines is still a `201` — it's a correct answer, not an error ([why](../known-gaps/api-behavior.md#a-failed-payment-is-still-a-201)) — and the plan's values never trigger a decline, so the recorded errors are real failures.
+A request passes only with `200` or `201`. A payment the mock bank declines is still a `201` — it's a correct answer, not an error ([why](../api/behavior.md#a-failed-payment-is-still-a-201)) — and the plan's values never trigger a decline, so the recorded errors are real failures.
 
-## How each target is measured
+## What is measured, and how
 
-| Target | Measured as | Where |
+| Measure | Measured as | Where |
 |---|---|---|
-| **Throughput ≥ 10,000 TPS** | Successful requests per second over the whole run (ramp-up included) | `run_load_test.py`, and live on the dashboard's gateway throughput panel |
+| **Throughput** (reported, not graded: it depends on the machine) | Successful requests per second over the whole run (ramp-up included) | `run_load_test.py`, and live on the dashboard's gateway throughput panel |
 | **p99 < 1 s** | The 99th-percentile response time of **every** request type, as the client saw it | `run_load_test.py` (per request type, from JMeter's samples), and the dashboard's gateway p99 |
 | **Availability ≥ 99.99%** | Share of requests that succeeded during the run | `run_load_test.py` and the dashboard's availability panel |
+| **Webhook SLA: 99% within 30 s** | Share of webhooks accepted by the merchant's endpoint within 30 s of the change, from the `payflo_webhook_delivery_latency_seconds` histogram | `run_load_test.py` (with webhook merchants) and the dashboard's Webhook SLA row |
 
 Availability in the requirements means uptime over months — about 52 minutes of downtime a year — and a load test can't measure that. What a load test *can* show is that the system keeps answering correctly under load, which is what the success rate here measures. Measuring the real target needs the service running continuously with the same metric recorded over time.
 
 ## Pages
 
 - [Running a load test](running.md) — setup, the commands, and reading the output.
-- [Results](results.md) — the measured numbers, the problems the test found, the idempotency replay result, and what 10,000 TPS would take.
+- [Results](results.md) — the measured numbers, the problems the test found and what fixing each one bought, the idempotency replay result, and where more throughput would come from.
+- [Query and index review](query-review.md) — what the database spends its time on under load, found with `pg_stat_statements` and `EXPLAIN`, and what was changed.

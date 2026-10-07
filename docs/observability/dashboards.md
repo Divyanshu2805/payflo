@@ -14,7 +14,7 @@ docker compose -f microservices/observability/docker-compose.yaml up -d
 |---|---|---|
 | Zipkin | <http://localhost:9411> | The services report here by default (`ZIPKIN_URL`) |
 | Prometheus | <http://localhost:9090> | Scrapes every service every 5 s through `host.docker.internal` — `/targets` shows each one `up` or why not |
-| Grafana | <http://localhost:3000> | Opens on the PayFlo dashboard; anonymous users can view, `admin` / `admin` to edit |
+| Grafana | <http://localhost:3000> | Opens on the PayFlo dashboard after you sign in as `admin` with `GRAFANA_ADMIN_PASSWORD` (default `payflo-dev-only-change-me`); there is no anonymous access. Every port here is published on `127.0.0.1` only |
 
 Prometheus's targets are in `observability/prometheus/prometheus.yml`: the gateway on its management port `9081` and the business services on `8081`–`8084`. If you run a service on another port, change it there.
 
@@ -27,6 +27,7 @@ Provisioned from `observability/grafana/dashboards/payflo-overview.json`, refres
 | **Targets** | Gateway throughput, gateway p99 latency, gateway availability (share of non-5xx responses) and the share of requests under 1 s — each coloured against the [requirement](../requirements.md#non-functional) it tracks |
 | **Traffic and latency by service** | Request rate and p99 per service, the gateway's p50/p95/p99, 5xx rate per service, and the five slowest endpoints |
 | **Payments and events** | Payment transitions by resulting status, the outbox backlog, webhook deliveries by outcome |
+| **Webhook SLA** | The share of webhooks delivered within 30 s over the dashboard's time range (green at 99% and above), delivery latency p50 and p99 against the 30 s line, and the number of events waiting with the age of the oldest one still waiting for its first attempt |
 | **Runtime** | Heap, database connections in use and waiting (HikariCP), CPU |
 
 Every panel is a PromQL query from [metrics](metrics.md), so anything on the dashboard can also be run by hand in Prometheus. Grafana also has Zipkin as a datasource, for looking up a trace from the same place.

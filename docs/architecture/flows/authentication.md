@@ -6,7 +6,7 @@ How a merchant gets credentials, and how every other service trusts a request wi
 
 ## Getting credentials
 
-1. **Sign up.** `POST /v1/auth/signup` is a public route. `AuthController` → `AuthServiceImpl.signup` rejects a duplicate email (`409 DUPLICATE_MERCHANT_EMAIL`), then creates the `Merchant` (status forced to `PENDING_KYC`) and its first `AppUser` (role `OWNER`, password bcrypt-hashed) in one transaction.
+1. **Sign up.** `POST /v1/auth/signup` is a public route. `AuthController` → `AuthServiceImpl.signup` bcrypt-hashes the password first (so every signup costs the same), then `MerchantRegistrar.register` creates the `Merchant` (status forced to `PENDING_KYC`) and its first `AppUser` (role `OWNER`) in one transaction. An email that already logs in — or a unique-index race on it, which only surfaces at commit — is not an error: the answer is a `201` with a made-up id, indistinguishable from success, so signup can't be used to find which emails are registered ([the details](../../api/authentication.md#signup-and-account-enumeration)).
 2. **Log in.** `POST /v1/auth/login` is public too. The password is checked with bcrypt. A wrong password and an unknown email get the same `401 INVALID_CREDENTIALS`, so login can't be used to find out which emails are registered. On success `JwtUtil.generateAccessToken` returns an HMAC-signed JWT carrying `merchant_id` and `role`, valid for 100 minutes. There is no refresh token in the microservices — log in again.
 3. **Create an API key.** With the JWT, `POST /v1/merchants/api-keys { environment }` returns a `keyId` (`pf_test_…` or `pf_live_…`) and a secret. The secret is generated with `SecureRandom`, returned **once**, and stored only as a bcrypt hash.
 
@@ -22,6 +22,8 @@ How a merchant gets credentials, and how every other service trusts a request wi
   4. yields `X-Merchant-Id`, `X-Key-Id` and `X-Environment`.
 - **Anything else** → `401 UNAUTHORIZED`.
 
+Before that branch, a path under **`/v1/admin/`** takes its own: `AdminAuthHandler` checks `X-Admin-Key` against `app.security.admin-api-key` and ignores `Authorization` altogether. A right key forwards the request with `X-Platform-Admin: true`; a wrong one is `401` and counts as a failed authentication; no configured key is `403 ADMIN_API_DISABLED`. See [the admin API](../../api/admin.md). Every authenticated or public request also gets `X-Client-Ip`, which the audit log records.
+
 The yielded headers are applied with `HeaderAugmentingRequestWrapper`, so a client can't override the values the gateway sets. The request is then routed.
 
 ## In the business service
@@ -33,7 +35,7 @@ The yielded headers are applied with `HeaderAugmentingRequestWrapper`, so a clie
 - `POST /v1/merchants/api-keys/{keyId}/rotate` moves the current hash to `previous_key_secret_hash`, stores a new one and opens a 24-hour grace period, so an integration keeps working while it switches secrets.
 - `DELETE /v1/merchants/api-keys/{keyId}` sets `enabled = false`.
 
-Both evict the key from the gateway's Redis cache, so the next request reloads it from merchant-service and the change applies immediately. Rotating a key that is already revoked is rejected — today as an unmapped exception, so a `500` ([known gaps](../../known-gaps/not-yet-built.md#api)).
+Both evict the key from the gateway's Redis cache, so the next request reloads it from merchant-service and the change applies immediately. Rotating a key that is already revoked is refused with `400 API_KEY_REVOKED`.
 
 ## Related
 

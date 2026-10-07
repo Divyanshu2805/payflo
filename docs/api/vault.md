@@ -19,6 +19,8 @@ Turning a card into a token that can be charged later. **Service:** vault-servic
 
 vault-service detects the brand from the leading digits, generates a random AES-256 data key for this card, encrypts the number with it (AES-GCM), wraps the data key with the master key, and stores the encrypted number and wrapped key with the last four, first six, expiry and holder name. The token (`tok_…`) is a separate row pointing at the card. See the [vault data model](../schema/vault-service.md) and [decision 0004](../architecture/decisions/0004-isolate-card-data-in-vault-service.md).
 
-Tokenizing the same card twice creates two cards and two tokens; there is no de-duplication. Tokens can't be listed, read or revoked through the API yet.
+**Card-testing protection.** A merchant may tokenize 30 cards a minute and 600 an hour; past either it is refused with `429 CARD_TOKENIZATION_LIMIT_EXCEEDED` and `Retry-After` until the window ends, before anything is encrypted or stored. No checkout tokenizes dozens of cards a minute; a bot running stolen numbers does. See [velocity limits](idempotency-and-rate-limits.md#velocity-limits-and-card-testing).
+
+Tokenizing the same card twice creates two cards and two tokens; there is no de-duplication. Tokens can't be listed, read or revoked through the API.
 
 Card numbers that make a payment fail on purpose are listed in [mock acquirer](mock-acquirer.md).

@@ -29,8 +29,8 @@ Every background job is a `@Scheduled` method guarded by a ShedLock `@SchedulerL
 | Job | Service | Schedule |
 |---|---|---|
 | `OutboxPoller` | payment, operations | every 1 s; batches of 500, draining for up to 30 s per run |
-| `BankCallbackSimulator` | payment | every `payment.simulator.poll-interval-ms` (5 s); slices of the oldest 500 `AUTHORIZING` payments for up to 30 s per run, `payment.simulator.concurrency` (16) callbacks at once |
-| `WebhookDeliveryScheduler` — deliver due entries | operations | every 1 s, deliveries on virtual threads |
+| `BankCallbackSimulator` | payment | every `payment.simulator.poll-interval-ms` (1 s); slices of the oldest 500 `AUTHORIZING` payments for up to 30 s per run, resolved `payment.simulator.batch-size` (50) per transaction, `payment.simulator.concurrency` (4) batches at once |
+| `WebhookDeliveryScheduler` — deliver due entries | operations | every 200 ms; keeps taking events off the queue for up to 5 s per run, `app.webhook.delivery.concurrency` (8) deliveries at once on virtual threads, never taking more than it has a free worker for |
 | `WebhookDeliveryScheduler` — reconcile from the database | operations | every 10 s |
 | `SettlementEngine` | operations | 23:00 daily (`0 0 23 * * *`), lock held up to 2 h |
 | `BankSettlementCallbackSimulator` | operations | every 5 s |
@@ -45,7 +45,7 @@ Open-Session-In-View is off (`spring.jpa.open-in-view: false`), so a service hol
 
 ## Schema management
 
-Each service's tables are created and altered by Hibernate (`ddl-auto: update`). There is no migration tool, no version history and no rollback; a removed column is never dropped. See [schema conventions](../schema/conventions.md) and [known gaps](../known-gaps/not-yet-built.md#platform).
+Each service's schema is owned by Flyway: versioned migrations in its `src/main/resources/db/migration`, run on start-up against its own database, with Hibernate set to `validate` so an entity that doesn't match fails the start. There is no automatic rollback (a migration is only ever added to). See [schema conventions](../schema/conventions.md).
 
 ## Configuration
 

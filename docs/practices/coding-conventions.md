@@ -1,7 +1,5 @@
 # Coding Conventions
 
-New work goes into `microservices/`. The monolith at the repository root is frozen — don't add features to it.
-
 ## Layering
 
 Controllers orchestrate, services decide, repositories query. A controller never calls a repository directly, and a repository never contains business logic. The full per-package rules are in the [module map](../architecture/module-map.md#inside-a-business-service).
@@ -45,6 +43,11 @@ Controllers read the merchant only from `MerchantContext` and pass it down; neve
 - Every `@Scheduled` method carries a ShedLock `@SchedulerLock` with sensible `lockAtMostFor` / `lockAtLeastFor`.
 - Change a payment's status only through `PaymentTransitionService.apply`.
 
+## Schema
+
+- **Every schema change is a Flyway migration**, `V<next>__what_it_does.sql` in the owning service's `src/main/resources/db/migration`. Hibernate runs with `ddl-auto: validate` and never changes the schema. Don't edit a migration that has run: add a new one.
+- A new enum constant widens its check constraint in the same migration. See [schema conventions](../schema/conventions.md#changing-the-schema).
+
 ## Configuration
 
 - New settings go in `microservices/config-repo/<service>.yaml` (and `<service>-k8s.yaml` if they differ in-cluster), never in a module's `application.yaml`.
@@ -53,8 +56,9 @@ Controllers read the merchant only from `MerchantContext` and pass it down; neve
 
 ## Things to avoid
 
-- **Adding a feature to the monolith.** It is the frozen reference.
 - **A `SecurityFilterChain` in a business service.** Authentication belongs to the gateway.
 - **Reading another service's database**, or adding a foreign key across services.
 - **Logging a card number, CVV, secret or token.** vault-service logs only the first four characters of a token.
 - **Committing `k8s/secrets.env`** or a real secret value anywhere.
+- **Editing an applied Flyway migration**, or letting Hibernate change the schema.
+- **Publishing a port beyond loopback.** Services listen on `127.0.0.1` locally; only the gateway is reachable from outside (see [the security model](../architecture/security-model.md#network-exposure)).

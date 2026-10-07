@@ -5,7 +5,6 @@
 - Get the stack running locally: [local development](docs/local-development/README.md).
 - Skim the [architecture overview](docs/architecture/README.md) to find which service owns the behaviour you're changing, and [where do I change…?](docs/architecture/where-to-change.md) to find the code.
 - Read the [security guardrails](docs/practices/security-guardrails.md). Changes that weaken one are not accepted as a workaround; raise the problem instead.
-- New work goes into `microservices/`. The monolith at the repository root is frozen.
 
 ## Workflow
 
