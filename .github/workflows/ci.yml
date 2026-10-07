@@ -84,7 +84,7 @@ jobs:
       # Fails on a HIGH or CRITICAL vulnerability that has a fix. One with no fix yet is reported but doesn't fail the
       # build, since there is nothing to do about it but wait.
       - name: Scan the dependencies for known vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: sbom
           scan-ref: microservices/target/bom.json
@@ -95,7 +95,7 @@ jobs:
 
       # A committed secret fails the build: it is in the history for good the moment it is pushed.
       - name: Scan for committed secrets
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -106,7 +106,7 @@ jobs:
       # Reported, not enforced: the Kubernetes manifests are for a local kind cluster, and hardening them (security
       # contexts, read-only filesystems) is tracked separately. Seeing the list on every run keeps it visible.
       - name: Report configuration problems
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: microservices
