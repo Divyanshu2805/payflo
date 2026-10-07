@@ -3,6 +3,7 @@ package com.project.payflo.payment_service.saga;
 import com.project.payflo.common_lib.enums.EventAggregateType;
 import com.project.payflo.common_lib.enums.OrderStatus;
 import com.project.payflo.common_lib.enums.PaymentEvent;
+import com.project.payflo.common_lib.enums.PaymentMethod;
 import com.project.payflo.common_lib.enums.PaymentStatus;
 import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
 import com.project.payflo.common_lib.exception.ResourceNotFoundException;
@@ -10,12 +11,14 @@ import com.project.payflo.payment_service.dto.request.PaymentInitRequest;
 import com.project.payflo.payment_service.dto.response.PaymentResponse;
 import com.project.payflo.payment_service.entity.OrderRecord;
 import com.project.payflo.payment_service.entity.Payment;
+import com.project.payflo.payment_service.entity.PaymentTransitionLog;
 import com.project.payflo.payment_service.gateway.dto.PaymentResult;
 import com.project.payflo.payment_service.mapper.PaymentMapper;
 import com.project.payflo.payment_service.outbox.OutboxEventPublisher;
 import com.project.payflo.payment_service.repository.OrderRepository;
 import com.project.payflo.payment_service.repository.PaymentRepository;
 import com.project.payflo.payment_service.statemachine.PaymentTransitionService;
+import com.project.payflo.payment_service.velocity.CardVelocityGuard;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -44,6 +47,7 @@ public class PaymentAuthorizationRecorder {
     private final PaymentTransitionService paymentTransitionService;
     private final OutboxEventPublisher eventPublisher;
     private final PaymentMapper paymentMapper;
+    private final CardVelocityGuard cardVelocityGuard;
 
     @Transactional
     public Payment recordPayment(UUID merchantId, PaymentInitRequest request, String idempotencyKey) {
@@ -67,6 +71,12 @@ public class PaymentAuthorizationRecorder {
                     "Order already has a payment in progress or completed: "+order.getId());
         }
 
+        // One order is not a tool for guessing cards: it takes a limited number of card payments, however each ended.
+        if (request.method() == PaymentMethod.CARD) {
+            cardVelocityGuard.requireOrderAttemptsBelowLimit(
+                    paymentRepository.countByOrder_IdAndMethod(order.getId(), PaymentMethod.CARD));
+        }
+
         order.setOrderStatus(OrderStatus.ATTEMPTED);
         order.setAttempts(order.getAttempts()+1);
 
@@ -79,8 +89,13 @@ public class PaymentAuthorizationRecorder {
                 .idempotencyKey(idempotencyKey != null ? idempotencyKey: UUID.randomUUID().toString()) //TODO: idempotency
                 .methodDetails(request.methodDetails())
                 .build();
+        // The first transition is applied BEFORE the payment is saved, so it is inserted already AUTHORIZING. Saving it
+        // first and moving it after made Hibernate insert it as CREATED and UPDATE it in the same flush, a second write
+        // of the row (and of each of its indexes) for every payment. Its log entry is saved after the payment, which it
+        // points at (an entry can't be saved while its payment isn't: Hibernate refuses the unsaved reference).
+        PaymentTransitionLog attempt = paymentTransitionService.applyToUnsaved(payment, PaymentEvent.AUTHORIZE_ATTEMPT);
         payment = paymentRepository.save(payment);
-        paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_ATTEMPT);
+        paymentTransitionService.saveLog(attempt);
         return payment;
     }
 
@@ -117,6 +132,9 @@ public class PaymentAuthorizationRecorder {
                 paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL);
                 payment.setErrorCode(failure.errorCode());
                 payment.setErrorDescription(failure.errorDescription());
+                if (payment.getMethod() == PaymentMethod.CARD) {
+                    cardVelocityGuard.recordDecline(payment.getMerchantId(), failure.errorCode());
+                }
             }
             case PaymentResult.Success success ->
                     log.warn("Invalid state: initiate() gateway call returned Success directly, paymentId={}", paymentId);

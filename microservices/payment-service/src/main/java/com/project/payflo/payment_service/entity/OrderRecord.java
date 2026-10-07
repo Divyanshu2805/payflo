@@ -14,12 +14,15 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
+// Flyway owns the schema; these describe the indexes it builds. Also there, and not expressible here: the partial index
+// idx_order_unpaid_expires_at (expires_at) WHERE order_status IN ('CREATED', 'ATTEMPTED'), which the expiry sweeper
+// reads (V4__index_review.sql).
 @Table(name = "order_record", indexes = {
-        @Index(name = "idx_order_id_merchant_id", columnList = "id, merchant_id"),
-        @Index(name = "idx_order_merchant_id", columnList = "merchant_id"),
+        // GET /v1/orders lists a merchant's orders newest first.
+        @Index(name = "idx_order_merchant_created", columnList = "merchant_id, created_at"),
         @Index(name = "idx_order_merchant_receipt", columnList = "merchant_id, receipt", unique = true),
-        // The expiry sweeper looks for unpaid orders whose expires_at has passed.
-        @Index(name = "idx_order_status_expires_at", columnList = "order_status, expires_at")
+        // From X-Idempotency-Key: a retry of the same request returns this order instead of making another.
+        @Index(name = "idx_order_merchant_idempotency", columnList = "merchant_id, idempotency_key", unique = true)
 })
 @Getter
 @Setter
@@ -36,6 +39,10 @@ public class OrderRecord  extends BaseEntity {
     @Column(name = "merchant_id", nullable = false)
     private UUID merchantId;
 
+    // The X-Idempotency-Key the order was created with, if any.
+    @Column(length = 100)
+    private String idempotencyKey;
+
     @Column(name = "customer_id")
     private UUID customerId;
 
@@ -47,6 +54,7 @@ public class OrderRecord  extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private OrderStatus orderStatus = OrderStatus.CREATED;
 
     @Column(nullable = false)

@@ -24,6 +24,11 @@ public class PaymentStateMachine {
             Map.entry(new Transition(PaymentStatus.CAPTURED, PaymentEvent.REFUND_COMPLETE), PaymentStatus.REFUNDED),
             Map.entry(new Transition(PaymentStatus.CAPTURED, PaymentEvent.SETTLE), PaymentStatus.SETTLED),
             Map.entry(new Transition(PaymentStatus.SETTLED, PaymentEvent.REFUND_INIT), PaymentStatus.PARTIALLY_REFUNDED),
+            // Several partial refunds in a row, and a refund that failed with nothing else refunded.
+            Map.entry(new Transition(PaymentStatus.PARTIALLY_REFUNDED, PaymentEvent.REFUND_INIT), PaymentStatus.PARTIALLY_REFUNDED),
+            Map.entry(new Transition(PaymentStatus.PARTIALLY_REFUNDED, PaymentEvent.REFUND_FAIL), PaymentStatus.CAPTURED),
+            // A partly refunded payment is still paid out, net of what was refunded.
+            Map.entry(new Transition(PaymentStatus.PARTIALLY_REFUNDED, PaymentEvent.SETTLE), PaymentStatus.SETTLED),
 
             Map.entry(new Transition(PaymentStatus.CREATED, PaymentEvent.CANCEL), PaymentStatus.CANCELLED),
             Map.entry(new Transition(PaymentStatus.AUTHORIZING, PaymentEvent.CANCEL), PaymentStatus.CANCELLED),

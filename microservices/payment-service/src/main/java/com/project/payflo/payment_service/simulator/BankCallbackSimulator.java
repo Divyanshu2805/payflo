@@ -5,6 +5,7 @@ import com.project.payflo.common_lib.enums.PaymentStatus;
 import com.project.payflo.common_lib.util.RandomizerUtil;
 import com.project.payflo.payment_service.entity.Payment;
 import com.project.payflo.payment_service.repository.PaymentRepository;
+import com.project.payflo.payment_service.service.AuthorizationResolution;
 import com.project.payflo.payment_service.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,8 +36,8 @@ public class BankCallbackSimulator {
 
     private final ExecutorService callbackExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-    @Scheduled(fixedDelayString = "${payment.simulator.poll-interval-ms:5000}")
-    @SchedulerLock(name = "payment-service-bank-callback-simulator", lockAtMostFor = "1m", lockAtLeastFor = "1s")
+    @Scheduled(fixedDelayString = "${payment.simulator.poll-interval-ms:1000}")
+    @SchedulerLock(name = "payment-service-bank-callback-simulator", lockAtMostFor = "1m", lockAtLeastFor = "500ms")
     public void processCallbacks() {
         long deadline = System.currentTimeMillis() + MAX_RUN_MILLIS;
         List<Payment> candidates;
@@ -48,32 +49,46 @@ public class BankCallbackSimulator {
             candidates = paymentRepository
                     .findTop500ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(PaymentStatus.AUTHORIZING, globalWindow);
             resolved = simulateCallbacks(candidates);
-            log.info("Simulated bank callbacks: {} candidates, {} resolved", candidates.size(), resolved);
+            if (!candidates.isEmpty()) {
+                log.info("Simulated bank callbacks: {} candidates, {} resolved", candidates.size(), resolved);
+            }
         } while (candidates.size() == BATCH_SIZE && resolved > 0 && System.currentTimeMillis() < deadline);
     }
 
-    // One payment at a time (~50/s) fell far behind under load. Each callback is its own short
-    // transaction, so they run on virtual threads, at most `concurrency` at once.
+    // The bank's answer to every payment that is due, resolved in batches: each batch is ONE transaction (one lock
+    // query, a few batched writes, one commit), and `concurrency` batches run at once, each holding one database
+    // connection. One transaction per payment spent most of its time on round trips and log flushes, and fell
+    // behind the arrival rate under load.
     private int simulateCallbacks(List<Payment> candidates) {
-        Semaphore permits = new Semaphore(simulatorConfig.getConcurrency());
-        List<Future<Boolean>> callbacks = new ArrayList<>(candidates.size());
+        List<AuthorizationResolution> due = new ArrayList<>();
+        for (Payment payment : candidates) {
+            AuthorizationResolution answer = answerFor(payment);
+            if (answer != null) {
+                due.add(answer);
+            }
+        }
+        if (due.isEmpty()) {
+            return 0;
+        }
+
+        int batchSize = Math.max(1, simulatorConfig.getBatchSize());
+        Semaphore permits = new Semaphore(Math.max(1, simulatorConfig.getConcurrency()));
+        List<Future<Integer>> batches = new ArrayList<>();
         int resolved = 0;
         try {
-            for (Payment payment : candidates) {
+            for (int from = 0; from < due.size(); from += batchSize) {
+                List<AuthorizationResolution> batch = due.subList(from, Math.min(from + batchSize, due.size()));
                 permits.acquire();
-                callbacks.add(callbackExecutor.submit(() -> {
+                batches.add(callbackExecutor.submit(() -> {
                     try {
-                        return simulateCallback(payment);
-                    } catch (Exception e) {
-                        log.error("Bank callback simulation failed, paymentId: {}", payment.getId(), e);
-                        return false;
+                        return resolveBatch(batch);
                     } finally {
                         permits.release();
                     }
                 }));
             }
-            for (Future<Boolean> callback : callbacks) {
-                if (callback.get()) resolved++;
+            for (Future<Integer> batch : batches) {
+                resolved += batch.get();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -83,36 +98,57 @@ public class BankCallbackSimulator {
         return resolved;
     }
 
-    private boolean simulateCallback(Payment payment) {
+    // A batch is all or nothing, so when one fails (a payment changed under it, a deadlock) its payments are
+    // resolved one at a time instead: the bad one fails alone and the rest still go through.
+    private int resolveBatch(List<AuthorizationResolution> batch) {
+        try {
+            paymentService.resolveAuthorizations(batch);
+            return batch.size();
+        } catch (Exception e) {
+            log.warn("Resolving a batch of {} payments failed, resolving them one at a time: {}", batch.size(), e.toString());
+        }
+        int resolved = 0;
+        for (AuthorizationResolution answer : batch) {
+            try {
+                paymentService.resolveAuthorization(answer.paymentId(), answer.approve(), answer.bankRef(),
+                        answer.errorCode(), answer.errorDescription());
+                resolved++;
+            } catch (Exception e) {
+                log.error("Bank callback simulation failed, paymentId: {}", answer.paymentId(), e);
+            }
+        }
+        return resolved;
+    }
+
+    // What the bank says about this payment, or null while it isn't due (or, in TIMEOUT mode, never).
+    private AuthorizationResolution answerFor(Payment payment) {
         SimulatorConfig.MethodSimulatorConfig methodConfig = simulatorConfig.configFor(payment.getMethod());
 
         LocalDateTime dueAt = dueAt(payment, methodConfig);
 
         if(LocalDateTime.now().isBefore(dueAt)) {
-            return false;
+            return null;
         }
 
         ChaosMode chaosMode = simulatorConfig.getChaosMode();
 
-        switch (chaosMode) {
-            case SUCCESS -> resolve(payment, true);
-            case FAILURE -> resolve(payment, false);
+        return switch (chaosMode) {
+            case SUCCESS -> approved(payment);
+            case FAILURE -> declined(payment);
             case TIMEOUT -> {
                 log.debug("BankCallback simulator: Payment Timed out");
-                return false;
+                yield null;
             }
-            case NORMAL, SLOW -> resolve(payment, shouldApprove(payment, methodConfig));
-        }
-        return true;
+            case NORMAL, SLOW -> shouldApprove(payment, methodConfig) ? approved(payment) : declined(payment);
+        };
     }
 
-    private void resolve(Payment payment, boolean approve) {
-        if (approve) {
-            String bankRef = "SIM_BANK_REF"+ RandomizerUtil.randomBase64(8);
-            paymentService.resolveAuthorization(payment.getId(), true, bankRef, null, null);
-        } else {
-            paymentService.resolveAuthorization(payment.getId(), false, null, "SIM_BANK_ERROR_CODE", "Simulated Bank Decline");
-        }
+    private AuthorizationResolution approved(Payment payment) {
+        return AuthorizationResolution.approved(payment.getId(), "SIM_BANK_REF" + RandomizerUtil.randomBase64(8));
+    }
+
+    private AuthorizationResolution declined(Payment payment) {
+        return AuthorizationResolution.declined(payment.getId(), "SIM_BANK_ERROR_CODE", "Simulated Bank Decline");
     }
 
     private boolean shouldApprove(Payment payment, SimulatorConfig.MethodSimulatorConfig methodConfig) {

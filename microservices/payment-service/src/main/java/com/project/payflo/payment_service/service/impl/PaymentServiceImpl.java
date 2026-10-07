@@ -1,8 +1,10 @@
 package com.project.payflo.payment_service.service.impl;
 
+import com.project.payflo.common_lib.exception.IdempotencyKeyReusedException;
 import com.project.payflo.common_lib.enums.EventAggregateType;
 import com.project.payflo.common_lib.enums.OrderStatus;
 import com.project.payflo.common_lib.enums.PaymentEvent;
+import com.project.payflo.common_lib.enums.PaymentMethod;
 import com.project.payflo.common_lib.enums.PaymentStatus;
 import com.project.payflo.common_lib.exception.BusinessRuleViolationException;
 import com.project.payflo.common_lib.exception.ResourceNotFoundException;
@@ -18,16 +20,22 @@ import com.project.payflo.payment_service.outbox.OutboxEventPublisher;
 import com.project.payflo.payment_service.repository.OrderRepository;
 import com.project.payflo.payment_service.repository.PaymentRepository;
 import com.project.payflo.payment_service.saga.PaymentAuthorizationRecorder;
+import com.project.payflo.payment_service.service.AuthorizationResolution;
 import com.project.payflo.payment_service.service.PaymentService;
 import com.project.payflo.payment_service.statemachine.PaymentTransitionService;
+import com.project.payflo.payment_service.velocity.CardVelocityGuard;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.net.SocketTimeoutException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,6 +51,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentTransitionService paymentTransitionService;
     private final OutboxEventPublisher eventPublisher;
     private final PaymentAuthorizationRecorder paymentAuthorizationRecorder;
+    private final CardVelocityGuard cardVelocityGuard;
 
     @Override
     public PaymentResponse initiate(UUID merchantId, PaymentInitRequest request, String idempotencyKey) {
@@ -53,12 +62,27 @@ public class PaymentServiceImpl implements PaymentService {
         if (idempotencyKey != null) {
             var existing = paymentAuthorizationRecorder.findExistingAttempt(merchantId, idempotencyKey);
             if (existing.isPresent()) {
+                // The key is only a replay of the same request: an order or method that differs is a different one.
+                if (!existing.get().orderId().equals(request.orderId()) || existing.get().method() != request.method()) {
+                    throw new IdempotencyKeyReusedException(
+                            "This idempotency key was already used for a different payment. Use a new key for a new request.");
+                }
                 log.info("Idempotency replay for paymentId: {}", existing.get().id());
                 return existing.get();
             }
         }
 
+        // A merchant whose card payments mostly fail is refused for a while (card testing); checked before anything
+        // is written, so a refused request leaves no payment behind.
+        boolean isCard = request.method() == PaymentMethod.CARD;
+        if (isCard) {
+            cardVelocityGuard.requireAllowed(merchantId);
+        }
+
         Payment payment = paymentAuthorizationRecorder.recordPayment(merchantId, request, idempotencyKey);
+        if (isCard) {
+            cardVelocityGuard.recordAttempt(merchantId);
+        }
 
         PaymentRequest paymentRequest = new PaymentRequest(payment.getId(),
                 request.orderId(), merchantId,
@@ -122,8 +146,7 @@ public class PaymentServiceImpl implements PaymentService {
             case CARD -> requireText(details, "token");
             case UPI -> requireText(details, "vpa");
             case NETBANKING -> requireText(details, "bank");
-            case WALLET -> throw new BusinessRuleViolationException("PAYMENT_METHOD_NOT_SUPPORTED",
-                    "Payment method WALLET is not supported");
+            case WALLET -> requireText(details, "wallet");
         }
     }
 
@@ -148,11 +171,18 @@ public class PaymentServiceImpl implements PaymentService {
 
         paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_REQUEST);
 
-        PaymentResult paymentResult = paymentGatewayRouter.capture(payment.getMethod(), paymentId);
+        PaymentResult paymentResult = paymentGatewayRouter.capture(payment);
 
         if(paymentResult instanceof  PaymentResult.Success success) {
             paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
             payment.setCapturedAt(LocalDateTime.now());
+            // A capture that succeeds on retry no longer carries the error of the attempt that failed.
+            payment.setErrorCode(null);
+            payment.setErrorDescription(null);
+            // A captured payment pays its order, as in resolveAuthorization; this path used to leave it ATTEMPTED.
+            OrderRecord order = payment.getOrder();
+            order.setOrderStatus(OrderStatus.PAID);
+            orderRepository.save(order);
             log.info("Payment captured, paymentID: {}", paymentId);
         } else if(paymentResult instanceof  PaymentResult.Failure failure) {
             paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_FAIL);
@@ -163,16 +193,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         payment = paymentRepository.save(payment);
 
-        eventPublisher.publish(EventAggregateType.PAYMENT, payment.getId(), "PAYMENT_STATUS_CHANGED",
-                Map.of("orderId", payment.getOrder().getId().toString(),
-                        "paymentId", payment.getId().toString(),
-                        "merchantId", merchantId.toString(),
-                        "paymentStatus", payment.getStatus().name(),
-                        "amountUnits", payment.getAmount().getAmountUnits(),
-                        "amountCurrency", payment.getAmount().getCurrency(),
-                        "paymentMethod", payment.getMethod()
-                )
-        );
+        publishStatusChanged(payment);
 
         return paymentMapper.toResponse(payment);
     }
@@ -188,9 +209,50 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findByIdForUpdate(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
 
-        if (payment.getStatus() != PaymentStatus.AUTHORIZING) {
-            log.warn("Payment is not in Authorizing state, paymentID: {}, status: {}", paymentId, payment.getStatus());
+        if (applyAuthorizationAnswer(payment, approve, bankRef, errorCode, errorDescription)) {
+            paymentRepository.save(payment);
+            orderRepository.save(payment.getOrder());
+            publishStatusChanged(payment);
+        }
+    }
+
+    // The same rules as resolveAuthorization, for a whole batch in one transaction. The payments are locked in one
+    // query (in id order, so two batches can't deadlock) and their orders loaded in one more, so what follows is
+    // changes to managed entities that are written in JDBC batches at commit: a handful of statements and one log
+    // flush for the batch where one payment at a time costs a round trip for each, and a flush of its own.
+    @Override
+    @Transactional
+    public void resolveAuthorizations(List<AuthorizationResolution> resolutions) {
+        if (resolutions.isEmpty()) {
             return;
+        }
+        List<UUID> ids = resolutions.stream().map(AuthorizationResolution::paymentId).distinct().sorted().toList();
+        Map<UUID, Payment> payments = new HashMap<>();
+        for (Payment payment : paymentRepository.findAllByIdForUpdate(ids)) {
+            payments.put(payment.getId(), payment);
+        }
+        // Reading an order's id off the payment's lazy reference doesn't load it; this query does, for every order at once.
+        orderRepository.findAllById(payments.values().stream().map(p -> p.getOrder().getId()).distinct().toList());
+
+        for (AuthorizationResolution resolution : resolutions) {
+            Payment payment = payments.get(resolution.paymentId());
+            if (payment == null) {
+                log.warn("Payment not found while resolving a batch, paymentID: {}", resolution.paymentId());
+                continue;
+            }
+            if (applyAuthorizationAnswer(payment, resolution.approve(), resolution.bankRef(),
+                    resolution.errorCode(), resolution.errorDescription())) {
+                publishStatusChanged(payment);
+            }
+        }
+    }
+
+    /** Applies the bank's answer to a locked payment; false when the payment is no longer waiting for one. */
+    private boolean applyAuthorizationAnswer(Payment payment, boolean approve,
+                                             String bankRef, String errorCode, String errorDescription) {
+        if (payment.getStatus() != PaymentStatus.AUTHORIZING) {
+            log.warn("Payment is not in Authorizing state, paymentID: {}, status: {}", payment.getId(), payment.getStatus());
+            return false;
         }
 
         OrderRecord orderRecord = payment.getOrder();
@@ -202,7 +264,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             // Auto-capture
             paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_REQUEST);
-            PaymentResult captureResult = paymentGatewayRouter.capture(payment.getMethod(), paymentId);
+            PaymentResult captureResult = paymentGatewayRouter.capture(payment);
 
             if(captureResult instanceof PaymentResult.Success success) {
                 paymentTransitionService.apply(payment, PaymentEvent.CAPTURE_SUCCESS);
@@ -217,21 +279,45 @@ public class PaymentServiceImpl implements PaymentService {
             paymentTransitionService.apply(payment, PaymentEvent.AUTHORIZE_FAIL);
             payment.setErrorCode(errorCode);
             payment.setErrorDescription(errorDescription);
+            // The bank said no to this card: one more decline towards the merchant's card-testing count. Counted
+            // once the decision is committed, so a Redis call never holds the payment (or a batch) locked.
+            if (payment.getMethod() == PaymentMethod.CARD) {
+                UUID merchantId = payment.getMerchantId();
+                afterCommit(() -> cardVelocityGuard.recordDecline(merchantId, errorCode));
+            }
         }
+        return true;
+    }
 
-        paymentRepository.save(payment);
-        orderRepository.save(orderRecord);
+    // Runs now when there is no transaction to wait for (a unit test, say).
+    private static void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
+    }
 
-        eventPublisher.publish(EventAggregateType.PAYMENT, payment.getId(), "PAYMENT_STATUS_CHANGED",
-                Map.of("orderId", payment.getOrder().getId().toString(),
-                        "paymentId", payment.getId().toString(),
-                        "merchantId", payment.getMerchantId().toString(),
-                        "paymentStatus", payment.getStatus().name(),
-                        "amountUnits", payment.getAmount().getAmountUnits(),
-                        "amountCurrency", payment.getAmount().getCurrency(),
-                        "paymentMethod", payment.getMethod()
-                )
-        );
+    // errorCode rides along when there is one, so a webhook receiver can tell an authorization held after a
+    // refused capture from one that is simply waiting to be captured.
+    private void publishStatusChanged(Payment payment) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("orderId", payment.getOrder().getId().toString());
+        payload.put("paymentId", payment.getId().toString());
+        payload.put("merchantId", payment.getMerchantId().toString());
+        payload.put("paymentStatus", payment.getStatus().name());
+        payload.put("amountUnits", payment.getAmount().getAmountUnits());
+        payload.put("amountCurrency", payment.getAmount().getCurrency());
+        payload.put("paymentMethod", payment.getMethod());
+        if (payment.getErrorCode() != null) {
+            payload.put("errorCode", payment.getErrorCode());
+        }
+        eventPublisher.publish(EventAggregateType.PAYMENT, payment.getId(), "PAYMENT_STATUS_CHANGED", payload);
     }
 }
 

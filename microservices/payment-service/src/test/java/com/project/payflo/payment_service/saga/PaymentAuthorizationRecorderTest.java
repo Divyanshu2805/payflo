@@ -14,6 +14,7 @@ import com.project.payflo.payment_service.outbox.OutboxEventPublisher;
 import com.project.payflo.payment_service.repository.OrderRepository;
 import com.project.payflo.payment_service.repository.PaymentRepository;
 import com.project.payflo.payment_service.statemachine.PaymentTransitionService;
+import com.project.payflo.payment_service.velocity.CardVelocityGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -38,9 +39,10 @@ class PaymentAuthorizationRecorderTest {
     private final OrderRepository orderRepository = mock(OrderRepository.class);
     private final PaymentRepository paymentRepository = mock(PaymentRepository.class);
     private final PaymentTransitionService transitions = mock(PaymentTransitionService.class);
+    private final CardVelocityGuard cardGuard = mock(CardVelocityGuard.class);
 
     private final PaymentAuthorizationRecorder recorder = new PaymentAuthorizationRecorder(
-            orderRepository, paymentRepository, transitions, mock(OutboxEventPublisher.class), mock(PaymentMapper.class));
+            orderRepository, paymentRepository, transitions, mock(OutboxEventPublisher.class), mock(PaymentMapper.class), cardGuard);
 
     private final UUID merchantId = UUID.randomUUID();
     private OrderRecord order;
@@ -67,7 +69,11 @@ class PaymentAuthorizationRecorderTest {
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CREATED);
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.ATTEMPTED);
         assertThat(order.getAttempts()).isEqualTo(1);
-        verify(transitions).apply(payment, PaymentEvent.AUTHORIZE_ATTEMPT);
+        // moved before it is saved (so it is inserted in its new status), its log entry saved after it
+        var order = org.mockito.Mockito.inOrder(transitions, paymentRepository);
+        order.verify(transitions).applyToUnsaved(any(Payment.class), org.mockito.ArgumentMatchers.eq(PaymentEvent.AUTHORIZE_ATTEMPT));
+        order.verify(paymentRepository).save(payment);
+        order.verify(transitions).saveLog(any());
     }
 
     @Test
@@ -97,6 +103,75 @@ class PaymentAuthorizationRecorderTest {
         // A failed attempt must not block a retry.
         assertThat(statuses.getValue()).doesNotContain(
                 PaymentStatus.FAILED, PaymentStatus.CANCELLED, PaymentStatus.AUTH_EXPIRED);
+    }
+
+    // ---- card-testing protection
+
+    private final PaymentInitRequest cardRequest =
+            new PaymentInitRequest(request.orderId(), PaymentMethod.CARD, Map.of("token", "tok_x"));
+
+    @Test
+    void aCardPaymentOnAnOrderIsCheckedAgainstTheNumberOfCardPaymentsItAlreadyHad() {
+        when(paymentRepository.existsByOrder_IdAndStatusIn(any(), anyCollection())).thenReturn(false);
+        when(paymentRepository.countByOrder_IdAndMethod(order.getId(), PaymentMethod.CARD)).thenReturn(3L);
+
+        recorder.recordPayment(merchantId, cardRequest, null);
+
+        verify(cardGuard).requireOrderAttemptsBelowLimit(3L);
+    }
+
+    @Test
+    void anOrderThatHasHadItsCardPaymentsGetsNoMoreAndNothingIsWritten() {
+        when(paymentRepository.existsByOrder_IdAndStatusIn(any(), anyCollection())).thenReturn(false);
+        when(paymentRepository.countByOrder_IdAndMethod(order.getId(), PaymentMethod.CARD)).thenReturn(5L);
+        org.mockito.Mockito.doThrow(new BusinessRuleViolationException("ORDER_CARD_ATTEMPTS_EXCEEDED", "create a new order"))
+                .when(cardGuard).requireOrderAttemptsBelowLimit(5L);
+
+        assertThatThrownBy(() -> recorder.recordPayment(merchantId, cardRequest, null))
+                .isInstanceOfSatisfying(BusinessRuleViolationException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo("ORDER_CARD_ATTEMPTS_EXCEEDED"));
+
+        verify(paymentRepository, never()).save(any());
+        assertThat(order.getAttempts()).isZero();
+        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CREATED);
+    }
+
+    @Test
+    void otherMethodsAreNotCountedAgainstTheOrdersCardLimit() {
+        when(paymentRepository.existsByOrder_IdAndStatusIn(any(), anyCollection())).thenReturn(false);
+
+        recorder.recordPayment(merchantId, request, null); // UPI
+
+        verify(paymentRepository, never()).countByOrder_IdAndMethod(any(), any());
+        verify(cardGuard, never()).requireOrderAttemptsBelowLimit(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void aCardTheAcquirerRefusesIsCountedAsADeclineWithItsErrorCode() {
+        Payment card = Payment.builder().id(UUID.randomUUID()).order(order).merchantId(merchantId).amount(Money.inr(1000))
+                .method(PaymentMethod.CARD).status(PaymentStatus.AUTHORIZING).build();
+        when(paymentRepository.findByIdForUpdate(card.getId())).thenReturn(Optional.of(card));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        recorder.applyGatewayResult(card.getId(), new com.project.payflo.payment_service.gateway.dto.PaymentResult.Failure("CARD_DECLINED", "declined"));
+
+        verify(cardGuard).recordDecline(merchantId, "CARD_DECLINED");
+    }
+
+    @Test
+    void aFailureOfAnotherMethodOrAPendingCardIsNotCounted() {
+        Payment upi = Payment.builder().id(UUID.randomUUID()).order(order).merchantId(merchantId).amount(Money.inr(1000))
+                .method(PaymentMethod.UPI).status(PaymentStatus.AUTHORIZING).build();
+        Payment card = Payment.builder().id(UUID.randomUUID()).order(order).merchantId(merchantId).amount(Money.inr(1000))
+                .method(PaymentMethod.CARD).status(PaymentStatus.AUTHORIZING).build();
+        when(paymentRepository.findByIdForUpdate(upi.getId())).thenReturn(Optional.of(upi));
+        when(paymentRepository.findByIdForUpdate(card.getId())).thenReturn(Optional.of(card));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        recorder.applyGatewayResult(upi.getId(), new com.project.payflo.payment_service.gateway.dto.PaymentResult.Failure("UPI_REJECTED", "no"));
+        recorder.applyGatewayResult(card.getId(), new com.project.payflo.payment_service.gateway.dto.PaymentResult.Pending("CARD_PROCESSOR_x"));
+
+        verify(cardGuard, never()).recordDecline(any(), any());
     }
 
     @Test
