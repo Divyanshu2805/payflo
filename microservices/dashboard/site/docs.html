@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PayFlo API Reference</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='7' fill='%233b4ce8'/%3E%3Crect x='6' y='8.5' width='12' height='4.5' rx='2.25' fill='white'/%3E%3Crect x='10' y='15' width='12' height='4.5' rx='2.25' fill='white' fill-opacity='.62'/%3E%3C/svg%3E">
+  <!-- Swagger UI comes from a CDN, pinned to one version: this page needs an internet connection. The spec itself
+       (docs/api/openapi.yaml, served here as /openapi.yaml) does not. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css">
+  <link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+  <header class="docs-bar">
+    <a class="docs-brand" href="/"><svg viewBox="0 0 28 28" width="26" height="26" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#3b4ce8"/><rect x="6" y="8.5" width="12" height="4.5" rx="2.25" fill="#fff"/><rect x="10" y="15" width="12" height="4.5" rx="2.25" fill="#fff" fill-opacity=".62"/></svg>PayFlo</a>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/openapi.yaml">openapi.yaml</a>
+    </nav>
+  </header>
+  <p class="docs-note">
+    "Try it out" calls the real API through this server. Use <strong>Authorize</strong> first: a JWT from
+    <code>POST /v1/auth/login</code>, an API key as Basic auth, or the admin key for the Admin section.
+  </p>
+  <div id="swagger"><p class="docs-note">Loading Swagger UI… If this stays, the CDN could not be reached; the spec is at <a href="/openapi.yaml">/openapi.yaml</a>.</p></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+  <script src="/docs.js"></script>
+</body>
+</html>
