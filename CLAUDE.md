@@ -59,7 +59,7 @@ microservices/
                         a loopback server that forwards /v1/** to the gateway. A client, not part of the system: never give it a path around the gateway
   inside each service (com.project.payflo.<module>): entity/ repository/ mapper/ service/ service/impl/
   controller/ dto/ client/ config/   and src/main/resources/db/migration/ (Flyway: V1__baseline.sql, V2__…)
-.github/                CI (build, every test, dependency scan) and Dependabot
+.github/                CI (build, every test, dependency scan)
 services.docker-compose.yaml   local PostgreSQL :5432, Redis :6380, Kafka :29092, Control Center :9021
 docs/                   documentation — start at docs/README.md
 ```
