@@ -18,7 +18,9 @@ spec:
         - name: redis
           image: redis:7-alpine
           # Requires a password when REDIS_PASSWORD is set (see secrets.env.example).
-          command: ["sh", "-c", "exec redis-server ${REDIS_PASSWORD:+--requirepass \"$REDIS_PASSWORD\"}"]
+          # maxmemory sits below the 256Mi container limit so Redis evicts instead of being OOM-killed; volatile-lru only
+          # evicts keys that expire (idempotency, rate-limit, refresh tokens, locks), never the webhook retry queue.
+          command: ["sh", "-c", "exec redis-server --maxmemory 192mb --maxmemory-policy volatile-lru ${REDIS_PASSWORD:+--requirepass \"$REDIS_PASSWORD\"}"]
           env:
             - name: REDIS_PASSWORD
               valueFrom:

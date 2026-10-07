@@ -28,9 +28,7 @@ spec:
                   name: app-secrets
                   key: GRAFANA_ADMIN_PASSWORD
             - name: GF_AUTH_ANONYMOUS_ENABLED
-              value: "true"
-            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
-              value: Viewer
+              value: "false"
             - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
               value: /var/lib/grafana/dashboards/payflo-overview.json
           resources:

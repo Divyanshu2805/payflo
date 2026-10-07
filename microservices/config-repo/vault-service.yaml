@@ -13,13 +13,21 @@ spring:
       connection-timeout: 5000
   jpa:
     hibernate:
-      ddl-auto: update
+      # Flyway owns the schema (src/main/resources/db/migration); Hibernate only checks that the entities match it,
+      # so a missing or mistyped column fails at start-up instead of at the first request.
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 vault:
   master-key: ${VAULT_MASTER_KEY:arXfSlAXS4TRCw5tlKCFSwjG+D4C4ESUV47We3pw2eI=}
+  # Card-testing protection: how many cards one merchant may tokenize. A bot trying stolen numbers does it far faster
+  # than any checkout; over either limit the merchant gets 429 CARD_TOKENIZATION_LIMIT_EXCEEDED until the window ends.
+  velocity:
+    enabled: ${VAULT_VELOCITY_ENABLED:true}
+    tokenize-per-minute: ${VAULT_TOKENIZE_PER_MINUTE:30}
+    tokenize-per-hour: ${VAULT_TOKENIZE_PER_HOUR:600}
 
 resilience4j:
   thread-pool-bulkhead:

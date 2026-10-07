@@ -6,6 +6,8 @@ metadata:
   namespace: payflo
 data:
   SPRING_PROFILES_ACTIVE: "k8s"
+  # Listen on every interface inside the pod (the default is loopback only); only the gateway Service is exposed.
+  SERVER_ADDRESS: "0.0.0.0"
   CONFIG_SERVER_URL: "http://config-service.payflo.svc.cluster.local:8888"
   SPRING_CLOUD_CONFIG_FAIL_FAST: "true"
   SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: "20"

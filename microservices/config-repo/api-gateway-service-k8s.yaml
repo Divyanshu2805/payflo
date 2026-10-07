@@ -9,11 +9,11 @@ spring:
             - id: merchant-service
               uri: ${MERCHANT_SERVICE_URI:http://merchant-service}
               predicates:
-                - Path=/v1/auth/**,/v1/merchants/**
+                - Path=/v1/auth/**,/v1/merchants/**,/v1/admin/merchants/**,/v1/admin/audit-log/**
             - id: payment-service
               uri: ${PAYMENT_SERVICE_URI:http://payment-service}
               predicates:
-                - Path=/v1/orders/**,/v1/payments/**
+                - Path=/v1/orders/**,/v1/payments/**,/v1/refunds/**,/v1/analytics/**
             - id: vault-service
               uri: ${VAULT_SERVICE_URI:http://vault-service}
               predicates:
@@ -21,4 +21,4 @@ spring:
             - id: operations-service
               uri: ${OPERATIONS_SERVICE_URI:http://operations-service}
               predicates:
-                - Path=/webhook/**
+                - Path=/webhook/**,/v1/settlements/**,/v1/webhook-deliveries/**,/v1/admin/settlements/**

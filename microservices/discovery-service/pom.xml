@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.0</version>
+		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.project.payflo</groupId>
@@ -28,7 +28,13 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
-		<spring-cloud.version>2025.1.2</spring-cloud.version>
+		<!-- Spring Boot 4.1.1 pins these four at versions with known HIGH/CRITICAL vulnerabilities, which CI's dependency scan fails
+		     on. Overridden to the fixed releases; drop each line once Boot's own version has caught up. -->
+		<jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+		<jackson-bom.version>3.1.7</jackson-bom.version>
+		<tomcat.version>11.0.25</tomcat.version>
+		<freemarker.version>2.3.35</freemarker.version>
+		<spring-cloud.version>2025.1.3</spring-cloud.version>
 	</properties>
 	<dependencies>
 		<dependency>

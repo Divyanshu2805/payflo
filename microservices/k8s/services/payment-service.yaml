@@ -7,7 +7,15 @@ metadata:
   labels:
     app: payment-service
 spec:
+  # One replica by default; `kubectl apply -k microservices/k8s-scaled` runs three (see docs/deployment/scaling.md).
+  # Every @Scheduled job is ShedLock-guarded and state changes are row-locked, so replicas can run side by side.
   replicas: 1
+  # A rollout starts the new pod and waits for it to be ready before stopping an old one, so none is ever missing.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: payment-service
@@ -16,10 +24,17 @@ spec:
       labels:
         app: payment-service
     spec:
+      # Time to finish in-flight requests (server.shutdown is graceful, 20 s) after the endpoint has been removed.
+      terminationGracePeriodSeconds: 40
       containers:
         - name: payment-service
           image: payflo/payment-service:latest
           imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              exec:
+                # Lets the Service stop sending new requests to this pod before it starts shutting down.
+                command: ["sleep", "5"]
           ports:
             - containerPort: 8082
           envFrom:

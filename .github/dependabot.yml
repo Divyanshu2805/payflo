@@ -1,0 +1,28 @@
+# Weekly pull requests for newer dependencies, so a fixed vulnerability reaches the project without anyone having to
+# remember to look. The Maven modules share no parent, so each is listed.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /microservices/common-lib
+    schedule: { interval: weekly }
+  - package-ecosystem: maven
+    directory: /microservices/test-support
+    schedule: { interval: weekly }
+  - package-ecosystem: maven
+    directory: /microservices/api-gateway-service
+    schedule: { interval: weekly }
+  - package-ecosystem: maven
+    directory: /microservices/merchant-service
+    schedule: { interval: weekly }
+  - package-ecosystem: maven
+    directory: /microservices/payment-service
+    schedule: { interval: weekly }
+  - package-ecosystem: maven
+    directory: /microservices/vault-service
+    schedule: { interval: weekly }
+  - package-ecosystem: maven
+    directory: /microservices/operations-service
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

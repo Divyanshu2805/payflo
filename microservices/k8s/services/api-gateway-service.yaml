@@ -7,7 +7,15 @@ metadata:
   labels:
     app: api-gateway-service
 spec:
+  # One replica by default; `kubectl apply -k microservices/k8s-scaled` runs three (see docs/deployment/scaling.md).
+  # The gateway keeps no state of its own (keys, rate limits and revocations are in Redis), so replicas are interchangeable.
   replicas: 1
+  # A rollout starts the new pod and waits for it to be ready before stopping an old one, so none is ever missing.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: api-gateway-service
@@ -16,10 +24,17 @@ spec:
       labels:
         app: api-gateway-service
     spec:
+      # Time to finish in-flight requests (server.shutdown is graceful, 20 s) after the endpoint has been removed.
+      terminationGracePeriodSeconds: 40
       containers:
         - name: api-gateway-service
           image: payflo/api-gateway-service:latest
           imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              exec:
+                # Lets the Service stop sending new requests to this pod before it starts shutting down.
+                command: ["sleep", "5"]
           ports:
             - containerPort: 8080
               name: http
@@ -42,6 +57,13 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: INTERNAL_API_TOKEN
+                  optional: true
+            # The platform operator's key for /v1/admin/**: only the gateway checks it.
+            - name: ADMIN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ADMIN_API_KEY
                   optional: true
             - name: JWT_SECRET
               valueFrom:
