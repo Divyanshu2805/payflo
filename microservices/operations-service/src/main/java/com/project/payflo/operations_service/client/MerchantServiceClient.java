@@ -16,6 +16,9 @@ public interface MerchantServiceClient {
     @GetMapping("/{merchantId}/webhook-targets")
     List<WebhookTarget> getActiveConfigsForEvent(@PathVariable UUID merchantId, @RequestParam String eventType);
 
+    @GetMapping("/{merchantId}/webhook-targets/{configId}")
+    WebhookTarget getWebhookTarget(@PathVariable UUID merchantId, @PathVariable UUID configId);
+
     @GetMapping("/active-ids")
     List<UUID> listActiveMerchantIds();
 

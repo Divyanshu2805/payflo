@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +47,9 @@ public class WebhookDeliveryRecorder {
     private final WebhookDlqRecorder webhookDlqRecorder;
 
     /** What the HTTP call needs, copied out so nothing lazy or managed leaves the transaction. */
-    public record Attempt(UUID id, String targetUrl, String signature, String eventType, Map<String, Object> payload) {}
+    public record Attempt(UUID id, UUID merchantId, UUID configId, String targetUrl, String signature, String eventType,
+                          Map<String, Object> payload, String requestBody, String eventId,
+                          LocalDateTime eventOccurredAt, int attempts) {}
 
     /** What happened to a failed attempt: it is dead, or due again at {@code retryAt}. */
     public record FailureOutcome(boolean dead, LocalDateTime retryAt) {}
@@ -57,24 +61,48 @@ public class WebhookDeliveryRecorder {
             log.warn("No webhook event found for this id: {}", webhookEventId);
             return Optional.empty();
         }
+        return claimOne(found.get(), LocalDateTime.now());
+    }
 
-        WebhookEvent event = found.get();
+    /**
+     * Claims many events in ONE transaction (one lock query, one commit): what the scheduler does for each batch it takes
+     * off the queue. Returns the attempts that can go ahead; an event that is already delivered, dead or not due is
+     * left out, as in {@link #claim}.
+     */
+    @Transactional
+    public List<Attempt> claimAll(Collection<UUID> webhookEventIds) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Attempt> attempts = new ArrayList<>(webhookEventIds.size());
+        for (WebhookEvent event : webhookEventRepository.findAllByIdForUpdate(webhookEventIds)) {
+            claimOne(event, now).ifPresent(attempts::add);
+        }
+        return attempts;
+    }
+
+    private Optional<Attempt> claimOne(WebhookEvent event, LocalDateTime now) {
         if (event.getStatus() == WebhookEventStatus.DELIVERED || event.getStatus() == WebhookEventStatus.DEAD) {
-            log.warn("Cannot deliver the event {} in status: {}", webhookEventId, event.getStatus());
+            log.warn("Cannot deliver the event {} in status: {}", event.getId(), event.getStatus());
             return Optional.empty();
         }
 
-        LocalDateTime now = LocalDateTime.now();
         if (event.getNextRetryAt() != null && event.getNextRetryAt().isAfter(now)) {
-            log.debug("Webhook event {} is not due (another worker holds it, or its retry is later)", webhookEventId);
+            log.debug("Webhook event {} is not due (another worker holds it, or its retry is later)", event.getId());
             return Optional.empty();
         }
 
         event.setAttempts(event.getAttempts() + 1);
         event.setLastAttemptAt(now);
         event.setNextRetryAt(now.plus(CLAIM_LEASE));
-        return Optional.of(new Attempt(event.getId(), event.getTargetUrl(), event.getSignature(),
-                event.getEventType(), event.getPayload()));
+        return Optional.of(new Attempt(event.getId(), event.getMerchantId(), event.getConfigId(), event.getTargetUrl(),
+                event.getSignature(), event.getEventType(), event.getPayload(), event.getRequestBody(), event.getEventId(),
+                event.getEventOccurredAt(), event.getAttempts()));
+    }
+
+    /** Marks many events delivered in one transaction: one UPDATE for each response code the merchants answered with. */
+    @Transactional
+    public void recordDelivered(Map<Integer, List<UUID>> idsByStatusCode) {
+        LocalDateTime now = LocalDateTime.now();
+        idsByStatusCode.forEach((statusCode, ids) -> webhookEventRepository.markDelivered(ids, statusCode, now));
     }
 
     @Transactional
@@ -88,11 +116,21 @@ public class WebhookDeliveryRecorder {
 
     @Transactional
     public FailureOutcome recordFailure(UUID webhookEventId, Integer statusCode, String error) {
+        return recordFailure(webhookEventId, statusCode, error, false);
+    }
+
+    /** A failure no retry can fix (the merchant deleted the webhook config): dead-lettered at once. */
+    @Transactional
+    public FailureOutcome recordPermanentFailure(UUID webhookEventId, String error) {
+        return recordFailure(webhookEventId, null, error, true);
+    }
+
+    private FailureOutcome recordFailure(UUID webhookEventId, Integer statusCode, String error, boolean permanent) {
         WebhookEvent event = webhookEventRepository.findByIdForUpdate(webhookEventId).orElseThrow();
         event.setLastResponseCode(statusCode);
         event.setLastResponseBody(truncate(error));
 
-        if (event.getAttempts() >= MAX_ATTEMPTS) {
+        if (permanent || event.getAttempts() >= MAX_ATTEMPTS) {
             event.setNextRetryAt(null);
             webhookDlqRecorder.recordAfterAttemptsExhausted(event, truncate(error));
             return new FailureOutcome(true, null);

@@ -9,6 +9,7 @@ import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,8 +22,9 @@ public class SettlementIntegrationGateway {
 
     @CircuitBreaker(name = "payment-service")
     @Retry(name = "payment-service")
-    public List<PaymentSettlementView> findUnsettledCaptured(UUID merchantId) {
-        return paymentServiceClient.findUnsettledCaptured(merchantId);
+    public List<PaymentSettlementView> findUnsettledCaptured(UUID merchantId, LocalDateTime capturedBefore,
+                                                             int page, int size) {
+        return paymentServiceClient.findUnsettledCaptured(merchantId, capturedBefore, page, size);
     }
 
     @CircuitBreaker(name = "payment-service")

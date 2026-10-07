@@ -24,8 +24,9 @@ class VaultServiceImplTest {
     private final CardTokenRepository cardTokenRepository = mock(CardTokenRepository.class);
     private final BytesEncryptor dekEncrypter = mock(BytesEncryptor.class);
     private final CardPaymentProcessor processor = mock(CardPaymentProcessor.class);
+    private final TokenizeVelocityGuard velocityGuard = mock(TokenizeVelocityGuard.class);
     private final VaultServiceImpl service = new VaultServiceImpl(
-            cardTokenRepository, mock(VaultCardRepository.class), dekEncrypter, processor);
+            cardTokenRepository, mock(VaultCardRepository.class), dekEncrypter, processor, velocityGuard);
 
     private final String token = "tok_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
     private final UUID owner = UUID.randomUUID();
@@ -43,6 +44,19 @@ class VaultServiceImplTest {
         verify(cardTokenRepository).findByTokenAndMerchantAndRevokedAtIsNull(token, otherMerchant);
         verify(dekEncrypter, never()).decrypt(org.mockito.ArgumentMatchers.any());
         verify(processor, never()).charge(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void aTokenizeRefusedForVelocityEncryptsAndStoresNothing() {
+        org.mockito.Mockito.doThrow(new com.project.payflo.common_lib.exception.VelocityLimitException(
+                "CARD_TOKENIZATION_LIMIT_EXCEEDED", "too many", 30)).when(velocityGuard).requireAllowed(owner);
+        var request = new com.project.payflo.vault_service.dto.request.TokenizeRequest("4111111111111111", "737", 12, 2031, null, "Asha Rao");
+
+        assertThatThrownBy(() -> service.tokenize(request, owner))
+                .isInstanceOf(com.project.payflo.common_lib.exception.VelocityLimitException.class);
+
+        verify(dekEncrypter, never()).encrypt(org.mockito.ArgumentMatchers.any());
+        verify(cardTokenRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     @Test

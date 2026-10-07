@@ -3,6 +3,7 @@ package com.project.payflo.operations_service.settlement;
 import com.project.payflo.common_lib.entity.Money;
 import com.project.payflo.common_lib.util.RandomizerUtil;
 import com.project.payflo.operations_service.settlement.dto.BankTransferResult;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -10,13 +11,19 @@ import java.util.UUID;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class BankTransferProcessorImpl implements BankTransferProcessor{
+
+    private final PayoutOutcomeDecider payoutOutcomeDecider;
 
     @Override
     public BankTransferResult initiate(UUID settlementId, UUID merchantId, Money amount,
                                        String bankAccount, String ifsc) {
 
-        // Call the Bank API
+        // Call the Bank API (simulated: it can refuse to accept the transfer, see settlement.simulator.refuse-rate)
+        if (payoutOutcomeDecider.shouldRefuse(settlementId)) {
+            throw new BankTransferRefusedException("The simulated bank refused to accept the transfer");
+        }
 
         String registrationRef = "TXN_"+ RandomizerUtil.randomBase64(12);
 

@@ -9,6 +9,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -18,6 +19,7 @@ public class BankSettlementCallbackSimulator {
 
     private final SettlementRepository settlementRepository;
     private final SettlementTransactionExecutor settlementTransactionExecutor;
+    private final PayoutOutcomeDecider payoutOutcomeDecider;
 
     @Scheduled(fixedDelayString = "5000")
     @SchedulerLock(name = "operations-service-bank-settlement-simulator", lockAtMostFor = "10s", lockAtLeastFor = "1s")
@@ -26,12 +28,31 @@ public class BankSettlementCallbackSimulator {
         if (settlements.isEmpty()) return;
 
         for (Settlement settlement: settlements) {
-            simulateCallback(settlement);
+            try {
+                simulateCallback(settlement);
+            } catch (Exception e) {
+                // One settlement failing (payment-service briefly down, say) must not hold up the rest; the
+                // recovery job finishes it.
+                log.error("Settlement callback failed for settlementId: {}", settlement.getId(), e);
+            }
         }
     }
 
     private void simulateCallback(Settlement settlement) {
-        log.info("Initiating settlement callback for settlementId: {}", settlement.getId());
-        settlementTransactionExecutor.resolveTransfer(settlement.getId(), null, null);
+        // updatedAt is when the bank accepted the transfer: the settlement went TRANSFER_PENDING and wasn't touched since
+        PayoutOutcomeDecider.Outcome outcome =
+                payoutOutcomeDecider.decide(settlement.getId(), settlement.getUpdatedAt(), LocalDateTime.now());
+
+        switch (outcome.kind()) {
+            case WAIT -> log.debug("Settlement {} is still with the bank", settlement.getId());
+            case SUCCESS -> {
+                log.info("Initiating settlement callback for settlementId: {}", settlement.getId());
+                settlementTransactionExecutor.resolveTransfer(settlement.getId(), null, null);
+            }
+            case FAILURE -> {
+                log.warn("The bank declined settlementId: {}", settlement.getId());
+                settlementTransactionExecutor.resolveTransfer(settlement.getId(), outcome.errorCode(), outcome.errorDescription());
+            }
+        }
     }
 }

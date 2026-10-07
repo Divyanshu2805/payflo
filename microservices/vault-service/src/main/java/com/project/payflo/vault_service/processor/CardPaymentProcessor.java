@@ -15,6 +15,10 @@ public class CardPaymentProcessor {
 
     public static final String PAN_CARD_DECLINED = "4000000000000002";
     public static final String PAN_CARD_EXPIRED = "4000000000000069";
+    // Authorizes, then the acquirer refuses the capture: payment-service's CaptureSimulator looks for this tag
+    // in the processor reference.
+    public static final String PAN_CAPTURE_FAILS = "4000000000000341";
+    private static final String CAPTURE_FAIL_TAG = "CAPTURE_FAIL";
 
     @Bulkhead(name = "vault-card-processor", type = Bulkhead.Type.THREADPOOL)
     public CompletableFuture<PaymentProcessorResponse> charge(PaymentProcessorRequest request) {
@@ -31,7 +35,8 @@ public class CardPaymentProcessor {
             return CompletableFuture.completedFuture(new PaymentProcessorResponse.Failure("CARD_EXPIRED", "Card has expired"));
         }
 
-        String processorRef = "CARD_PROCESSOR_"+ RandomizerUtil.randomBase64(16);
+        String prefix = PAN_CAPTURE_FAILS.equals(pan) ? "CARD_PROCESSOR_" + CAPTURE_FAIL_TAG + "_" : "CARD_PROCESSOR_";
+        String processorRef = prefix + RandomizerUtil.randomBase64(16);
 
         return CompletableFuture.completedFuture(new PaymentProcessorResponse.Pending(processorRef));
 

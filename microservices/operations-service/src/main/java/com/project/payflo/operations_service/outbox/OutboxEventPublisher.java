@@ -6,6 +6,7 @@ import com.project.payflo.operations_service.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -21,8 +22,24 @@ public class OutboxEventPublisher {
                 .aggregateType(aggregateType)
                 .aggregateId(aggregateId)
                 .eventType(eventType)
-                .payload(payload)
+                .payload(jsonStable(payload))
                 .build();
         outboxEventRepository.save(outboxEvent);
+    }
+
+    /**
+     * The payload as JSON will give it back: an enum is its name and a UUID its text. Hibernate keeps a copy of a JSON
+     * column made by writing the value out and reading it in again, and compares it with the value at flush; a UUID or
+     * an enum in the map is a String after that round trip, so the row looked changed and was UPDATEd straight after
+     * its INSERT. The JSON that goes out is the same either way. (payment-service has the same class.)
+     */
+    static Map<String, Object> jsonStable(Map<String, Object> payload) {
+        Map<String, Object> stable = new LinkedHashMap<>(payload.size() * 2);
+        payload.forEach((key, value) -> stable.put(key, switch (value) {
+            case Enum<?> named -> named.name();
+            case UUID id -> id.toString();
+            case null, default -> value;
+        }));
+        return stable;
     }
 }

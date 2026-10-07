@@ -1,0 +1,17 @@
+# Used by the tests instead of the module's own application.yaml (which points at the config server): the same
+# settings the service really runs on, read straight from config-repo. SharedInfrastructure supplies the datasource,
+# Redis and Kafka of the containers. The config server and Eureka are switched off here, not in a dynamic property,
+# because Spring Cloud checks for them while the environment is still being built.
+spring:
+  application:
+    name: operations-service
+  config:
+    import: file:../config-repo/application.yaml,file:../config-repo/operations-service.yaml
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+eureka:
+  client:
+    enabled: false

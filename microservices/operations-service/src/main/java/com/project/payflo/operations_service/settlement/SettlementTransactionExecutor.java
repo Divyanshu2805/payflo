@@ -3,57 +3,64 @@ package com.project.payflo.operations_service.settlement;
 import com.project.payflo.common_lib.dto.PaymentSettlementView;
 import com.project.payflo.common_lib.dto.SettlementBankDetails;
 import com.project.payflo.common_lib.entity.Money;
-import com.project.payflo.common_lib.enums.EventAggregateType;
 import com.project.payflo.common_lib.enums.SettlementStatus;
-import com.project.payflo.common_lib.exception.ResourceNotFoundException;
-import com.project.payflo.operations_service.client.MerchantServiceClient;
-import com.project.payflo.operations_service.client.PaymentServiceClient;
 import com.project.payflo.operations_service.entity.Settlement;
-import com.project.payflo.operations_service.entity.SettlementPayment;
-import com.project.payflo.operations_service.entity.SettlementPaymentId;
-import com.project.payflo.operations_service.outbox.OutboxEventPublisher;
 import com.project.payflo.operations_service.repository.SettlementPaymentRepository;
-import com.project.payflo.operations_service.repository.SettlementRepository;
 import com.project.payflo.operations_service.settlement.dto.BankTransferResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Pays one merchant out. This used to be a single transaction around calls to payment-service,
+ * merchant-service and the bank; it is now a sequence of short transactions ({@link SettlementRecorder}) with
+ * the remote calls between them, so no database connection is held while a remote service is slow, and a
+ * crash between two steps leaves a state {@link SettlementRecoveryJob} knows how to finish:
+ *
+ * <pre>
+ *   INITIATED --transfer accepted--> TRANSFER_PENDING --bank says yes--> PROCESSED --payments marked--> (done)
+ *        |                                   |
+ *        +--transfer refused--> FAILED       +--bank says no--> FAILED
+ * </pre>
+ *
+ * A payment is excluded from new payouts for as long as it is in one that is under way, and becomes payable
+ * again if that payout FAILED.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class SettlementTransactionExecutor {
 
-    private static final double FEE_RATE = 0.02;
-    private static final double GST_RATE = 0.18;
-
-    private final SettlementRepository settlementRepository;
-    private final SettlementPaymentRepository settlementPaymentRepository;
-    private final BankTransferProcessor bankTransferProcessor;
-    private final OutboxEventPublisher outboxEventPublisher;
-    private final SettlementIntegrationGateway settlementIntegrationGateway;
-
-    // Payments settle only once the payout is confirmed, so until then they still look "unsettled" to
-    // payment-service. A payment in a payout in one of these states must not go into another.
+    // Payments in a payout with one of these statuses are spoken for.
     private static final List<SettlementStatus> IN_FLIGHT = List.of(
             SettlementStatus.INITIATED, SettlementStatus.TRANSFER_PENDING);
 
     // Money holds an int, so one settlement's gross must fit in one.
     private static final long MAX_GROSS_UNITS_PER_SETTLEMENT = Integer.MAX_VALUE;
 
-    @Transactional
+    // payment-service marks payments settled this many at a time.
+    private static final int MARK_BATCH = 500;
+
+    private final SettlementPaymentRepository settlementPaymentRepository;
+    private final BankTransferProcessor bankTransferProcessor;
+    private final SettlementIntegrationGateway settlementIntegrationGateway;
+    private final SettlementRecorder settlementRecorder;
+    private final SettlementProperties properties;
+
     public void processForMerchant(UUID merchantId, LocalDate settlementDate) {
-        List<PaymentSettlementView> captured = settlementIntegrationGateway.findUnsettledCaptured(merchantId);
+        List<PaymentSettlementView> captured = fetchSettleable(merchantId);
         if (captured.isEmpty()) return;
 
         Set<UUID> inFlight = settlementPaymentRepository.findPaymentIdsInSettlements(merchantId, IN_FLIGHT);
@@ -92,6 +99,20 @@ public class SettlementTransactionExecutor {
         }
     }
 
+    // Pages through payment-service's answer, oldest first, up to the per-run cap, and only payments old
+    // enough to have cleared the hold.
+    private List<PaymentSettlementView> fetchSettleable(UUID merchantId) {
+        LocalDateTime capturedBefore = LocalDateTime.now().minusDays(properties.getHoldDays());
+        List<PaymentSettlementView> all = new ArrayList<>();
+        for (int page = 0; all.size() < properties.getMaxPaymentsPerRun(); page++) {
+            List<PaymentSettlementView> batch = settlementIntegrationGateway.findUnsettledCaptured(
+                    merchantId, capturedBefore, page, properties.getPageSize());
+            all.addAll(batch);
+            if (batch.size() < properties.getPageSize()) break;
+        }
+        return all;
+    }
+
     private static List<List<PaymentSettlementView>> slicesWithinLimit(List<PaymentSettlementView> payments) {
         List<List<PaymentSettlementView>> slices = new ArrayList<>();
         List<PaymentSettlementView> current = new ArrayList<>();
@@ -113,127 +134,76 @@ public class SettlementTransactionExecutor {
         return value == null || value.isBlank();
     }
 
-    private void settle(UUID merchantId, LocalDate settlementDate, List<PaymentSettlementView> unsettledPayments,
-                        SettlementBankDetails settlementBankDetails) {
-        // Sliced so the sum fits an int; the sum is widened anyway so a bug can't wrap silently.
-        int grossAmount = Math.toIntExact(unsettledPayments.stream()
-                .mapToLong(PaymentSettlementView::amountUnits)
-                .sum());
+    private void settle(UUID merchantId, LocalDate settlementDate, List<PaymentSettlementView> payments,
+                        SettlementBankDetails bankDetails) {
+        String currency = payments.getFirst().currency();
+        // Widened so a bug can't wrap silently; the slicing keeps the real values inside an int.
+        int gross = Math.toIntExact(payments.stream().mapToLong(PaymentSettlementView::amountUnits).sum());
+        int refunds = Math.toIntExact(payments.stream().mapToLong(PaymentSettlementView::refundedAmountUnits).sum());
 
-        Money gross = Money.of(grossAmount, unsettledPayments.getFirst().currency());
+        // The fee is charged on what the merchant kept: refunded money wasn't earned.
+        int kept = gross - refunds;
+        int fee = percentOf(kept, properties.getFeeRate());
+        int gst = percentOf(fee, properties.getGstRate());
+        Money net = Money.of(kept - fee - gst, currency);
 
-        int fee = Math.toIntExact(Math.round(gross.getAmountUnits() * FEE_RATE));
-        int gst = Math.toIntExact(Math.round(fee * GST_RATE));
-        Money feeAmount = Money.of(fee, gross.getCurrency());
-        Money gstAmount = Money.of(gst, gross.getCurrency());
-        Money netAmount = gross.subtract(feeAmount).subtract(gstAmount);
+        // Step 1. From here the payments are spoken for.
+        Settlement settlement = settlementRecorder.createInitiated(merchantId, Money.of(gross, currency),
+                Money.of(refunds, currency), Money.of(fee, currency), Money.of(gst, currency), net,
+                payments.stream().map(PaymentSettlementView::paymentId).toList());
 
-        Settlement settlement = Settlement.builder()
-                .merchantId(merchantId)
-                .grossAmount(gross)
-                // Refunds aren't built yet, so nothing is netted off; the column is NOT NULL.
-                .refundAmount(Money.of(0, gross.getCurrency()))
-                .feeAmount(feeAmount)
-                .gstAmount(gstAmount)
-                .netAmount(netAmount)
-                .status(SettlementStatus.INITIATED)
-                .build();
+        startTransfer(settlement.getId(), merchantId, net, bankDetails, settlementDate);
+    }
 
-        settlementRepository.save(settlement);
-
+    /**
+     * Step 2: hand the transfer to the bank. The bank is given the settlement id as its reference, which is what
+     * makes repeating this call (after a crash, from the recovery job) safe: it identifies the same transfer.
+     */
+    void startTransfer(UUID settlementId, UUID merchantId, Money net, SettlementBankDetails bankDetails,
+                       LocalDate settlementDate) {
         try {
-            List<SettlementPayment> links = new ArrayList<>();
-            for (PaymentSettlementView p : unsettledPayments) {
-                links.add(SettlementPayment.builder()
-                        .id(new SettlementPaymentId(settlement.getId(), p.paymentId()))
-                        .settlement(settlement)
-                        .build());
-            }
-            settlementPaymentRepository.saveAll(links);
-
-            BankTransferResult bankTransferResult = bankTransferProcessor.initiate(settlement.getId(), merchantId, netAmount,
-                    settlementBankDetails.accountNumber(), settlementBankDetails.ifsc());
-
-            settlement.setStatus(SettlementStatus.TRANSFER_PENDING);
-            settlement.setBankReference(bankTransferResult.registrationRef());
-
-            settlementRepository.save(settlement);
+            BankTransferResult result = bankTransferProcessor.initiate(settlementId, merchantId, net,
+                    bankDetails.accountNumber(), bankDetails.ifsc());
+            settlementRecorder.markTransferPending(settlementId, result.registrationRef());
         } catch (Exception e) {
-            log.error("Settlement failed for settlementId: {} on date: {}", settlement.getId(), settlementDate, e);
-            settlement.setStatus(SettlementStatus.FAILED);
-            settlementRepository.save(settlement);
+            log.error("Settlement transfer failed for settlementId: {} on date: {}", settlementId, settlementDate, e);
+            settlementRecorder.markFailed(settlementId, "TRANSFER_NOT_STARTED : " + e.getClass().getSimpleName());
         }
     }
 
-    @Transactional
-    public void resolveTransfer(UUID settlementId,
-                                String errorCode, String errorDescription) {
-
-        Settlement settlement = settlementRepository.findById(settlementId).orElseThrow(
-                () -> new ResourceNotFoundException("Settlement", settlementId));
-
-        if (settlement.getStatus() != SettlementStatus.TRANSFER_PENDING) {
-            log.info("Settlement resolved, skipping for id: {}", settlement.getId());
+    /** The bank's answer to a transfer: errorCode is null for success. */
+    public void resolveTransfer(UUID settlementId, String errorCode, String errorDescription) {
+        if (errorCode != null) {
+            settlementRecorder.markBankFailed(settlementId, errorCode, errorDescription);
+            log.warn("Settlement failed, settlementId: {}", settlementId);
             return;
         }
 
-        if (errorCode == null) { // success
-            settlement.setStatus(SettlementStatus.PROCESSED);
-            settlement.setProcessedAt(LocalDateTime.now());
-            settlementRepository.save(settlement);
-
-            List<SettlementPayment> settlementPaymentList = settlementPaymentRepository.findBySettlement(settlement);
-            List<UUID> paymentIds = settlementPaymentList.stream()
-                    .map(SettlementPayment::getId)
-                    .map(SettlementPaymentId::getPaymentId)
-                    .toList();
-            settlementIntegrationGateway.markSettled(paymentIds);
-
-            log.info("Settlement processed successfully, settlementId: {}", settlement.getId());
-            outboxEventPublisher.publish(EventAggregateType.SETTLEMENT, settlementId,
-                    "SETTLEMENT_PROCESSED", Map.of(
-                            "settlementId", settlement.getId(),
-                            "merchantId", settlement.getMerchantId(),
-                            "status", settlement.getStatus().name(),
-                            "settlementAmount", settlement.getNetAmount().getAmountUnits(),
-                            "settlementCurrency", settlement.getNetAmount().getCurrency()
-                    ));
-        } else { // failed
-            settlement.setStatus(SettlementStatus.FAILED);
-            settlement.setFailureReason(errorCode + " : " + errorDescription);
-            settlementRepository.save(settlement);
-            log.warn("Settlement failed, settlementId: {}", settlement.getId());
-            outboxEventPublisher.publish(EventAggregateType.SETTLEMENT, settlementId,
-                    "SETTLEMENT_FAILED", Map.of(
-                            "settlementId", settlement.getId(),
-                            "merchantId", settlement.getMerchantId(),
-                            "status", settlement.getStatus().name(),
-                            "settlementAmount", settlement.getNetAmount().getAmountUnits(),
-                            "settlementCurrency", settlement.getNetAmount().getCurrency()
-                    ));
+        Optional<Settlement> processed = settlementRecorder.markProcessed(settlementId);
+        if (processed.isEmpty()) {
+            log.info("Settlement resolved, skipping for id: {}", settlementId);
+            return;
         }
+        log.info("Settlement processed successfully, settlementId: {}", settlementId);
 
+        finishPaymentMarking(settlementId);
     }
 
+    /**
+     * Step 4: tell payment-service the covered payments are paid out. Repeatable (payment-service skips ones
+     * already SETTLED). If it fails the settlement stays PROCESSED-but-unmarked, its payments stay held back,
+     * and the recovery job tries again.
+     */
+    void finishPaymentMarking(UUID settlementId) {
+        List<UUID> paymentIds = settlementRecorder.paymentIds(settlementId);
+        for (int from = 0; from < paymentIds.size(); from += MARK_BATCH) {
+            settlementIntegrationGateway.markSettled(paymentIds.subList(from, Math.min(from + MARK_BATCH, paymentIds.size())));
+        }
+        settlementRecorder.markPaymentsSettled(settlementId);
+    }
 
+    private static int percentOf(int amount, double rate) {
+        return BigDecimal.valueOf(amount).multiply(BigDecimal.valueOf(rate))
+                .setScale(0, RoundingMode.HALF_UP).intValueExact();
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -15,8 +15,11 @@ import java.util.UUID;
 public interface SettlementPaymentRepository extends JpaRepository<SettlementPayment, SettlementPaymentId> {
     List<SettlementPayment> findBySettlement(Settlement settlement);
 
-    // The payments already part of this merchant's payouts that are still in the given states.
+    // The payments already part of one of this merchant's payouts that is still under way: in one of the given
+    // states, or paid out but not yet reported to payment-service (which still shows its payments as unsettled).
     @Query("select sp.id.paymentId from SettlementPayment sp " +
-            "where sp.settlement.merchantId = :merchantId and sp.settlement.status in :statuses")
+            "where sp.settlement.merchantId = :merchantId and (sp.settlement.status in :statuses " +
+            "or (sp.settlement.status = com.project.payflo.common_lib.enums.SettlementStatus.PROCESSED " +
+            "and sp.settlement.paymentsSettledAt is null))")
     Set<UUID> findPaymentIdsInSettlements(UUID merchantId, Collection<SettlementStatus> statuses);
 }

@@ -34,4 +34,19 @@ public class JwtVerifier {
     public String extractRole(Claims claims) {
         return claims.get("role", String.class);
     }
+
+    /** The user the token was issued to (the JWT subject). */
+    public String extractEmail(Claims claims) {
+        return claims.getSubject();
+    }
+
+    /** The token's own id, used to revoke it on logout. Null for tokens issued before ids existed. */
+    public String extractTokenId(Claims claims) {
+        return claims.getId();
+    }
+
+    /** When the token was issued, in epoch milliseconds (0 if it carries no issue time). */
+    public long extractIssuedAtMillis(Claims claims) {
+        return claims.getIssuedAt() != null ? claims.getIssuedAt().getTime() : 0L;
+    }
 }

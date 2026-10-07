@@ -20,12 +20,25 @@ class HeaderAugmentingRequestWrapperTest {
         request.addHeader("x-key-id", "forged");
         request.addHeader("X-USER-ROLE", "forged");
         request.addHeader("X-Environment", "LIVE");
+        request.addHeader("X-User-Email", "forged@example.com");
         HeaderAugmentingRequestWrapper wrapper = wrapperFor(request);
 
-        for (String name : new String[]{"X-Merchant-Id", "X-Key-Id", "X-User-Role", "X-Environment", "x-merchant-id"}) {
+        for (String name : new String[]{"X-Merchant-Id", "X-Key-Id", "X-User-Role", "X-User-Email", "X-Environment", "x-merchant-id"}) {
             assertThat(wrapper.getHeader(name)).as(name).isNull();
             assertThat(Collections.list(wrapper.getHeaders(name))).as(name).isEmpty();
         }
+        assertThat(Collections.list(wrapper.getHeaderNames())).isEmpty();
+    }
+
+    @Test
+    void theAdminMarkerAndTheClientAddressAreIdentityHeadersToo() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Platform-Admin", "true");
+        request.addHeader("x-client-ip", "10.0.0.1");
+        HeaderAugmentingRequestWrapper wrapper = wrapperFor(request);
+
+        assertThat(wrapper.getHeader("X-Platform-Admin")).isNull();
+        assertThat(wrapper.getHeader("X-Client-Ip")).isNull();
         assertThat(Collections.list(wrapper.getHeaderNames())).isEmpty();
     }
 
