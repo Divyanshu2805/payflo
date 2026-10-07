@@ -17,7 +17,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "payment", indexes = {
         @Index(name = "idx_payment_order_id", columnList = "order_id"),
-        @Index(name = "idx_payment_merchant_id", columnList = "merchant_id"),
+        // GET /v1/payments lists a merchant's payments newest first.
+        @Index(name = "idx_payment_merchant_created", columnList = "merchant_id, created_at"),
+        // The analytics revenue queries: a merchant's payments captured in a date range.
+        @Index(name = "idx_payment_merchant_captured", columnList = "merchant_id, captured_at"),
         // The bank callback simulator reads AUTHORIZING payments oldest-first.
         @Index(name = "idx_payment_status_created_at", columnList = "status, created_at"),
         @Index(name = "idx_payment_merchant_idempotency", columnList = "merchant_id, idempotency_key", unique = true)
@@ -50,7 +53,8 @@ public class Payment extends BaseEntity {
     @Column(nullable = false, length = 30)
     private PaymentStatus status;
 
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private PaymentMethod method;
 
     @JdbcTypeCode(SqlTypes.JSON)
