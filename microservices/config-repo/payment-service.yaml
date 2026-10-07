@@ -13,7 +13,9 @@ spring:
       connection-timeout: 5000
   jpa:
     hibernate:
-      ddl-auto: update
+      # Flyway owns the schema (src/main/resources/db/migration); Hibernate only checks that the entities match it,
+      # so a missing or mistyped column fails at start-up instead of at the first request.
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -61,7 +63,25 @@ app:
 
 payment:
   order:
-    default-order-expiry-minutes: 30
+    default-order-expiry-minutes: 15
+  refund:
+    # RefundResolver stands in for the bank's answer to a refund: it answers refunds older than this, approving
+    # this share of them (chosen from each refund's id, so a given refund always gets the same answer).
+    delay-seconds: 3
+    success-rate: 95
+    poll-interval-ms: 5000
+  # Card-testing protection (CardVelocityGuard): someone with a merchant's API key running stolen card numbers through
+  # it fails most of them. Once min-failures card payments have failed in the window and they are at least failure-ratio of
+  # that merchant's card payments, its card payments are refused (429 CARD_TESTING_SUSPECTED) until the window ends.
+  # An honest merchant's declines are a small share (the simulated bank declines about 1 in 10). One order also takes at
+  # most max-attempts-per-order card payments (400 ORDER_CARD_ATTEMPTS_EXCEEDED).
+  velocity:
+    card:
+      enabled: ${CARD_VELOCITY_ENABLED:true}
+      window-minutes: 10
+      min-failures: 20
+      failure-ratio: 0.5
+      max-attempts-per-order: 5
   timeout:
     # PaymentTimeoutSweeper: a payment the bank hasn't answered for this long is failed (the simulator
     # answers in seconds; chaos-mode TIMEOUT never does) ...
@@ -72,10 +92,20 @@ payment:
     order-expiry-lookback-days: 7
     sweep-interval-ms: 60000
   simulator:
-    poll-interval-ms: 5000
-    # Callbacks resolved at once; each holds a database connection, so keep it well under the pool size.
-    concurrency: 16
+    # How often the bank's answers are looked for (a delay between runs). The answer itself is due 1-10 seconds
+    # after the payment, by method; this only bounds how long past that the payment waits.
+    poll-interval-ms: 1000
+    # Payments resolved per transaction (one lock query, batched writes, one commit), and how many of those
+    # batches run at once. Each batch holds a database connection, so keep concurrency well under the pool size.
+    batch-size: 50
+    concurrency: 4
     chaos-mode: NORMAL
+    # The acquirer refusing a capture (CaptureSimulator). The test values (docs/api/mock-acquirer.md) always do;
+    # failure-rate also refuses this percent of payments, chosen from each payment's id. A refused capture leaves the
+    # payment AUTHORIZED, and it is refused failures-before-success times before one goes through.
+    capture:
+      failure-rate: 0
+      failures-before-success: 1
     methods:
       CARD:
         min-delay-seconds: 2
@@ -89,6 +119,10 @@ payment:
         min-delay-seconds: 4
         max-delay-seconds: 10
         success-rate: 80
+      WALLET:
+        min-delay-seconds: 1
+        max-delay-seconds: 3
+        success-rate: 95
 
 resilience4j:
   circuitbreaker:

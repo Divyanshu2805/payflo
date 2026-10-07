@@ -6,18 +6,21 @@ services:
     # Durable (unlike synchronous_commit=off); measured ~+6% throughput under the load test.
     # Memory and WAL: the defaults (128 MB of cache, a checkpoint every 1 GB of WAL) are far too small
     # for write-heavy load; fsync and synchronous_commit stay on.
+    # pg_stat_statements: per-statement time and call counts, for finding the slow queries under load
+    # (docs/load-testing/query-review.md). Create the extension once per database to read it.
     command: [ "postgres",
                "-c", "commit_delay=1000", "-c", "commit_siblings=5",
                "-c", "shared_buffers=2GB", "-c", "effective_cache_size=6GB", "-c", "wal_buffers=64MB",
                "-c", "max_wal_size=8GB", "-c", "checkpoint_timeout=15min",
-               "-c", "checkpoint_completion_target=0.9", "-c", "wal_compression=lz4" ]
+               "-c", "checkpoint_completion_target=0.9", "-c", "wal_compression=lz4",
+               "-c", "shared_preload_libraries=pg_stat_statements" ]
     shm_size: 1gb
     environment:
       POSTGRES_DB: payflo-db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
     restart: unless-stopped
@@ -27,18 +30,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # Every published port is bound to 127.0.0.1: these have no authentication worth the name (or none), so they
+  # must not be reachable from other machines. Control Center, the Kafka UI, has none at all.
   redis:
     image: redis:7-alpine
     container_name: redis
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     volumes:
       - redis-data:/data
     # Set REDIS_PASSWORD (in your shell or a .env file) to require a password; the services read the same
     # variable. Unset, there is none. ($$ is compose's escape: the shell inside the container expands it.)
+    # maxmemory + volatile-lru: past the limit Redis evicts only keys that expire (idempotency, rate-limit, refresh
+    # tokens, locks), never the webhook retry queue, which has no TTL. Without a limit it grew past 1 GB under load.
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-    command: [ "sh", "-c", "exec redis-server --appendonly yes $${REDIS_PASSWORD:+--requirepass \"$$REDIS_PASSWORD\"}" ]
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-768mb}
+    command: [ "sh", "-c", "exec redis-server --appendonly yes --maxmemory $${REDIS_MAXMEMORY:-768mb} --maxmemory-policy volatile-lru $${REDIS_PASSWORD:+--requirepass \"$$REDIS_PASSWORD\"}" ]
     restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli --no-auth-warning $${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep -q PONG" ]
@@ -50,8 +58,8 @@ services:
     image: docker.io/confluentinc/confluent-local:7.5.0
     container_name: kafka-razorpay-me
     ports:
-      - "9092:9092"
-      - "29092:29092"
+      - "127.0.0.1:9092:9092"
+      - "127.0.0.1:29092:29092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
@@ -76,7 +84,7 @@ services:
     depends_on:
       - kafka
     ports:
-      - "9021:9021"
+      - "127.0.0.1:9021:9021"
     environment:
       CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:9092'
       CONTROL_CENTER_REPLICATION_FACTOR: 1
@@ -89,7 +97,7 @@ services:
       CONTROL_CENTER_STREAMS_NUM_STREAM_THREADS: 2
       CONTROL_CENTER_CONNECT_CLUSTER: http://kafka:8091
       CONTROL_CENTER_KAFKA_CLUSTER_ID: '6PMpHYL9QkeyXRj9Nrp4KA'
-      CONTROL_CENTER_UI_LABEL: Razorpay Clone Kafka
+      CONTROL_CENTER_UI_LABEL: PayFlo Kafka
     restart: unless-stopped
 
 volumes:

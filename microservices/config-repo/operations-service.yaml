@@ -9,11 +9,13 @@ spring:
     hikari:
       # Sized from load testing (docs/load-testing/). Keep the sum across services under Postgres
       # max_connections. Fail fast when the pool is exhausted instead of queueing for 30s.
-      maximum-pool-size: ${OPERATIONS_DB_POOL_SIZE:10}
+      maximum-pool-size: ${OPERATIONS_DB_POOL_SIZE:16}
       connection-timeout: 5000
   jpa:
     hibernate:
-      ddl-auto: update
+      # Flyway owns the schema (src/main/resources/db/migration); Hibernate only checks that the entities match it,
+      # so a missing or mistyped column fails at start-up instead of at the first request.
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -35,6 +37,8 @@ spring:
       observation-enabled: true
     listener:
       ack-mode: manual
+      # WebhookKafkaConsumer takes whole polls: one transaction and one Redis call for up to max-poll-records events.
+      type: batch
       observation-enabled: true
     producer:
       acks: all
@@ -47,6 +51,7 @@ spring:
       group-id: operations-service
       auto-offset-reset: earliest
       enable-auto-commit: false
+      max-poll-records: 500
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
@@ -70,11 +75,39 @@ app:
     target-cache-ttl-seconds: 30
     delivery:
       redis-key: webhook-retry
+      # A batch is up to poll-batch-size events taken off the queue together: claimed in one transaction, delivered
+      # concurrently, and recorded in one UPDATE. concurrency batches run at once; each needs a database connection
+      # only for those two short moments (never during the HTTP calls), so keep it well under the pool size.
       poll-batch-size: 100
+      concurrency: 4
+      # HTTP calls to merchants in flight at once across all batches (a batch is not sent as a burst of its whole size).
+      http-concurrency: 32
 
 webhook:
   delivery:
     signature-header: X-PayFlo-Signature
+
+settlement:
+  # The platform fee, as a share of what the merchant kept after refunds, and the GST charged on that fee.
+  fee-rate: ${SETTLEMENT_FEE_RATE:0.02}
+  gst-rate: ${SETTLEMENT_GST_RATE:0.18}
+  # T+N: a payment is paid out only once it was captured this many days ago. 0 pays out everything captured.
+  hold-days: ${SETTLEMENT_HOLD_DAYS:0}
+  # Merchants settled at once (each holds database connections), and the most payments paid to one merchant per run.
+  concurrency: 4
+  max-payments-per-run: 20000
+  page-size: 1000
+  # A transfer the bank accepted but never answered is failed after this long, so its payments are paid out again.
+  transfer-timeout-minutes: 120
+  # The simulated bank. chaos-mode: NORMAL (answers after a delay, success-rate % succeed), SLOW (delays doubled),
+  # SUCCESS, FAILURE (every transfer declined), TIMEOUT (never answers). refuse-rate: % of transfers refused outright.
+  # Like the payment simulator, each answer is derived from the settlement id, so a settlement always gets the same one.
+  simulator:
+    chaos-mode: NORMAL
+    min-delay-seconds: 2
+    max-delay-seconds: 12
+    success-rate: 95
+    refuse-rate: 0
 
 resilience4j:
   circuitbreaker:

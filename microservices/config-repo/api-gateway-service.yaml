@@ -1,5 +1,7 @@
 server:
   port: 8080
+  # Header block size cap (Tomcat's default is 8 KB): API keys and JWTs fit easily, a header flood doesn't.
+  max-http-request-header-size: 16KB
   # TLS for the public listener, off by default. To turn it on, point it at a PKCS12 keystore and set
   # GATEWAY_TLS_ENABLED=true. In production TLS is more often terminated by a load balancer or Ingress in
   # front of the gateway, in which case leave this off. The hop from the gateway to the services is plain
@@ -15,6 +17,7 @@ server:
 management:
   server:
     port: ${MANAGEMENT_PORT:9081}
+    address: ${SERVER_ADDRESS:127.0.0.1}
 
 spring:
   cloud:
@@ -25,11 +28,11 @@ spring:
             - id: merchant-service
               uri: lb://merchant-service
               predicates:
-                - Path=/v1/auth/**,/v1/merchants/**
+                - Path=/v1/auth/**,/v1/merchants/**,/v1/admin/merchants/**,/v1/admin/audit-log/**
             - id: payment-service
               uri: lb://payment-service
               predicates:
-                - Path=/v1/orders/**,/v1/payments/**
+                - Path=/v1/orders/**,/v1/payments/**,/v1/refunds/**,/v1/analytics/**
             - id: vault-service
               uri: lb://vault-service
               predicates:
@@ -37,7 +40,7 @@ spring:
             - id: operations-service
               uri: lb://operations-service
               predicates:
-                - Path=/webhook/**
+                - Path=/webhook/**,/v1/settlements/**,/v1/webhook-deliveries/**,/v1/admin/settlements/**
 
 app:
   security:
@@ -46,7 +49,12 @@ app:
     public-routes:
       - /v1/auth/signup
       - /v1/auth/login
+      - /v1/auth/refresh
       - /webhook/**
+    # The platform operator's key for /v1/admin/** (sent as X-Admin-Key): suspend or reactivate a merchant, run a
+    # settlement, read the audit log. Not a merchant credential; blank turns the admin API off. Development default;
+    # set ADMIN_API_KEY to a long random value in any shared environment (ENFORCE_STRONG_SECRETS refuses the default).
+    admin-api-key: ${ADMIN_API_KEY:dev-admin-api-key-change-me}
     # Set to the header your proxy / load balancer fills with the real client address (e.g. X-Forwarded-For)
     # so the per-address limits below see clients, not the proxy. Leave empty when clients connect directly.
     client-ip-header: ${CLIENT_IP_HEADER:}
@@ -55,6 +63,9 @@ app:
     public-auth-requests-per-minute: ${PUBLIC_AUTH_RATE_LIMIT_PER_MINUTE:120}
     # Failed authentications per client address per minute before further attempts are refused.
     max-failed-auth-per-minute: ${MAX_FAILED_AUTH_PER_MINUTE:30}
+    # The largest request body the gateway accepts (413 REQUEST_TOO_LARGE); every body in this API is a small JSON
+    # document. Checked before authentication, so an oversized request costs almost nothing to refuse.
+    max-request-body-bytes: ${MAX_REQUEST_BODY_BYTES:1048576}
   rate-limit:
     method: fixed
     use-case:

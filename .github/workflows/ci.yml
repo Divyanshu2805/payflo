@@ -1,0 +1,115 @@
+name: CI
+
+# Every push to main and every pull request: build all modules, run every test (unit and integration), and scan the
+# dependencies for known vulnerabilities. The integration tests start PostgreSQL, Redis and Kafka with Testcontainers,
+# which needs only the Docker that GitHub's Ubuntu runners already have: no service, secret or config server is needed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: microservices
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # The OpenAPI spec is written by hand: this fails when a controller gains, loses or moves an endpoint and
+      # docs/api/openapi.yaml wasn't updated with it. Standard library only, and first because it takes a second.
+      - name: Check the OpenAPI spec against the controllers
+        working-directory: .
+        run: python3 docs/api/check_openapi.py
+
+      - name: Build and run every test
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp verify
+
+      - name: Keep the test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: microservices/**/target/surefire-reports/
+          retention-days: 14
+
+  dependency-scan:
+    name: Dependency vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Most versions are managed by Spring Boot's BOM, which a scanner reading the poms can't resolve. So Maven
+      # resolves everything first and writes a software bill of materials (CycloneDX): every dependency of every
+      # module, with its exact version. The scan below reads that.
+      - name: Generate the software bill of materials
+        working-directory: microservices
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom -DoutputFormat=json -DoutputName=bom
+
+      - name: Keep the bill of materials
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: microservices/target/bom.json
+          retention-days: 30
+
+      # Fails on a HIGH or CRITICAL vulnerability that has a fix. One with no fix yet is reported but doesn't fail the
+      # build, since there is nothing to do about it but wait.
+      - name: Scan the dependencies for known vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: sbom
+          scan-ref: microservices/target/bom.json
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+      # A committed secret fails the build: it is in the history for good the moment it is pushed.
+      - name: Scan for committed secrets
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          exit-code: '1'
+          format: table
+
+      # Reported, not enforced: the Kubernetes manifests are for a local kind cluster, and hardening them (security
+      # contexts, read-only filesystems) is tracked separately. Seeing the list on every run keeps it visible.
+      - name: Report configuration problems
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: microservices
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+          format: table

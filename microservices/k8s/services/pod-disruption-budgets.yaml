@@ -1,0 +1,24 @@
+# The two services that run several replicas (see ../scaled): a voluntary disruption (a node drain, an upgrade) may
+# take one pod at a time, so the others keep serving. With a single replica it allows the drain, as there is
+# nothing to protect.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway-service
+  namespace: payflo
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: api-gateway-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service
+  namespace: payflo
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: payment-service

@@ -13,7 +13,9 @@ spring:
       connection-timeout: 5000
   jpa:
     hibernate:
-      ddl-auto: update
+      # Flyway owns the schema (src/main/resources/db/migration); Hibernate only checks that the entities match it,
+      # so a missing or mistyped column fails at start-up instead of at the first request.
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect

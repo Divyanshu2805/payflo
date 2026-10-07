@@ -1,0 +1,57 @@
+# The same cluster with several replicas of the two services that take the traffic: the gateway and payment-service.
+#   kubectl apply -k microservices/k8s-scaled
+# Change `count` (or `kubectl -n payflo scale deploy/payment-service --replicas=2`) to try other sizes. Each replica is
+# limited to 1 CPU and 1 GiB (see the Deployments), so 3 + 3 replicas ask for up to 6 CPUs.
+#
+# More replicas of the stateless tiers move the limit to what they share, so the data tier gets room too: the base
+# gives PostgreSQL one CPU and 1.5 GiB, which would cap any number of replicas at what one CPU of PostgreSQL can do
+# (docs/deployment/scaling.md has the measurements).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../k8s
+
+replicas:
+  - name: api-gateway-service
+    count: 3
+  - name: payment-service
+    count: 3
+
+patches:
+  - target:
+      kind: StatefulSet
+      name: postgres
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: {cpu: "1", memory: 2Gi}
+          limits: {cpu: "4", memory: 3Gi}
+      - op: replace
+        path: /spec/template/spec/containers/0/args/7
+        value: shared_buffers=1GB
+      - op: replace
+        path: /spec/template/spec/containers/0/args/9
+        value: effective_cache_size=2GB
+  - target:
+      kind: StatefulSet
+      name: redis
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 512Mi}
+      - op: replace
+        path: /spec/template/spec/containers/0/command/2
+        value: exec redis-server --maxmemory 384mb --maxmemory-policy volatile-lru ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}
+  - target:
+      kind: StatefulSet
+      name: kafka
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: {cpu: 500m, memory: 768Mi}
+          limits: {cpu: "2", memory: 1536Mi}

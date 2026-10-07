@@ -23,6 +23,16 @@ spec:
               value: payflo-local
             - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
               value: kafka.payflo.svc.cluster.local:9092
+            # A login form: the Kafka UI shows every event payload, so it is not left open.
+            - name: AUTH_TYPE
+              value: LOGIN_FORM
+            - name: SPRING_SECURITY_USER_NAME
+              value: admin
+            - name: SPRING_SECURITY_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: KAFKA_UI_PASSWORD
           resources:
             requests:
               cpu: 100m
