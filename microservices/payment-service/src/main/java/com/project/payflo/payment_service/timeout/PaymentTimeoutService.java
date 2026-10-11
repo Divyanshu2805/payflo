@@ -6,7 +6,7 @@ import com.project.payflo.common_lib.enums.PaymentEvent;
 import com.project.payflo.common_lib.enums.PaymentStatus;
 import com.project.payflo.payment_service.entity.OrderRecord;
 import com.project.payflo.payment_service.entity.Payment;
-import com.project.payflo.payment_service.outbox.OutboxEventPublisher;
+import com.project.payflo.common_lib.outbox.OutboxEventPublisher;
 import com.project.payflo.payment_service.repository.OrderRepository;
 import com.project.payflo.payment_service.repository.PaymentRepository;
 import com.project.payflo.payment_service.saga.PaymentAuthorizationRecorder;

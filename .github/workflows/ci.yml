@@ -103,8 +103,7 @@ jobs:
           exit-code: '1'
           format: table
 
-      # Reported, not enforced: the Kubernetes manifests are for a local kind cluster, and hardening them (security
-      # contexts, read-only filesystems) is tracked separately. Seeing the list on every run keeps it visible.
+      # Reported, not enforced: the Kubernetes manifests are for a local kind cluster. The list is shown on every run.
       - name: Report configuration problems
         uses: aquasecurity/trivy-action@v0.36.0
         with:

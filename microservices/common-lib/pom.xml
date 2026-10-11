@@ -11,8 +11,8 @@
 	<groupId>com.project.payflo</groupId>
 	<artifactId>common-lib</artifactId>
 	<version>1.0.0</version>
-	<name/>
-	<description/>
+	<name>common-lib</name>
+	<description>Shared entities, enums, errors, filters, the outbox and the contracts services exchange</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -70,6 +70,19 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!-- For the outbox package only: a service that imports OutboxConfiguration brings its own Kafka and ShedLock. -->
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>net.javacrumbs.shedlock</groupId>
+			<artifactId>shedlock-spring</artifactId>
+			<version>6.9.0</version>
+			<optional>true</optional>
+		</dependency>
+
 		<!-- Observability: Micrometer tracing exported to Zipkin, metrics scraped by Prometheus -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -92,11 +105,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

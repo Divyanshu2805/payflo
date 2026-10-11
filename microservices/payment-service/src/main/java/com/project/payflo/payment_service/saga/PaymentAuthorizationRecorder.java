@@ -14,7 +14,7 @@ import com.project.payflo.payment_service.entity.Payment;
 import com.project.payflo.payment_service.entity.PaymentTransitionLog;
 import com.project.payflo.payment_service.gateway.dto.PaymentResult;
 import com.project.payflo.payment_service.mapper.PaymentMapper;
-import com.project.payflo.payment_service.outbox.OutboxEventPublisher;
+import com.project.payflo.common_lib.outbox.OutboxEventPublisher;
 import com.project.payflo.payment_service.repository.OrderRepository;
 import com.project.payflo.payment_service.repository.PaymentRepository;
 import com.project.payflo.payment_service.statemachine.PaymentTransitionService;
@@ -86,7 +86,7 @@ public class PaymentAuthorizationRecorder {
                 .amount(order.getAmount())
                 .status(PaymentStatus.CREATED)
                 .method(request.method())
-                .idempotencyKey(idempotencyKey != null ? idempotencyKey: UUID.randomUUID().toString()) //TODO: idempotency
+                .idempotencyKey(idempotencyKey != null ? idempotencyKey : UUID.randomUUID().toString())
                 .methodDetails(request.methodDetails())
                 .build();
         // The first transition is applied BEFORE the payment is saved, so it is inserted already AUTHORIZING. Saving it
@@ -158,24 +158,3 @@ public class PaymentAuthorizationRecorder {
                 ));
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

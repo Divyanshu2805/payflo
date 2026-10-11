@@ -1,9 +1,7 @@
-package com.project.payflo.payment_service.outbox;
+package com.project.payflo.common_lib.outbox;
 
 import com.project.payflo.common_lib.enums.EventAggregateType;
 import com.project.payflo.common_lib.enums.PaymentMethod;
-import com.project.payflo.payment_service.entity.OutboxEvent;
-import com.project.payflo.payment_service.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.json.JsonMapper;

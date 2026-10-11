@@ -1,7 +1,7 @@
 package com.project.payflo.payment_service.metrics;
 
 import com.project.payflo.common_lib.enums.OutboxStatus;
-import com.project.payflo.payment_service.repository.OutboxEventRepository;
+import com.project.payflo.common_lib.outbox.OutboxEventRepository;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;

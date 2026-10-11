@@ -70,8 +70,4 @@ public final class SharedInfrastructure {
     public static String bootstrapServers() {
         return kafka().getBootstrapServers();
     }
-
-    public static String jdbcUrl() {
-        return postgres().getJdbcUrl();
-    }
 }

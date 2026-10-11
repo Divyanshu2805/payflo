@@ -1,11 +1,9 @@
-package com.project.payflo.operations_service.outbox;
+package com.project.payflo.common_lib.outbox;
 
-import com.project.payflo.operations_service.repository.OutboxEventRepository;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
@@ -16,7 +14,6 @@ import java.time.LocalDateTime;
  * only ever grows, and every poll and index gets slower with it.
  */
 @Slf4j
-@Component
 public class OutboxMaintenance {
 
     private static final int PURGE_BATCH_SIZE = 5_000;
@@ -39,7 +36,7 @@ public class OutboxMaintenance {
     }
 
     @Scheduled(fixedDelay = 60_000)
-    @SchedulerLock(name = "operations-service-outbox-requeue-failed", lockAtMostFor = "1m", lockAtLeastFor = "10s")
+    @SchedulerLock(name = "${spring.application.name}-outbox-requeue-failed", lockAtMostFor = "1m", lockAtLeastFor = "10s")
     public void requeueFailed() {
         LocalDateTime now = LocalDateTime.now();
         Integer requeued = transactionTemplate.execute(status ->
@@ -50,7 +47,7 @@ public class OutboxMaintenance {
     }
 
     @Scheduled(fixedDelay = 300_000)
-    @SchedulerLock(name = "operations-service-outbox-purge", lockAtMostFor = "5m", lockAtLeastFor = "30s")
+    @SchedulerLock(name = "${spring.application.name}-outbox-purge", lockAtMostFor = "5m", lockAtLeastFor = "30s")
     public void purgePublished() {
         LocalDateTime before = LocalDateTime.now().minusDays(retentionDays);
         long deadline = System.currentTimeMillis() + MAX_PURGE_MILLIS;

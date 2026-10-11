@@ -23,7 +23,7 @@ import java.util.UUID;
  *
  * <p>{@link #claim} locks the event, counts the attempt and moves {@code next_retry_at} a lease into the
  * future. Anything else that tries to deliver the same event meanwhile — a duplicate queue entry, the
- * reconciler — finds it not yet due and backs off. {@link #recordSuccess} and {@link #recordFailure}
+ * reconciler — finds it not yet due and backs off. {@link #recordDelivered} and {@link #recordFailure}
  * then write the outcome. If the process dies in between, the lease runs out and the reconciler
  * picks the event up again.
  */
@@ -103,15 +103,6 @@ public class WebhookDeliveryRecorder {
     public void recordDelivered(Map<Integer, List<UUID>> idsByStatusCode) {
         LocalDateTime now = LocalDateTime.now();
         idsByStatusCode.forEach((statusCode, ids) -> webhookEventRepository.markDelivered(ids, statusCode, now));
-    }
-
-    @Transactional
-    public void recordSuccess(UUID webhookEventId, int statusCode) {
-        WebhookEvent event = webhookEventRepository.findByIdForUpdate(webhookEventId).orElseThrow();
-        event.setLastResponseCode(statusCode);
-        event.setStatus(WebhookEventStatus.DELIVERED);
-        event.setDeliveredAt(LocalDateTime.now());
-        event.setNextRetryAt(null);
     }
 
     @Transactional

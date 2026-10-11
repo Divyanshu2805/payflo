@@ -39,7 +39,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     private final ApiKeyMapper apiKeyMapper;
     private static final int DEFAULT_GRACE_PERIOD_HOURS = 24;
 
-    private BCryptPasswordEncoder BCRPYT = new BCryptPasswordEncoder();
+    private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder();
     private final ApiKeyCache apiKeyCache;
     private final AuditLogService auditLogService;
 
@@ -55,7 +55,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         ApiKey apiKey = ApiKey.builder()
                 .merchant(merchant)
                 .keyId(keyId)
-                .keySecretHash(BCRPYT.encode(rawSecret))
+                .keySecretHash(BCRYPT.encode(rawSecret))
                 .environment(request.environment())
                 .build();
 
@@ -101,7 +101,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         String newRawSecret = RandomizerUtil.randomBase64(40);
         // With no grace period the old secret is dropped outright, which is what you want after a leak.
         apiKey.setPreviousKeySecretHash(graceHours > 0 ? apiKey.getKeySecretHash() : null);
-        apiKey.setKeySecretHash(BCRPYT.encode(newRawSecret));
+        apiKey.setKeySecretHash(BCRYPT.encode(newRawSecret));
         apiKey.setRotatedAt(now);
         apiKey.setGracePeriodExpiresAt(now.plusHours(graceHours));
         apiKey = apiKeyRepository.save(apiKey);
@@ -131,22 +131,3 @@ public class ApiKeyServiceImpl implements ApiKeyService {
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

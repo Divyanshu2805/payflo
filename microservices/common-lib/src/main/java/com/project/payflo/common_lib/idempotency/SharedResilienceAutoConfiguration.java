@@ -3,10 +3,11 @@ package com.project.payflo.common_lib.idempotency;
 import com.project.payflo.common_lib.cache.ApiKeyCache;
 import com.project.payflo.common_lib.cache.RedisApiKeyCache;
 import com.project.payflo.common_lib.context.MerchantContext;
-import com.project.payflo.common_lib.ratelimit.*;
+import com.project.payflo.common_lib.ratelimit.FixedWindowRateLimiter;
+import com.project.payflo.common_lib.ratelimit.RateLimiter;
+import com.project.payflo.common_lib.ratelimit.VelocityCounters;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -63,51 +64,8 @@ public class SharedResilienceAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "app.rate-limit.method", havingValue = "fixed")
-    public RateLimiter fixedWindowRateLimiter(StringRedisTemplate stringRedisTemplate) {
+    public RateLimiter rateLimiter(StringRedisTemplate stringRedisTemplate) {
         return new FixedWindowRateLimiter(stringRedisTemplate);
     }
 
-    // "sliding" and "sliding-lua" are the same limiter. "sliding" used to be a separate implementation that
-    // checked and added in two steps, so concurrent requests could all pass at the limit; it is now the
-    // atomic Lua one, and the old name is kept so existing configuration keeps working.
-    @Bean
-    @ConditionalOnProperty(name = "app.rate-limit.method", havingValue = "sliding")
-    public RateLimiter slidingWindowRateLimiter(StringRedisTemplate redis) {
-        return new SlidingWindowLuaLimiter(redis);
-    }
-
-    @Bean
-    @ConditionalOnProperty(name = "app.rate-limit.method", havingValue = "sliding-lua")
-    public RateLimiter slidingWindowLuaLimiter(StringRedisTemplate redis) {
-        return new SlidingWindowLuaLimiter(redis);
-    }
-
-    @Bean
-    @ConditionalOnProperty(name = "app.rate-limit.method", havingValue = "bucket")
-    public RateLimiter tokenBucketRateLimiter(StringRedisTemplate redis) {
-        return new TokenBucketRateLimiter(redis);
-    }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

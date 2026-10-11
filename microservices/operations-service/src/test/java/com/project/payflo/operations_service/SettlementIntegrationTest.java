@@ -150,9 +150,11 @@ class SettlementIntegrationTest extends OperationsIntegrationTest {
         simulator.setChaosMode(ChaosMode.SUCCESS);
         engine.run();
 
-        await().atMost(Duration.ofSeconds(40)).untilAsserted(() ->
-                assertThat(settlements()).extracting(s -> s.get("status")).containsExactly("FAILED", "PROCESSED"));
-        verify(paymentClient, times(1)).markSettled(any());
+        // payment-service is told just after the payout is recorded as PROCESSED, so both are waited for
+        await().atMost(Duration.ofSeconds(40)).untilAsserted(() -> {
+            assertThat(settlements()).extracting(s -> s.get("status")).containsExactly("FAILED", "PROCESSED");
+            verify(paymentClient, times(1)).markSettled(any());
+        });
     }
 
     @Test

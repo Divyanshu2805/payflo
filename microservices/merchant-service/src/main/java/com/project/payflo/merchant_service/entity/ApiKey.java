@@ -45,8 +45,6 @@ public class ApiKey extends BaseEntity {
     @Builder.Default
     private boolean enabled = true;
 
-
-    private LocalDateTime lastUsedAt;
     private LocalDateTime rotatedAt;
     private LocalDateTime gracePeriodExpiresAt;
 

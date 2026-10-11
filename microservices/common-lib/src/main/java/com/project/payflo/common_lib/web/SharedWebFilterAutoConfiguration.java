@@ -1,6 +1,7 @@
 package com.project.payflo.common_lib.web;
 
 import com.project.payflo.common_lib.context.MerchantContext;
+import com.project.payflo.common_lib.idempotency.IdempotencyFilter;
 import jakarta.servlet.Filter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -45,13 +46,23 @@ public class SharedWebFilterAutoConfiguration {
         return registration;
     }
 
+    // A repeated write (X-Idempotency-Key) is answered from the first one's result. Runs after the merchant is known,
+    // because a key belongs to its merchant; off in the gateway, which only forwards the request.
+    @Bean
+    @ConditionalOnProperty(name = "app.security.trust-inbound-headers", havingValue = "true", matchIfMissing = true)
+    public FilterRegistrationBean<Filter> idempotencyFilterRegistration(IdempotencyFilter idempotencyFilter) {
+        FilterRegistrationBean<Filter> registration = new FilterRegistrationBean<>(idempotencyFilter);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE+2);
+        registration.addUrlPatterns("/*");
+        return registration;
+    }
+
     @Bean
     public FilterRegistrationBean<Filter> requestContextFilterRegistration() {
         FilterRegistrationBean<Filter> registration =
                 new FilterRegistrationBean<>(new RequestContextFilter());
-
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         registration.addUrlPatterns("/*");
-        return  registration;
+        return registration;
     }
 }

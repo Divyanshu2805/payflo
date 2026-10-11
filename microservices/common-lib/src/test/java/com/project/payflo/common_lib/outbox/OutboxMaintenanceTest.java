@@ -1,6 +1,5 @@
-package com.project.payflo.payment_service.outbox;
+package com.project.payflo.common_lib.outbox;
 
-import com.project.payflo.payment_service.repository.OutboxEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionCallback;

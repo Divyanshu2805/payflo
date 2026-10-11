@@ -1,4 +1,4 @@
-package com.project.payflo.payment_service.entity;
+package com.project.payflo.common_lib.outbox;
 
 import com.project.payflo.common_lib.entity.BaseEntity;
 import com.project.payflo.common_lib.enums.EventAggregateType;
@@ -55,23 +55,3 @@ public class OutboxEvent extends BaseEntity {
 
     private LocalDateTime publishedAt;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

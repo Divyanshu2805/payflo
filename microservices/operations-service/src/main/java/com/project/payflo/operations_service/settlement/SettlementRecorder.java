@@ -7,7 +7,7 @@ import com.project.payflo.common_lib.exception.ResourceNotFoundException;
 import com.project.payflo.operations_service.entity.Settlement;
 import com.project.payflo.operations_service.entity.SettlementPayment;
 import com.project.payflo.operations_service.entity.SettlementPaymentId;
-import com.project.payflo.operations_service.outbox.OutboxEventPublisher;
+import com.project.payflo.common_lib.outbox.OutboxEventPublisher;
 import com.project.payflo.operations_service.repository.SettlementPaymentRepository;
 import com.project.payflo.operations_service.repository.SettlementRepository;
 import lombok.RequiredArgsConstructor;

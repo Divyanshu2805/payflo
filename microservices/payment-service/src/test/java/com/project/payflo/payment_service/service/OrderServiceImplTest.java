@@ -10,7 +10,7 @@ import com.project.payflo.payment_service.dto.response.OrderResponse;
 import com.project.payflo.payment_service.entity.OrderRecord;
 import com.project.payflo.payment_service.mapper.OrderMapper;
 import com.project.payflo.payment_service.mapper.PaymentMapper;
-import com.project.payflo.payment_service.outbox.OutboxEventPublisher;
+import com.project.payflo.common_lib.outbox.OutboxEventPublisher;
 import com.project.payflo.payment_service.repository.OrderRepository;
 import com.project.payflo.payment_service.repository.PaymentRepository;
 import com.project.payflo.payment_service.service.impl.OrderPersistenceService;

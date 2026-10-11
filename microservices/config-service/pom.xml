@@ -11,8 +11,8 @@
 	<groupId>com.project.payflo</groupId>
 	<artifactId>config-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>config-service</name>
+	<description>Spring Cloud Config server over config-repo</description>
 	<url/>
 	<licenses>
 		<license/>

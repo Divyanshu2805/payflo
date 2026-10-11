@@ -1,7 +1,6 @@
-package com.project.payflo.payment_service.repository;
+package com.project.payflo.common_lib.outbox;
 
 import com.project.payflo.common_lib.enums.OutboxStatus;
-import com.project.payflo.payment_service.entity.OutboxEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

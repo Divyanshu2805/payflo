@@ -11,8 +11,8 @@
 	<groupId>com.project.payflo</groupId>
 	<artifactId>api-gateway-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>api-gateway-service</name>
+	<description>The public entry point: authentication, rate limiting and routing</description>
 	<url/>
 	<licenses>
 		<license/>

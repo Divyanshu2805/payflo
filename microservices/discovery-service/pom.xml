@@ -11,8 +11,8 @@
 	<groupId>com.project.payflo</groupId>
 	<artifactId>discovery-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>discovery-service</name>
+	<description>Eureka service registry</description>
 	<url/>
 	<licenses>
 		<license/>

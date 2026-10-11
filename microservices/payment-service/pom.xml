@@ -11,8 +11,8 @@
 	<groupId>com.project.payflo</groupId>
 	<artifactId>payment-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>payment-service</name>
+	<description>Orders, payments, refunds and analytics</description>
 	<url/>
 	<licenses>
 		<license/>

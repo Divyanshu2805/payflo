@@ -1268,7 +1268,6 @@ components:
         keyId: { type: string, example: pf_test_UY1WtUjM30Xd78RD }
         environment: { $ref: '#/components/schemas/Environment' }
         enabled: { type: boolean }
-        lastUsedAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
     ApiKeyCreateResponse:
       type: object

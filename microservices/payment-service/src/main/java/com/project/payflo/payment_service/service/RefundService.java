@@ -13,7 +13,7 @@ import com.project.payflo.payment_service.dto.request.CreateRefundRequest;
 import com.project.payflo.payment_service.dto.response.RefundResponse;
 import com.project.payflo.payment_service.entity.Payment;
 import com.project.payflo.payment_service.entity.Refund;
-import com.project.payflo.payment_service.outbox.OutboxEventPublisher;
+import com.project.payflo.common_lib.outbox.OutboxEventPublisher;
 import com.project.payflo.payment_service.repository.PaymentRepository;
 import com.project.payflo.payment_service.repository.RefundRepository;
 import com.project.payflo.payment_service.statemachine.PaymentTransitionService;

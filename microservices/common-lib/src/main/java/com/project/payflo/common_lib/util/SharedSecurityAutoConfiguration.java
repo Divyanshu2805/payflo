@@ -15,11 +15,6 @@ import org.springframework.web.context.annotation.RequestScope;
 @AutoConfiguration
 public class SharedSecurityAutoConfiguration {
 
-    @Bean
-    public SignerUtil signerUtil() {
-        return new SignerUtil();
-    }
-
     // Refuses (or, in development, warns about) the secrets committed to this repository.
     @Bean(initMethod = "check")
     public SecretConfigurationChecker secretConfigurationChecker(Environment environment) {

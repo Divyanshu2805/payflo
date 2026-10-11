@@ -5,7 +5,7 @@ import com.project.payflo.common_lib.enums.EventAggregateType;
 import com.project.payflo.common_lib.enums.SettlementStatus;
 import com.project.payflo.operations_service.entity.Settlement;
 import com.project.payflo.operations_service.entity.SettlementPayment;
-import com.project.payflo.operations_service.outbox.OutboxEventPublisher;
+import com.project.payflo.common_lib.outbox.OutboxEventPublisher;
 import com.project.payflo.operations_service.repository.SettlementPaymentRepository;
 import com.project.payflo.operations_service.repository.SettlementRepository;
 import org.junit.jupiter.api.BeforeEach;
