@@ -1,7 +1,7 @@
 # Local observability stack for the microservices running on the host (see docs/observability/).
 #   Zipkin      http://localhost:9411   traces
 #   Prometheus  http://localhost:9090   metrics (scrapes the services via host.docker.internal)
-#   Grafana     http://localhost:3000   dashboards (anonymous viewer; admin/admin to edit)
+#   Grafana     http://localhost:3000   dashboards (sign in as admin with GRAFANA_ADMIN_PASSWORD)
 services:
   zipkin:
     image: openzipkin/zipkin:3.5

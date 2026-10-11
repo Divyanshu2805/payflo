@@ -9,13 +9,17 @@
 
 <p align="center">
   <a href="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml"><img src="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-  <img src="https://img.shields.io/badge/Java-25-0f1b2d?logo=openjdk" alt="Java 25" />
-  <img src="https://img.shields.io/badge/Spring%20Boot-4.1-0f1b2d?logo=springboot" alt="Spring Boot 4.1" />
-  <img src="https://img.shields.io/badge/Spring%20Cloud-2025.1-0f1b2d?logo=spring" alt="Spring Cloud 2025.1" />
-  <img src="https://img.shields.io/badge/PostgreSQL-per%20service-0f1b2d?logo=postgresql" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Kafka-outbox-0f1b2d?logo=apachekafka" alt="Kafka" />
-  <img src="https://img.shields.io/badge/Redis-cache%20%26%20locks-0f1b2d?logo=redis" alt="Redis" />
-  <img src="https://img.shields.io/badge/Kubernetes-kind-0f1b2d?logo=kubernetes" alt="Kubernetes" />
+  <img src="https://img.shields.io/badge/Java-25-0a0b0d?logo=openjdk" alt="Java 25" />
+  <img src="https://img.shields.io/badge/Spring%20Boot-4.1-0a0b0d?logo=springboot" alt="Spring Boot 4.1" />
+  <img src="https://img.shields.io/badge/Spring%20Cloud-2025.1-0a0b0d?logo=spring" alt="Spring Cloud 2025.1" />
+  <img src="https://img.shields.io/badge/PostgreSQL-per%20service-0a0b0d?logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Kafka-outbox-0a0b0d?logo=apachekafka" alt="Kafka" />
+  <img src="https://img.shields.io/badge/Redis-cache%20%26%20locks-0a0b0d?logo=redis" alt="Redis" />
+  <img src="https://img.shields.io/badge/Kubernetes-kind-0a0b0d?logo=kubernetes" alt="Kubernetes" />
+  <img src="https://img.shields.io/badge/Resilience4j-breakers-0a0b0d" alt="Resilience4j" />
+  <img src="https://img.shields.io/badge/Testcontainers-integration-0a0b0d" alt="Testcontainers" />
+  <img src="https://img.shields.io/badge/JMeter-load%20tests-0a0b0d?logo=apachejmeter" alt="JMeter" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0a0b0d" alt="MIT License" /></a>
 </p>
 
 ---
@@ -58,6 +62,12 @@ If ports 8080 to 8084 are taken, `python demo/demo.py --port-offset 100` moves e
 | Paying an order, with the test values one click away | A payment and every status change it went through |
 | <img src="docs/assets/screenshots/webhooks.webp" alt="Webhook deliveries with their status, attempts and response codes" /> | <img src="docs/assets/screenshots/settlement.webp" alt="A settlement showing gross, refunds, fee, GST and the net paid out" /> |
 | Webhook deliveries: attempts, responses and replay | A payout: gross − refunds − fee − GST = net |
+
+<p align="center">
+  <img src="docs/assets/screenshots/grafana.webp" alt="The Grafana dashboard: gateway throughput, p99 latency, availability, payment transitions, the outbox backlog and the webhook SLA" width="900" />
+</p>
+
+The Grafana dashboard while the demo seeds payments. All screenshots are from the one-command demo on a local stack, against the simulated bank; the load-test figures are under [Quality](#quality).
 
 ## Features
 
@@ -146,11 +156,11 @@ The rules are written down in the [security guardrails](docs/practices/security-
 
 Found a problem? See [SECURITY.md](SECURITY.md).
 
-## Measured
+## Quality
 
 Everything below was measured on one laptop that also ran the load generator and the databases. Each figure, and how to re-measure it, is on the [metrics page](docs/metrics.md).
 
-| | |
+| What | Measured |
 |---|---|
 | Throughput | **1,272 requests a second**, with payments captured alongside; the first run managed 250 |
 | p99 latency | **171 ms** for the slowest request type |
@@ -166,7 +176,7 @@ The five-fold gain since the first run came from 19 fixes, every one of them inv
 
 ## Quick start
 
-The [demo](#try-it) is the fastest way in. To build and test instead:
+Requires a JDK 25, Docker and Python 3.10+. The [demo](#try-it) is the fastest way in; to build and test instead:
 
 ```bash
 cd microservices
@@ -240,3 +250,7 @@ Everything lives in [`docs/`](docs/README.md):
 | [Load testing](docs/load-testing/README.md) | Running the load test, the results and the query review |
 | [Crash and outage tests](docs/reliability/crash-and-outage-tests.md) | What happens to a payment when something dies |
 | [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) | Workflow and checks; reporting a vulnerability |
+
+## License
+
+Released under the [MIT License](LICENSE).
