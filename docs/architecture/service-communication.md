@@ -40,13 +40,13 @@ Each business service exposes `/internal/**` for the others. Callers use typed F
 
 The complete request and response shapes are in the [internal API reference](../api/internal.md).
 
-**Authentication.** Every `/internal/**` request must carry the shared `X-Internal-Token`, and the gateway never routes the prefix. The token is one secret for the whole platform rather than an identity per service; see the [security model](security-model.md#internal-api).
+**Authentication.** Every `/internal/**` request must carry the shared `X-Internal-Token`, and the gateway never routes the prefix. See the [security model](security-model.md#internal-api).
 
 ### Resilience
 
 Every Feign call is wrapped in a Resilience4j `@CircuitBreaker` and `@Retry`, with instances named after the target service in each caller's `config-repo` file. The default circuit breaker opens at a 50% failure rate over a 100-call window (once 50 calls are recorded) and stays open for 10 seconds; retries make 3 attempts with backoff.
 
-Because the annotations sit on whole service methods — `OrderServiceImpl.create`, not just the Feign call inside it — the breaker and retry are told which exceptions mean *the dependency failed*: the breaker records only `feign.RetryableException`, 5xx responses (`FeignServerException`), I/O errors and timeouts, and the retry only re-attempts connection-level failures. A local problem, like payment-service's own database pool running out, no longer opens the breaker for a healthy merchant-service, and a `4xx` from the dependency (a correct answer) doesn't count. Under load testing, the 20-call window and record-everything default opened the breaker on momentary tail spikes.
+Because the annotations sit on whole service methods — `OrderServiceImpl.create`, not just the Feign call inside it — the breaker and retry are told which exceptions mean *the dependency failed*: the breaker records only `feign.RetryableException`, 5xx responses (`FeignServerException`), I/O errors and timeouts, and the retry only re-attempts connection-level failures. A local problem, like payment-service's own database pool running out, doesn't open the breaker for a healthy merchant-service, and a `4xx` from the dependency (a correct answer) doesn't count.
 
 Every Feign client has explicit timeouts — 2 s to connect and 5 s to read by default, 8 s for payment-service's calls to vault-service (`spring.cloud.openfeign.client.config` in `config-repo`) — so one hung dependency holds a request thread for seconds, not Feign's default minute. Retries are limited to calls that are safe to repeat: the card charge has none, because a charge that timed out may have succeeded.
 
@@ -67,7 +67,7 @@ Adding a call between services takes three pieces: an `Internal*Controller` endp
 
 ## Events
 
-Anything that can be asynchronous goes through Kafka, and every event is published through a **transactional outbox**: the service writes an `outbox_event` row in the same transaction as the domain change, and a scheduled `OutboxPoller` publishes pending rows afterward. A crash can't lose an event, and no service ever calls Kafka from a request thread. See [decision 0005](decisions/0005-transactional-outbox-for-events.md).
+Anything that can be asynchronous goes through Kafka, and every event is published through a **transactional outbox**: the service writes an `outbox_event` row in the same transaction as the domain change, and a scheduled `OutboxPoller` publishes pending rows afterward. The outbox is one package in `common-lib` (`outbox`), imported by the two services that publish; each has its own `outbox_event` table and runs its own poller. A crash can't lose an event, and no service ever calls Kafka from a request thread. See [decision 0005](decisions/0005-transactional-outbox-for-events.md).
 
 | Topic | Produced by | Events | Consumed by |
 |---|---|---|---|
@@ -76,7 +76,7 @@ Anything that can be asynchronous goes through Kafka, and every event is publish
 | `settlements.events` | operations-service | `SETTLEMENT_PROCESSED`, `SETTLEMENT_FAILED` | operations-service (webhooks) |
 | `refunds.events` | payment-service | `REFUND_CREATED`, `REFUND_PROCESSED`, `REFUND_FAILED` | operations-service (webhooks) |
 
-The poller runs every second and works in batches: it takes the oldest 500 pending rows (through an index on `status, created_at`), hands them all to the Kafka producer (which pipelines and batches the sends), waits for each acknowledgement, and marks the acknowledged ones `PUBLISHED` with a single `UPDATE`. It keeps taking batches for up to 30 seconds per run, inside its ShedLock lease. A row is marked only once Kafka has acknowledged it, so delivery stays at-least-once, and per-partition order is kept by the idempotent producer. The first version loaded every pending row and sent them one at a time; under load it drained about 10 events a second and let a backlog of ~90,000 build up. Batched, it drained ~650 events a second on a laptop, which still fell behind under load. Three things held it there: with no index, each batch scanned the whole table; marking a batch published with `saveAll` re-read and updated every row separately; and the poller shared one scheduler thread with the bank simulator, so it stalled for as long as the simulator ran. With those fixed it keeps pace with ~1,250 events a second during a load test, with under ~1,600 events (about a second's worth) pending at any time.
+The poller runs every second and works in batches: it takes the oldest 500 pending rows (through an index on `status, created_at`), hands them all to the Kafka producer (which pipelines and batches the sends), waits for each acknowledgement, and marks the acknowledged ones `PUBLISHED` with a single `UPDATE`. It keeps taking batches for up to 30 seconds per run, inside its ShedLock lease. A row is marked only once Kafka has acknowledged it, so delivery stays at-least-once, and per-partition order is kept by the idempotent producer. Under the load test it keeps pace with about 1,500 events a second, with about a second's worth pending at any time ([results](../load-testing/results.md)).
 
 The consumer group is `operations-service`, with manual acknowledgement. Events are JSON envelopes (`eventType`, `aggregateType`, `aggregateId`, `data`) with type headers off.
 
@@ -84,4 +84,4 @@ The consumer group is `operations-service`, with manual acknowledgement. Events 
 
 - **A cross-service reference is a plain id column, never a foreign key** — see [cross-service references](../schema/cross-service-references.md).
 - **An internal endpoint enforces no merchant scoping of its own.** The caller has already resolved the merchant it is acting for.
-- **Consistency across services is best-effort.** There are no distributed transactions; the saga and the outbox make the common paths safe. See [design trade-offs](trade-offs.md#consistency-across-services-is-best-effort).
+- **There are no distributed transactions.** A change that spans services is a saga with a compensation ([payment](flows/payment.md), [settlement](flows/settlement.md)), and an event is published if and only if its change committed ([decision 0005](decisions/0005-transactional-outbox-for-events.md)). Events are delivered at least once, so consumers de-duplicate on the event id.

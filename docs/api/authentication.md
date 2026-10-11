@@ -17,15 +17,15 @@ Signup, login and refresh are public routes at the gateway; logout and the passw
 | `POST` | `/v1/auth/logout` | optional `{ refreshToken }` | `204` | Dashboard login only. Revokes the access token you are calling with, by its id, until it would have expired anyway (the gateway refuses it from then on), and the refresh token if given. |
 | `POST` | `/v1/auth/password` | `{ currentPassword, newPassword }` | `204` | Dashboard login only. The new password is at least 8 characters and must differ (`400 PASSWORD_UNCHANGED`). A wrong current password is `401 INVALID_CREDENTIALS` and counts towards the login lockout. **Ends every session of this user, including this one**: log in again afterwards. |
 
-Sessions are also ended when an owner changes or removes a user (see [merchant account](merchant-account.md#team-users)): every access token issued to that user before is refused, and their refresh tokens are deleted. If Redis can't be reached the check is skipped for access tokens (they are signed and unexpired) but a logout fails loudly rather than silently doing nothing. There is no "forgot my password": changing a password needs the current one, since a reset needs an email provider.
+Sessions are also ended when an owner changes or removes a user (see [merchant account](merchant-account.md#team-users)): every access token issued to that user before is refused, and their refresh tokens are deleted. If Redis can't be reached the check is skipped for access tokens (they are signed and unexpired) but a logout fails loudly rather than silently doing nothing. Changing a password always needs the current one.
 
 ## Signup and account enumeration
 
 Signup is open to anyone, so if it answered `409` for an email that is registered, anyone could ask "is this email a PayFlo account?" of any address, one request at a time. It doesn't: a signup for an email that already logs in (as an owner or as a team member) is answered exactly like a signup that worked — `201`, the same fields, `merchantStatus: PENDING_KYC` — and the password is hashed either way, so the time doesn't give it away. The `id` in that answer belongs to no account, and nothing is created or changed; the existing account keeps its password.
 
-What this costs: there is no email to say "you already have an account", so a person who forgot they did is told it was created and finds out it wasn't when the new password doesn't log in. **To know whether you have an account, log in** (a wrong password and an unknown email look the same there too). The same race — two signups for one email at the same instant — gets the same answer, whichever the unique index lets in.
+**To know whether you have an account, log in** (a wrong password and an unknown email look the same there too). The same race — two signups for one email at the same instant — gets the same answer, whichever the unique index lets in.
 
-One door stays ajar: an owner adding a team member (`POST /v1/merchants/users`) is told `409 DUPLICATE_USER_EMAIL` if the email already logs in anywhere on the platform. That needs a login as an owner, which makes it a much smaller door; closing it takes an invitation flow by email.
+An owner adding a team member (`POST /v1/merchants/users`) is told `409 DUPLICATE_USER_EMAIL` when the email already logs in anywhere on the platform; that answer is only given to a logged-in owner.
 
 ## Throttling
 

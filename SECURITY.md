@@ -14,4 +14,4 @@ The committed secret values in `microservices/config-repo/` and `microservices/k
 
 ## Security model
 
-How PayFlo separates merchants, authenticates callers at the gateway, confines card data to the vault, and signs webhooks is described in the [security model](docs/architecture/security-model.md). The rules every change must respect are in the [security guardrails](docs/practices/security-guardrails.md), and what the design leaves to a real deployment in [design trade-offs and scope](docs/architecture/trade-offs.md).
+How PayFlo separates merchants, authenticates callers at the gateway, confines card data to the vault, and signs webhooks is described in the [security model](docs/architecture/security-model.md). The rules every change must respect are in the [security guardrails](docs/practices/security-guardrails.md).

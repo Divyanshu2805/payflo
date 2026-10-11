@@ -24,7 +24,7 @@ Provisioned from `observability/grafana/dashboards/payflo-overview.json`, refres
 
 | Row | Panels |
 |---|---|
-| **Targets** | Gateway throughput, gateway p99 latency, gateway availability (share of non-5xx responses) and the share of requests under 1 s — each coloured against the [requirement](../requirements.md#non-functional) it tracks |
+| **Targets** | Gateway throughput, gateway p99 latency, gateway availability (share of non-5xx responses) and the share of requests under 1 s — each coloured against the [target](../metrics.md#performance) it tracks |
 | **Traffic and latency by service** | Request rate and p99 per service, the gateway's p50/p95/p99, 5xx rate per service, and the five slowest endpoints |
 | **Payments and events** | Payment transitions by resulting status, the outbox backlog, webhook deliveries by outcome |
 | **Webhook SLA** | The share of webhooks delivered within 30 s over the dashboard's time range (green at 99% and above), delivery latency p50 and p99 against the 30 s line, and the number of events waiting with the age of the oldest one still waiting for its first attempt |

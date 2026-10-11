@@ -69,4 +69,4 @@ Links a settlement to each payment it pays out — the audit trail from a payout
 
 ## OUTBOX_EVENT
 
-Same shape as [payment-service's](payment-service.md#outbox_event), for `SETTLEMENT` events — `SETTLEMENT_PROCESSED` and `SETTLEMENT_FAILED`, published to `settlements.events`.
+The same table as [payment-service's](payment-service.md#outbox_event) (both are `common-lib`'s `OutboxEvent`), for `SETTLEMENT` events — `SETTLEMENT_PROCESSED` and `SETTLEMENT_FAILED`, published to `settlements.events`.

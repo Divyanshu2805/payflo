@@ -16,11 +16,14 @@
 ## Checks
 
 ```bash
-# Build every module, with no new compiler warnings
-cd microservices && ./mvnw clean install -DskipTests
+# Build every module and run every test, as CI does (needs only Docker), with no new compiler warnings
+cd microservices && ./mvnw verify
 
-# Prove the touched services start, then exercise the flow through the gateway
-cd microservices/<module> && ../mvnw spring-boot:run
+# A new, removed or moved endpoint must be in the OpenAPI spec
+python docs/api/check_openapi.py
+
+# Start everything and exercise the flow through the gateway
+cd microservices && python demo/demo.py --build
 ```
 
 The full checklist is the [definition of done](docs/practices/definition-of-done.md), and what to verify by hand is in [testing](docs/practices/testing.md).

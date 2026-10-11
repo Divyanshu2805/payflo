@@ -37,13 +37,9 @@ A `TEAM` member, or an API key (a merchant's backend, which may be leaked), is `
 ## Guarantees
 
 - **Atomic with the change.** An entry is written in the same transaction as what it describes: a change that rolls back leaves no entry, and a committed one can't miss it. A change the caller wasn't allowed to make (wrong role, wrong password) leaves nothing, because nothing happened.
-- **Append-only.** The table refuses `UPDATE`, `DELETE` and `TRUNCATE` with a database trigger, so a bug (or a careless statement) in the application can't rewrite or remove history. It is not tamper-proof against someone who owns the database: that would take hash-chaining or an external sink.
+- **Append-only.** The table refuses `UPDATE`, `DELETE` and `TRUNCATE` with a database trigger, so a bug (or a careless statement) in the application can't rewrite or remove history.
 - **No secrets.** Callers record facts, never values: a masked account number, a host, a key's public id. As a net under that, a detail whose name looks like a secret (`secret`, `password`, `token`, `hash`, `cvv`, `pan`) is replaced with `[redacted]` before it is stored.
 - **No unaudited admin action.** The operator's settlement run is recorded first, through `POST /internal/audit` on merchant-service, and doesn't start if that fails.
-
-## Not recorded
-
-Reads, logins and failed logins, profile edits other than the payout account, payment and refund activity (those have the payment transition log and events), and the operator's reads. There is no retention policy and no export: the table only grows.
 
 ## Related
 

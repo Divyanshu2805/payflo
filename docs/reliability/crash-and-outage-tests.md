@@ -78,15 +78,6 @@ The harness doesn't kill a process in the middle of a settlement, because the ni
 | The bank never answers | Puts the simulated bank in `TIMEOUT` | The recovery job fails the transfer after the timeout and the payments are paid out by the next run |
 | merchant-service down | Makes the bank-details lookup fail | The merchant is skipped and nothing is written |
 
-A live kill of operations-service during a settlement would be a natural addition once there is an endpoint to start a settlement on demand.
-
-## What it doesn't cover
-
-- **One instance of everything.** No scenario takes down one of several replicas, because the stack runs a single instance of each service and a single PostgreSQL. A multi-replica run is part of the scaling work.
-- **Load is small.** Thirty-six customers across six merchants is enough to put many requests in flight at the moment of the fault; it is a correctness test, not a throughput one. The [load test](../load-testing/README.md) measures speed.
-- **Faults are clean.** A process killed or a container stopped, not a slow disk, a network partition, a half-open connection or a clock jump.
-- **The bank is simulated**, so "a payment is never lost" is shown for PayFlo's side of the bank call only. A real acquirer adds cases (a charge that succeeded where the answer was lost) that the [timeout sweeper](../architecture/flows/payment.md) and reconciliation would have to handle.
-
 ## Adding a scenario
 
 A scenario is a name, a fault function and the share of card payments in `SCENARIOS` at the bottom of `crash_and_outage_test.py`. A fault is any function that breaks something and then heals it: `crash("payment-service")` and `outage(KAFKA_CONTAINER, 25)` are two. The checks run unchanged after it.

@@ -12,7 +12,7 @@ The domain concepts worth knowing by name before reading the code.
 | **`PaymentStateMachine` / `PaymentTransitionService`** | payment | The validated table of `PaymentStatus` × `PaymentEvent` → next status, and the service that applies a transition and logs it. See [enums and state machines](../schema/enums.md). |
 | **`PaymentAdapter` / `PaymentProcessor`** | payment, vault | Two strategy layers chosen per `PaymentMethod`: the adapter owns how a method is initiated and captured; the processor is the acquirer-facing call. Adding a method is a new implementation and one config line, not a growing `switch`. |
 | **Card token** | vault | The opaque stand-in for a vaulted card — the only card reference that ever leaves vault-service. |
-| **Outbox event** | payment, operations | A row written with a domain change and published to Kafka afterward — how services tell each other what happened. |
+| **Outbox event** | payment, operations (`common-lib`) | A row written with a domain change and published to Kafka afterward — how services tell each other what happened. |
 | **Webhook event** | operations | One signed delivery of one domain event to one merchant endpoint, with its retry bookkeeping. |
 | **Settlement** | operations | One merchant's nightly payout: gross, fee, GST and net, linked to the exact payments it covers. |
 | **`Money`** | all (`common-lib`) | An integer count of the currency's smallest unit (paise for INR) plus the currency — never a floating-point amount. |

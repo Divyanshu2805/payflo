@@ -59,19 +59,18 @@ Each value can be overridden with the environment variable named in its placehol
 | `CARD_VELOCITY_ENABLED`, `payment.velocity.card.*` | `true`; 10 min window, 20 failures, 0.5 share, 5 per order | payment-service (`config-repo/payment-service.yaml`) — refuses card payments from a merchant whose card payments mostly fail, and a sixth card payment on one order |
 | `API_KEY_RATE_LIMIT_PER_MINUTE` | `200` | the gateway — requests per minute per API key; raise it for [load tests](../load-testing/running.md) |
 
-The development defaults for the three secrets are committed on purpose so the stack starts with no setup. Never use them for anything shared; see [design trade-offs](../architecture/trade-offs.md#secrets-have-development-defaults).
+The development defaults for the three secrets are committed on purpose so the stack starts with no setup. Never use them for anything shared: set `ENFORCE_STRONG_SECRETS=true` there and a service refuses to start on one.
 
 ## Settings worth knowing
 
 | Setting | File | Value | Effect |
 |---|---|---|---|
-| `app.rate-limit.method` | `api-gateway-service.yaml` | `fixed` | Which of the four `RateLimiter` implementations is active. **Must be set** — with no value, no limiter bean exists and the gateway fails to start |
 | `app.rate-limit.use-case.api-key.requests-per-minute` | `api-gateway-service.yaml` | `200` (`API_KEY_RATE_LIMIT_PER_MINUTE`) | Per-API-key limit |
 | `app.gateway.proxy.max-connections-per-route`, `…-total` | `ProxyHttpClientConfig` defaults | `200`, `1000` | The gateway's connection pool to downstream services — the HTTP client's own default is 5 per route ([why](../practices/gotchas/microservices.md#the-gateways-proxy-pool-allows-5-connections-per-route)) |
 | `app.security.public-routes` | `api-gateway-service.yaml` | signup, login, `/webhook/**` | Routes the gateway lets through without credentials. The gateway's own health and metrics are on its management port, outside this filter |
 | `payment.simulator.*` | `payment-service.yaml` | poll every 1 s; `batch-size: 50`, `concurrency: 4` (batches at once); per-method delay and success rate; `chaos-mode: NORMAL` | How the simulated bank resolves authorizations — see [mock acquirer](../api/mock-acquirer.md). `concurrency` is how many callbacks run at once; each holds a database connection |
 | `app.webhook.target-cache-ttl-seconds` | `operations-service.yaml` | `30` | How long the webhook consumer remembers a merchant's targets before asking merchant-service again |
-| `app.webhook.delivery.poll-batch-size`, `…concurrency` | `operations-service.yaml` | `200`, `8` | The most webhook events taken off the retry queue at a time, and how many are delivered at once (each holds a database connection for two short transactions, so keep it under the pool) |
+| `app.webhook.delivery.poll-batch-size`, `…concurrency`, `…http-concurrency` | `operations-service.yaml` | `100`, `4`, `32` | The most webhook events taken off the retry queue at a time, and how many are delivered at once (each holds a database connection for two short transactions, so keep it under the pool) |
 | `spring.task.scheduling.pool.size` | `payment-service.yaml`, `operations-service.yaml` | `8` | Scheduler threads, so one scheduled job doesn't wait behind another |
 | `payment.order.default-order-expiry-minutes` | `payment-service.yaml` | `15` | `expiresAt` when an order doesn't send one |
 

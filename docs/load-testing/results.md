@@ -6,7 +6,7 @@ Measured on a single development laptop (32 logical cores, 16 GB for Docker), wi
 
 | Measure | Goal | Measured |
 |---|---|---|
-| Throughput | Reported, not graded | **~1,270 req/s** for 3 minutes (≈ 636 orders + 636 payments per second), with every payment answered by the bank and captured alongside (96% of them before the run ends); 1,023 req/s with every merchant also receiving a webhook for each payment |
+| Throughput | As much as one machine gives | **~1,270 req/s** for 3 minutes (≈ 636 orders + 636 payments per second), with every payment answered by the bank and captured alongside (96% of them before the run ends); 1,023 req/s with every merchant also receiving a webhook for each payment |
 | p99 latency | < 1 s | **171 ms** for the slowest request type (payments), 245 ms with webhooks |
 | Errors | None | **0 failed requests** in 227,613 (183,141 with webhooks) |
 | Webhook delivery | 99% within 30 s | **99.85%** of 91,644 events within 30 s, p99 under 2 s, with a webhook per payment (it was 5.4%, see [below](#webhooks-under-load)) |
@@ -38,15 +38,6 @@ The runs found a series of problems, each visible only under concurrency; counti
 
 Details of each cause and fix are in [known pitfalls](../practices/gotchas/README.md): the [gateway's proxy pool](../practices/gotchas/microservices.md#the-gateways-proxy-pool-allows-5-connections-per-route), [Open-Session-In-View](../practices/gotchas/spring-and-jpa.md#open-session-in-view-holds-a-connection-across-remote-calls), [pool sizing](../practices/gotchas/spring-and-jpa.md#size-the-connection-pool-and-fail-fast-when-its-exhausted); and in [service communication](../architecture/service-communication.md) for the outbox and the breaker scope.
 
-## What's still limiting
-
-- **The machine.** With the load generator on the same host, adding virtual users adds latency, not throughput. A real measurement puts JMeter on separate machines.
-- **Capture against the same database.** A payment is still four commits — create the order, record the payment, apply the gateway result, authorize-and-capture — and capture is three state changes, two updates and an event, so it takes its share of the database in the run rather than after it. It now keeps up (96% answered by the end of the run, the rest being the simulated bank's own delay), at the price of that share: the [batched resolver](#capture-under-load) trades the per-payment round trips for batch writes, but a payment's index entries and WAL still have to be written.
-- **payment-service's database connections.** All 40 are in use for the whole run, with 65–76 requests waiting at the peak. Sampled in PostgreSQL, about half of them are idle inside a transaction — waiting for the application's next statement, which on a saturated machine, through Docker Desktop's port proxy, is slow to arrive — and most of the rest are waiting for the WAL flush.
-- **The disk under Docker Desktop.** ~470 `fdatasync` calls a second (2.1 ms each), so commits are flushed in groups. Removing `commit_delay`, and turning off the pool's auto-commit round trips, each changed nothing measurable (1,023 and 947 req/s) and were not kept.
-- **Webhooks and the outbox keep up.** The outbox published ~1,500 events a second (274,547 rows in one 3-minute run with webhooks, from `pg_stat_statements`), its backlog stays under ~1,500 events, and with a webhook per payment 99.85% of deliveries reach the merchant within 30 s ([below](#webhooks-under-load)). Subscribing a merchant to *every* event (three deliveries per payment) is the harder case, measured below.
-- **The dataset.** These runs were made on top of 2 to 2.7 million orders and payments left by earlier runs; a fresh database was not measured.
-
 ## Capture under load
 
 How many of a run's payments the simulated bank had answered, and captured, when the load stopped (measured by `run_load_test.py` from the payment transition counters, 100 users, 3 minutes):
@@ -62,7 +53,7 @@ What remains at the end is the simulated bank's own delay (1 to 10 seconds by me
 
 ## Webhooks under load
 
-The requirement is that 99% of webhooks are delivered within 30 seconds of the change that caused them. Measured from the change (the outbox row's creation time) to the merchant's endpoint answering `2xx`, with every one of 50 merchants subscribed, over every delivery made during a 3-minute run and the wait for the pipeline to drain:
+The target is that 99% of webhooks are delivered within 30 seconds of the change that caused them. Measured from the change (the outbox row's creation time) to the merchant's endpoint answering `2xx`, with every one of 50 merchants subscribed, over every delivery made during a 3-minute run and the wait for the pipeline to drain:
 
 | | Before | After | After, every event subscribed |
 |---|---|---|---|
@@ -95,11 +86,11 @@ From `pg_stat_statements` over a run with webhooks, divided by the payments the 
 | The order-expiry sweeper | a full scan of the order table a minute, 115 ms each → an index lookup, 0.05 ms | 0.10 ms → 0 |
 | **All statements on the payment database** | | **≈ 5.2 ms → 3.3 ms** (the "before" is the 25 most expensive statements, so slightly low) |
 
-## Where more throughput would come from
+## Scaling further
 
 Nothing in the design stops the services scaling out — every scheduled job is ShedLock-guarded and state changes are row-locked — so the path is capacity, not a redesign:
 
-1. **Run the load generator elsewhere**, and each service with several replicas on its own CPU budget, behind the gateway (itself replicated). On Kubernetes this is a replica count, and the request path was [measured scaling that way](../deployment/scaling.md#what-was-measured): 338, 758 and 999 req/s with 1, 2 and 3 replicas of the gateway and payment-service on a single-node kind cluster, 2.2× and 3.0×. Capture, which runs on one replica at a time, did not scale with them.
+1. **Run the load generator elsewhere**, and each service with several replicas on its own CPU budget, behind the gateway (itself replicated). On Kubernetes this is a replica count, and the request path was [measured scaling that way](../deployment/scaling.md#what-was-measured): 338, 758 and 999 req/s with 1, 2 and 3 replicas of the gateway and payment-service on a single-node kind cluster, 2.2× and 3.0×.
 2. **Scale PostgreSQL** — faster storage or a managed instance for payment-service's database first, since it takes the most writes, and a connection pooler (PgBouncer) once replica count × pool size approaches `max_connections`.
 3. **Partition the outbox work** — more Kafka partitions and a poller per partition (or change-data-capture with Debezium) so publishing scales with writes.
 4. **Re-measure per step** with this test and the dashboard, raising `--threads` until p99 or errors move, to find the next bottleneck rather than guess it.

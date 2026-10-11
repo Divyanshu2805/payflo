@@ -13,7 +13,7 @@ Starts everything over from nothing: every database, the Redis cache and queues,
    ```
 
 3. **Recreate the four databases** — they aren't created by the compose file; see [setup](setup.md#2-create-the-four-databases).
-4. **Start the stack again** in the [usual order](setup.md#4-start-the-services-in-order). Hibernate recreates every table on first start.
+4. **Start the stack again** in the [usual order](setup.md#4-start-the-services-in-order). Flyway rebuilds each schema from its migrations on first start.
 
 ## Notes
 

@@ -21,6 +21,6 @@ vault-service detects the brand from the leading digits, generates a random AES-
 
 **Card-testing protection.** A merchant may tokenize 30 cards a minute and 600 an hour; past either it is refused with `429 CARD_TOKENIZATION_LIMIT_EXCEEDED` and `Retry-After` until the window ends, before anything is encrypted or stored. No checkout tokenizes dozens of cards a minute; a bot running stolen numbers does. See [velocity limits](idempotency-and-rate-limits.md#velocity-limits-and-card-testing).
 
-Tokenizing the same card twice creates two cards and two tokens; there is no de-duplication. Tokens can't be listed, read or revoked through the API.
+Tokenizing the same card twice creates two cards and two tokens. A token is used only as `methodDetails.token` in a card payment.
 
 Card numbers that make a payment fail on purpose are listed in [mock acquirer](mock-acquirer.md).

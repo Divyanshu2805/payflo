@@ -21,14 +21,14 @@ These are authoritative and kept current:
 | Entities, tables, enums, state machines | [`docs/schema/`](docs/schema/README.md) |
 | Every endpoint, the mock acquirer, idempotency, the error model; the OpenAPI spec | [`docs/api/`](docs/api/README.md) |
 | Setup, configuration, troubleshooting, the one-command demo and the dashboard | [`docs/local-development/`](docs/local-development/README.md) |
-| The idea, what each decision and optimisation did, the measured numbers | [`docs/project-summary.md`](docs/project-summary.md) |
-| What the design accepts and what the project leaves out | [`docs/architecture/trade-offs.md`](docs/architecture/trade-offs.md) |
+| Everything the system does, with its rules and limits | [`docs/features.md`](docs/features.md) |
+| Every measured number, and how to re-measure it | [`docs/metrics.md`](docs/metrics.md) |
 | Kubernetes manifests, images, cluster configuration | [`docs/deployment/`](docs/deployment/README.md) |
 | Tracing, metrics, dashboards | [`docs/observability/`](docs/observability/README.md) |
 | The load test and measured results | [`docs/load-testing/`](docs/load-testing/README.md) |
-| What it set out to do, and what it measured | [`docs/requirements.md`](docs/requirements.md) |
+| What happens when a service or a data store dies | [`docs/reliability/`](docs/reliability/crash-and-outage-tests.md) |
 
-If a change would make any of these inaccurate, **update that doc in the same change**. Diagrams are generated: edit the owning `d_*.py` in `docs/assets/diagrams/src/`, run `build.py` and `render.py`, and commit the regenerated SVG and PNG.
+If a change would make any of these inaccurate, **update that doc in the same change**. The docs describe what the system does: no known-gaps, limitations or roadmap sections. Diagrams are generated: edit the owning `d_*.py` in `docs/assets/diagrams/src/`, run `build.py` and `render.py`, and commit the regenerated SVG and PNG.
 
 ## Repository structure
 
@@ -36,8 +36,9 @@ If a change would make any of these inaccurate, **update that doc in the same ch
 microservices/
   pom.xml               aggregator only — module list, no shared parent
   common-lib/           shared entities, enums, exceptions + GlobalExceptionHandler, MerchantContext + filter,
-                        rate limiters, idempotency filter, API-key cache, Feign DTOs. NOT component-scanned:
-                        beans are registered in Shared*AutoConfiguration via META-INF/spring/…imports.
+                        the rate limiter, idempotency filter, API-key cache, Feign DTOs, and outbox/ (entity, publisher,
+                        poller, maintenance). NOT component-scanned: beans are registered in Shared*AutoConfiguration
+                        via META-INF/spring/…imports; the outbox is opted into with @Import(OutboxConfiguration.class).
   test-support/         Testcontainers (PostgreSQL, Redis, Kafka) shared by every module's integration tests; no app code
   chaos/                crash_and_outage_test.py: kills a service or stops PostgreSQL/Redis/Kafka under load (results/, logs/ gitignored)
   config-repo/          EVERY service setting: application.yaml (shared), <service>.yaml, *-k8s.yaml overrides.
@@ -46,9 +47,9 @@ microservices/
                         per-key rate limit; /v1/admin/** takes only the operator's X-Admin-Key); forwards X-Merchant-Id /
                         X-Key-Id (or X-Platform-Admin). Routes live in config-repo.
   merchant-service/     merchants, users, API keys, customers, webhook configs; issues JWTs; the audit log and the admin API
-  payment-service/      orders, payments, statemachine/, saga/, gateway/ (adapters), processor/, outbox/, simulator/
+  payment-service/      orders, payments, refunds, analytics, statemachine/, saga/, gateway/ (adapters), processor/, simulator/
   vault-service/        tokenization; the only service that decrypts cards (/internal/vault/charge)
-  operations-service/   webhook/ (Kafka consumer → Redis retry queue → DLQ; signed per attempt), settlement/, its own outbox/
+  operations-service/   webhook/ (Kafka consumer → Redis retry queue → DLQ; signed per attempt), settlement/
   discovery-service/, config-service/
   k8s/                  Kustomize manifests + kind-config.yaml; secrets.env is gitignored
   k8s-scaled/           overlay on k8s/: 3 replicas of the gateway and payment-service, and more room for PostgreSQL/Redis/Kafka (a sibling, not inside k8s/: Kustomize forbids it)
@@ -86,7 +87,7 @@ On Windows, use `mvnw.cmd`. Start order: discovery → config → the four busin
 
 - **Authentication belongs to the gateway.** No `SecurityFilterChain` in a business service; controllers read the merchant only from `MerchantContext`. `/internal/**` additionally needs the shared `X-Internal-Token` — a new Feign client needs the `InternalAuthFeignConfig` interceptor.
 - **No remote call inside `@Transactional`.** See `OrderPersistenceService` and `saga/PaymentAuthorizationRecorder`.
-- **Events only through the outbox**; every `@Scheduled` job has a ShedLock `@SchedulerLock`.
+- **Events only through the outbox** (`common-lib`'s `OutboxEventPublisher`, in the transaction that makes the change); every `@Scheduled` job has a ShedLock `@SchedulerLock`.
 - **A sensitive action is audited in the same transaction as the change** (`AuditLogService.record`, no secrets in the details); a new `AuditAction` widens the `audit_log` check constraint in a migration. An admin endpoint lives under `/v1/admin/` and is never reachable with a merchant credential.
 - **Payment status changes only through `PaymentTransitionService`.**
 - **Card numbers never leave vault-service**; only vault-service is configured with `vault.master-key`.

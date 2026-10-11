@@ -46,7 +46,6 @@ Credentials for a merchant's own backend, rotatable without breaking an integrat
 | `previous_key_secret_hash` | The prior hash after a rotation, accepted until `grace_period_expires_at`. |
 | `environment` | `TEST` or `LIVE`. |
 | `enabled` | `false` once revoked; the row is never deleted. |
-| `last_used_at` | Never written: the gateway authenticates from a cache, so there is no write per request to hang it on. |
 | `rotated_at`, `grace_period_expires_at` | When the key was last rotated, and when the previous secret stops working (24 hours later). |
 
 ## CUSTOMER
@@ -57,7 +56,6 @@ An end customer of one merchant — customers are never shared across merchants.
 |---|---|
 | `merchant_id` | FK → `merchant`. |
 | `name`, `email`, `phone` | Contact details. `(merchant_id, email)` is unique: `POST /internal/customers/find-or-create` looks a customer up by merchant and email (case-insensitively, as it stores the lowercased email) and creates one if there is none, and two simultaneous requests for a new customer end with one row. |
-| `deleted_at` | Soft-delete marker. |
 
 ## MERCHANT_WEBHOOK_CONFIG
 

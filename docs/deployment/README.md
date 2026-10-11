@@ -9,7 +9,7 @@ How PayFlo runs on Kubernetes: every service, PostgreSQL, Redis and Kafka in one
 - **One public entry point.** Only the gateway's Service is a `NodePort` (`30080`, published on `localhost:8080` by kind). Every other Service is `ClusterIP`, so `/internal/**` is unreachable from outside the cluster.
 - **No Dockerfiles.** Images are built by Jib from each module's `pom.xml`.
 - **Secrets from a gitignored file.** Kustomize's `secretGenerator` turns `k8s/secrets.env` into the `app-secrets` Secret, and each pod gets only the secrets it needs — vault-service alone gets the master key.
-- **Local only.** One kind node, a NodePort instead of an Ingress, no registry and no autoscaling. It does run several replicas of the two services that take the traffic ([scaling](scaling.md)).
+- **A local cluster.** One kind node, the gateway on a NodePort, and images loaded straight into the node. An overlay runs several replicas of the two services that take the traffic ([scaling](scaling.md)).
 
 ## Contents
 

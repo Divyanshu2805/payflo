@@ -21,7 +21,7 @@ Versions are the ones pinned in the `pom.xml` files, `services.docker-compose.ya
 | jjwt | 0.12.6 | Issuing JWTs in merchant-service, verifying them at the gateway |
 | Lombok, MapStruct | MapStruct 1.6.3 | Boilerplate and entity ↔ DTO mapping |
 | Jakarta Bean Validation | — | Request DTO validation, including `@LuhnCheck` on card numbers |
-| Maven | Wrapper (`mvnw`) | An aggregator build over eight modules |
+| Maven | Wrapper (`mvnw`) | An aggregator build over nine modules |
 
 ## Infrastructure
 

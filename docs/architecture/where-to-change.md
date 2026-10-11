@@ -31,7 +31,7 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 | Run a settlement by hand, or suspend a merchant | The [admin API](../api/admin.md): operations `controller/AdminSettlementController.java` and `service/AdminSettlementService.java`; merchant `controller/AdminController.java` and `service/AdminMerchantService.java` |
 | Record another sensitive action in the audit log | Add a constant to `common-lib` `enums/AuditAction` **and widen `audit_log_action_check` in a new merchant-service migration**, then call `AuditLogService.record(...)` inside the transaction that makes the change |
 | Make a payment's capture fail on purpose | payment `simulator/CaptureSimulator.java` and the `payment.simulator.capture.*` settings; the test values are set by the processors (`processor/strategy/`, vault's `CardPaymentProcessor`) |
-| Publish a new domain event | The owning service's `outbox/OutboxEventPublisher` inside the same transaction as the change; a topic in `config-repo` if the aggregate type is new |
+| Publish a new domain event | `common-lib`'s `outbox/OutboxEventPublisher`, called inside the same transaction as the change; a topic in `config-repo` if the aggregate type is new. A service that doesn't publish yet imports `OutboxConfiguration` and creates `outbox_event` in a migration |
 
 ## API, data and auth
 
@@ -42,7 +42,7 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 | Add a service-to-service call | An `Internal*Controller` endpoint in the owner, a Feign client method in the caller's `client/` with Resilience4j annotations and a `config-repo` instance, a `common-lib` DTO if shared, and the table in [service communication](service-communication.md#internal-api) |
 | Add a column or table | A Flyway migration in the owning service (`src/main/resources/db/migration`) and the entity, then the [data model](../schema/README.md) and the ER diagram |
 | Change authentication | api-gateway `security/` (`GatewayAuthFilter`, `JwtAuthHandler`, `ApiKeyAuthHandler`); token issuing in merchant `security/JwtUtil.java` |
-| Change rate limits | `app.rate-limit.*` in `config-repo/api-gateway-service.yaml`; algorithms in `common-lib` `ratelimit/` |
+| Change rate limits | `app.rate-limit.*` and `app.security.*` in `config-repo/api-gateway-service.yaml`; the limiter is `common-lib` `ratelimit/FixedWindowRateLimiter.java` |
 | Change the error shape or a status mapping | `common-lib` `exception/GlobalExceptionHandler.java` — every service picks it up |
 | Add a shared bean to `common-lib` | The class, plus a registration in the matching `Shared*AutoConfiguration` — it is not component-scanned |
 

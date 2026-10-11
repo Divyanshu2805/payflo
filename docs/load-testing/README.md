@@ -1,6 +1,6 @@
 # Load Testing
 
-How to measure PayFlo against its [non-functional targets](../requirements.md#non-functional) — throughput, p99 latency and availability — and read the result.
+How to measure PayFlo against its [performance targets](../metrics.md#performance) — throughput, p99 latency and availability — and read the result.
 
 Everything lives in `microservices/load-test/`:
 
@@ -30,10 +30,10 @@ A request passes only with `200` or `201`. A payment the mock bank declines is s
 | **Availability ≥ 99.99%** | Share of requests that succeeded during the run | `run_load_test.py` and the dashboard's availability panel |
 | **Webhook SLA: 99% within 30 s** | Share of webhooks accepted by the merchant's endpoint within 30 s of the change, from the `payflo_webhook_delivery_latency_seconds` histogram | `run_load_test.py` (with webhook merchants) and the dashboard's Webhook SLA row |
 
-Availability in the requirements means uptime over months — about 52 minutes of downtime a year — and a load test can't measure that. What a load test *can* show is that the system keeps answering correctly under load, which is what the success rate here measures. Measuring the real target needs the service running continuously with the same metric recorded over time.
+The availability target means uptime over months — about 52 minutes of downtime a year — and a load test can't measure that. What a load test *can* show is that the system keeps answering correctly under load, which is what the success rate here measures.
 
 ## Pages
 
 - [Running a load test](running.md) — setup, the commands, and reading the output.
-- [Results](results.md) — the measured numbers, the problems the test found and what fixing each one bought, the idempotency replay result, and where more throughput would come from.
+- [Results](results.md) — the measured numbers, the problems the test found and what fixing each one bought, the idempotency replay result, and how it scales further.
 - [Query and index review](query-review.md) — what the database spends its time on under load, found with `pg_stat_statements` and `EXPLAIN`, and what was changed.

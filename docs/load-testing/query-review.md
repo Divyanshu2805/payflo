@@ -50,8 +50,3 @@ The effect on the load test is in [results](results.md#the-database-work-per-pay
 | Receipt check on order creation | `idx_order_merchant_receipt` (unique) | 0.09 ms |
 | Is there a live payment for this order | `idx_payment_order_id` | 0.07 ms |
 | Webhook gauge: oldest unattempted event | `idx_webhook_event_status_next_retry`, first match | 0.5 ms |
-
-## Found, not changed
-
-- **The analytics queries read the table, not an index.** Revenue for the last 7 days of a merchant with 18,500 captured payments took 284 ms, and 366 days of outcomes (40,000 rows) took 414 ms, mostly reading ~15,000 heap pages cold: a merchant's payments are scattered among 198 merchants' rows, so each page holds a row or two of theirs. Covering indexes (`INCLUDE (amount_units)`, `INCLUDE (status)`) would allow index-only scans, but they widen two indexes that every payment write maintains, for an endpoint that is not on the load test's path, and recent pages are being updated, so the visibility map wouldn't cover them anyway. A daily rollup table is the real answer if the dashboard needs to be fast at this size.
-- **`UPDATE`s of `payment` and `order_record` are never HOT.** `status` and `captured_at` are indexed, and an indexed column changing forces every index to take a new entry. Removing the status index would need a different way to find payments waiting for the bank.

@@ -37,18 +37,6 @@
 - **Cause:** a `@Transactional` method that calls another service holds a database connection, and any row locks, for the whole call.
 - **Fix:** resolve remote data before the transaction opens, or split the work into a saga — see [decision 0006](../../architecture/decisions/0006-payment-initiation-as-a-saga.md). Settlement used to do this and no longer does: it is a sequence of short transactions (`SettlementRecorder`) with the remote calls between them (see [the settlement flow](../../architecture/flows/settlement.md)), and `NoRemoteCallInTransactionTest` fails if a bean with a transactional method in operations-service ever holds a client of another service.
 
-## Two property names for the same Kafka topic
-
-- **Symptom:** events are published but the webhook consumer never sees some of them (this happened to refund and settlement events before the split into services).
-- **Cause:** `OutboxPoller` resolves topics through `KafkaProperties` keyed by the aggregate type (`app.kafka.topics.payment`), while `WebhookKafkaConsumer`'s listener reads plural keys (`app.kafka.topics.payments`).
-- **Fix:** `config-repo/operations-service.yaml` sets both key sets to the same topic names. Change both together until the consumer is moved onto `KafkaProperties`.
-
-## A missing `app.rate-limit.method` stops the gateway
-
-- **Symptom:** the gateway fails to start with no `RateLimiter` bean.
-- **Cause:** each limiter is `@ConditionalOnProperty(app.rate-limit.method = …)`; with the property unset, none exists.
-- **Fix:** keep `app.rate-limit.method` set in `config-repo/api-gateway-service.yaml`.
-
 ## A scheduled job without ShedLock runs on every instance
 
 - **Symptom:** duplicate webhook deliveries, a payment resolved twice, two settlements for one merchant — as soon as a service runs more than one instance.

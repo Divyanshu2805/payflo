@@ -1,19 +1,30 @@
-# PayFlo
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="PayFlo" width="820" />
+</p>
 
-[![CI](https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml/badge.svg)](https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml)
-![Java 25](https://img.shields.io/badge/Java-25-orange)
-![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F)
-![Spring Cloud 2025.1](https://img.shields.io/badge/Spring%20Cloud-2025.1-6DB33F)
-![Kafka](https://img.shields.io/badge/Kafka-outbox-231F20)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-kind-326CE5)
+<p align="center">
+  <b>The backend behind a "Pay now" button.</b><br/>
+  Orders, payments, a card vault, signed webhooks and nightly payouts, as Spring Boot microservices.
+</p>
 
-**A payment gateway backend: orders, payments, a card vault, signed webhooks and nightly payouts, built as Spring Boot microservices.**
+<p align="center">
+  <a href="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml"><img src="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/Java-25-0f1b2d?logo=openjdk" alt="Java 25" />
+  <img src="https://img.shields.io/badge/Spring%20Boot-4.1-0f1b2d?logo=springboot" alt="Spring Boot 4.1" />
+  <img src="https://img.shields.io/badge/Spring%20Cloud-2025.1-0f1b2d?logo=spring" alt="Spring Cloud 2025.1" />
+  <img src="https://img.shields.io/badge/PostgreSQL-per%20service-0f1b2d?logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Kafka-outbox-0f1b2d?logo=apachekafka" alt="Kafka" />
+  <img src="https://img.shields.io/badge/Redis-cache%20%26%20locks-0f1b2d?logo=redis" alt="Redis" />
+  <img src="https://img.shields.io/badge/Kubernetes-kind-0f1b2d?logo=kubernetes" alt="Kubernetes" />
+</p>
 
-PayFlo is the part behind a "Pay now" button. A business signs up, gets API keys, creates orders and takes payments by card, UPI, net banking or wallet. Card numbers go into an isolated vault and come back as tokens. Every change is announced to the business's own systems as a signed webhook, and each night the business is paid out, minus the platform fee and GST.
+---
+
+A business signs up, gets API keys, creates orders and takes payments by card, UPI, net banking or wallet. Card numbers go into an isolated vault and come back as tokens. Every change is announced to the business's own systems as a signed webhook, and each night the business is paid out, minus the platform fee and GST. **PayFlo** is that system: seven services, four databases, and the tests and measurements that show it stays correct when something fails and fast when traffic rises.
 
 The bank side (acquirer, authorization callback, payouts) is simulated, so every flow runs on one machine with no external accounts.
 
-## See it running
+## Try it
 
 With Docker running, a JDK 25 and Python 3.10+:
 
@@ -23,31 +34,61 @@ cd payflo/microservices
 python demo/demo.py
 ```
 
-That one command starts PostgreSQL, Redis and Kafka, builds the services, starts all seven, and seeds a demo merchant through the public API: KYC, an API key, webhooks, payments by every method, the failure cases, a refund, and a settlement. The first run takes a few minutes for the build; after that about one.
-
-Then open what it prints:
+One command starts PostgreSQL, Redis and Kafka, builds the services, starts all seven, and seeds a demo merchant through the public API: KYC, an API key, webhooks, payments by every method, the failure cases, a refund and a settlement. The first run takes a few minutes for the build; after that about one.
 
 | | |
 |---|---|
-| **Dashboard** | <http://localhost:5173>: orders, a checkout with the test values one click away, payments, refunds, settlements, webhooks and their deliveries, API keys, the audit log, and the platform operator's console. A bar along the bottom lists every API request the page makes |
-| **API reference** | <http://localhost:5173/docs.html>: Swagger UI over [`docs/api/openapi.yaml`](docs/api/openapi.yaml), with "Try it out" calling the real API |
-| **Postman** | Import [`docs/api/payflo.postman_collection.json`](docs/api/payflo.postman_collection.json): the same API as a walkthrough |
+| **Dashboard** | <http://localhost:5173> |
+| **Demo login** | `demo@payflo.test` / `demo-password-1` (owner), or `analyst@payflo.test` with the same password (a read-only `TEAM` login) |
+| **Operator console** | The login page's operator tab, with the development admin key from the [admin API](docs/api/admin.md) page |
+| **API reference** | <http://localhost:5173/docs.html>: Swagger UI over [`openapi.yaml`](docs/api/openapi.yaml), with "Try it out" calling the real API |
+| **Postman** | Import [`payflo.postman_collection.json`](docs/api/payflo.postman_collection.json): the same API as a walkthrough |
 
-If ports 8080 to 8084 are taken, `python demo/demo.py --port-offset 100` moves everything. `python demo/demo.py stop` stops the services. Details: [the demo and the dashboard](docs/local-development/demo-and-dashboard.md). To start each service by hand instead, see [first-time setup](docs/local-development/setup.md).
+If ports 8080 to 8084 are taken, `python demo/demo.py --port-offset 100` moves everything; `python demo/demo.py stop` stops the services. See [the demo and the dashboard](docs/local-development/demo-and-dashboard.md).
 
-## What it does
+## Screenshots
 
-- **Two ways in.** A JWT for a merchant's staff, API keys (HTTP Basic) for a merchant's backend, both verified once at the gateway, with per-key rate limiting. Three roles; a `TEAM` login is read-only.
-- **Orders and payments.** Card, UPI, net banking and wallet through a strategy layer of adapters and processors, driven by a validated, logged payment state machine.
-- **A saga, not a long transaction.** Payment initiation never holds a database transaction across a network call, and compensates when the acquirer is unreachable.
-- **A card vault.** Card data lives in its own service and database, with per-card envelope encryption. Every other service only ever sees a token, and a log filter masks any card number that slips into a log line.
-- **Events through an outbox.** Every change is published to Kafka from a transactional outbox, so a crash can't lose an event.
-- **Webhooks.** HMAC-signed and timestamped per attempt (a replayed request fails verification), retried on a fixed schedule for 24 hours, then dead-lettered and replayable.
-- **Nightly settlement.** Per-merchant payouts with a fee and GST breakdown, net of refunds, as a recoverable saga, linked back to every payment they cover.
-- **Idempotent writes.** Any write can be retried safely with `X-Idempotency-Key`; the same key with a different request is refused.
-- **Abuse and accountability.** Card-testing limits on tokenizing and card payments, signup that doesn't reveal which emails exist, an append-only audit log written in the same transaction as each sensitive change, and an operator API behind its own key.
-- **Analytics.** A live dashboard and date-range reports per merchant.
-- **Observable.** One trace per request across every service in Zipkin, Prometheus metrics with latency histograms, and a Grafana dashboard that tracks the throughput, p99, availability and webhook-SLA targets.
+<p align="center">
+  <img src="docs/assets/screenshots/dashboard.webp" alt="The dashboard's home page: today's net volume, a seven-day trend, payments by method and the bar listing every API request the page makes" width="900" />
+</p>
+
+| | |
+|---|---|
+| <img src="docs/assets/screenshots/checkout.webp" alt="The checkout for an order, with the mock acquirer's test values one click away" /> | <img src="docs/assets/screenshots/payment.webp" alt="A payment open in the drawer, with its amount and the timeline of its status changes" /> |
+| Paying an order, with the test values one click away | A payment and every status change it went through |
+| <img src="docs/assets/screenshots/webhooks.webp" alt="Webhook deliveries with their status, attempts and response codes" /> | <img src="docs/assets/screenshots/settlement.webp" alt="A settlement showing gross, refunds, fee, GST and the net paid out" /> |
+| Webhook deliveries: attempts, responses and replay | A payout: gross − refunds − fee − GST = net |
+
+## Features
+
+**Taking payments**
+- **Orders and payments** by card, UPI, net banking and wallet, through a strategy layer of adapters and processors
+- **A validated state machine**: 11 statuses and 12 events in one transition table, every change logged, an illegal one refused
+- **A saga, not a long transaction**: initiation never holds a database connection across a network call, and compensates when the processor is unreachable
+- **Authorization, capture and timeouts**: a refused capture can be retried, an unanswered payment fails after 15 minutes, an uncaptured authorization lapses after 60
+- **Refunds**, full or partial, netted out of the payout
+
+**Keeping card data in one place**
+- **A card vault** in its own service and database, with a data key per card (AES-256-GCM) wrapped by a master key only the vault holds
+- Every other service sees a token; the CVV is never stored; a log filter masks any card number that reaches a log line
+
+**Telling the merchant, and paying them**
+- **Events through a transactional outbox**: a change and its event commit together, so a crash can't lose one
+- **Webhooks** signed per attempt with HMAC-SHA256 over a timestamp and the body, retried seven times over 24 hours, then dead-lettered and replayable
+- **Nightly settlement** per merchant with a fee and GST breakdown, as a recoverable saga linked to the exact payments it covers
+
+**Access, safety and accountability**
+- **Two credentials, one check**: a JWT for staff and API keys for backends, both verified once at the gateway; three roles, with `TEAM` read-only
+- **Idempotent writes**: any write can be retried with `X-Idempotency-Key`, and the same key with a different request is refused
+- **Abuse protection**: rate limits per key, merchant and address, card-testing rules on tokenizing and card payments, login lockout, and a signup that doesn't reveal which emails exist
+- **An append-only audit log** written in the same transaction as each sensitive change, and an operator API behind a key of its own
+
+**Running and watching it**
+- **Analytics**: a live dashboard and reports by day, week or month
+- **Observability**: one trace per request across every service in Zipkin, Prometheus metrics, and a Grafana dashboard for throughput, p99, availability and the webhook SLA
+- **A web dashboard** over the public API, a hand-written OpenAPI spec checked against the controllers, and a Postman collection
+
+Everything, with its rules and limits: [features](docs/features.md).
 
 ## How a payment flows
 
@@ -62,69 +103,106 @@ If ports 8080 to 8084 are taken, `python demo/demo.py --port-offset 100` moves e
 
 ![PayFlo system architecture](docs/assets/diagrams/system-architecture.png)
 
-A Spring Cloud Gateway authenticates every request and routes it to one of four business services (**merchant**, **payment**, **vault** and **operations**), each with its own PostgreSQL database. Services find each other through Eureka, pull their configuration from a config server, call each other over a private `/internal` API with circuit breakers and retries, and exchange events through Kafka. **Card numbers never leave vault-service**, and authentication happens in exactly one place.
+A Spring Cloud Gateway authenticates every request and routes it to one of four business services (**merchant**, **payment**, **vault** and **operations**), each with its own PostgreSQL database. Services find each other through Eureka, pull their configuration from a config server, call each other over a private `/internal` API with circuit breakers and retries, and exchange events through Kafka. Card numbers never leave vault-service, and authentication happens in exactly one place.
 
-The design decisions, each with the alternatives it was chosen over:
+| Area | Choice |
+|---|---|
+| Services | Java 25 and Spring Boot 4.1; Spring Cloud 2025.1 (Gateway Server Web MVC, Eureka, Config, OpenFeign); virtual threads |
+| Data | PostgreSQL, one database per service: 18 tables, 12 Flyway migrations, no foreign keys across services |
+| Messaging | Apache Kafka, four topics and eleven event types, published through a transactional outbox |
+| State and locks | Redis: API-key cache, rate limits, idempotency keys, sessions, the webhook retry queue, ShedLock for every scheduled job |
+| Resilience | Resilience4j circuit breakers and retries on every Feign client, a bulkhead around card charging |
+| Security | Authentication at the gateway only; bcrypt and AES-256-GCM through Spring Security Crypto; jjwt |
+| Delivery | Jib images, Kustomize manifests for a kind cluster, GitHub Actions |
+| Quality | JUnit and Testcontainers, JMeter, crash and outage tests, a dependency and secret scan |
+
+The decisions behind the shape, each with the alternatives it was chosen over:
 
 | Decision | Why |
 |---|---|
 | [Monolith first, then split](docs/architecture/decisions/0001-monolith-first-then-split.md) | Find the service boundaries while moving them is cheap |
-| [Card data isolated in vault-service](docs/architecture/decisions/0004-isolate-card-data-in-vault-service.md) | One small service in PCI scope instead of all of them |
+| [A database per service](docs/architecture/decisions/0002-database-per-service.md) | A service changes its schema, or scales, without touching the others |
+| [Authenticate once at the gateway](docs/architecture/decisions/0003-authenticate-once-at-the-gateway.md) | One place holds the credential logic and the rate limits |
+| [Card data isolated in vault-service](docs/architecture/decisions/0004-isolate-card-data-in-vault-service.md) | One small service handles card numbers instead of all of them |
 | [Transactional outbox for events](docs/architecture/decisions/0005-transactional-outbox-for-events.md) | A change and its event commit together or not at all |
 | [Payment initiation as a saga](docs/architecture/decisions/0006-payment-initiation-as-a-saga.md) | No database connection held across a remote call |
 | [A validated payment state machine](docs/architecture/decisions/0007-validated-payment-state-machine.md) | An illegal status change is impossible, and every change is logged |
+| [Configuration in the repository](docs/architecture/decisions/0008-configuration-in-the-repository.md) | Every setting is versioned and reviewed like code |
 
-More: [architecture overview](docs/architecture/README.md) · [security model](docs/architecture/security-model.md) · [all decisions](docs/architecture/decisions/README.md)
+More in the [architecture overview](docs/architecture/README.md), the [request flows](docs/architecture/README.md) and the [tech stack](docs/tech-stack.md).
+
+## Security
+
+The rules are written down in the [security guardrails](docs/practices/security-guardrails.md) and the [security model](docs/architecture/security-model.md). In short:
+
+- **Tenant isolation in code:** the merchant comes only from the credential the gateway verified, every query is scoped by it, and another merchant's order, payment or key is a `404`, never a `403`.
+- **One place authenticates:** the gateway strips every identity header a client sends and writes its own. No business service is reachable from outside, and `/internal/**` is never routed and needs a service token.
+- **Card data:** envelope-encrypted in one service, charged by token, never returned, never logged; the CVV is never stored.
+- **Secrets at rest:** passwords and API-key secrets are bcrypt hashes, webhook secrets and payout account numbers are encrypted, and a secret is returned only in the response that creates it.
+- **Webhooks:** signed with a timestamp per attempt, so a replayed request fails; target URLs are checked against private and metadata addresses when saved and again at delivery.
+- **Abuse:** rate limits that fail open, card-testing limits where the card is handled, login lockout, uniform answers for unknown emails, and a 1 MB body cap applied before authentication.
+- **Accountability:** an append-only audit log with no secrets in it, and an operator API that a merchant credential can never open.
+- **Supply chain:** CI fails on a fixable HIGH or CRITICAL dependency vulnerability and on a committed secret.
+
+Found a problem? See [SECURITY.md](SECURITY.md).
 
 ## Measured
 
-Everything below was measured on one laptop, with the load generator, the databases and all seven services on the same machine. What each optimisation contributed is in [what was built and what it measured](docs/project-summary.md).
+Everything below was measured on one laptop that also ran the load generator and the databases. Each figure, and how to re-measure it, is on the [metrics page](docs/metrics.md).
 
-| What | Measured |
+| | |
 |---|---|
-| Throughput | **~1,270 req/s**, with payments captured alongside (96% within the run); the first run managed 250 |
+| Throughput | **1,272 requests a second**, with payments captured alongside; the first run managed 250 |
 | p99 latency | **171 ms** for the slowest request type |
 | Errors under load | **0 failed requests** in 227,613 |
-| Webhook delivery | **99.85%** of 91,644 events within 30 s (it was 5.4% before the load test exposed why) |
-| Horizontal scaling | **338 → 758 → 999 req/s** on 1, 2 and 3 Kubernetes replicas of the gateway and payment-service; a rolling restart under load lost 19 of 226,834 requests |
+| Webhook delivery | **99.85%** of 91,644 events within 30 seconds of the change |
+| Horizontal scaling | **338 → 758 → 999 requests a second** on 1, 2 and 3 Kubernetes replicas of the gateway and payment-service (3.0×) |
+| Rolling restart under load | 19 of 226,834 requests failed (99.992% succeeded); no payment duplicated or stuck |
 | Crashes and outages | **7 scenarios, all passing**: kill a service or stop PostgreSQL, Redis or Kafka under load; nothing lost, duplicated or stuck |
+| Retries | 33,600 duplicate requests under reused idempotency keys; none took effect |
+| Tests | **633** unit and integration tests; the integration tests run each service on real PostgreSQL, Redis and Kafka in containers |
 
-The 5× since the first run came from 19 fixes, every one of them invisible one request at a time: the gateway's 5-connection proxy pool, Open-Session-In-View holding connections across remote calls, an outbox row updated right after its insert, a webhook consumer committing once per event. The laptop was the limit in the final runs (processors at about 96%), and the request path scaled 3.0× on three replicas, so [more would come from capacity, not a redesign](docs/project-summary.md#where-more-would-come-from).
+The five-fold gain since the first run came from 19 fixes, every one of them invisible one request at a time: the gateway's 5-connection proxy pool, Open-Session-In-View holding connections across remote calls, an outbox row updated right after its insert, a webhook consumer committing once per event. The run-by-run story is in the [load-test results](docs/load-testing/results.md).
 
-## Testing
+## Quick start
 
-`./mvnw verify` in `microservices/` runs every unit test and every integration test, and needs only Docker: the integration tests start each service as the real application on real PostgreSQL, Redis and Kafka in containers. CI runs the same command on every push, plus a check that the OpenAPI spec matches the controllers, a dependency vulnerability scan and a secret scan. See [testing](docs/practices/testing.md).
+The [demo](#try-it) is the fastest way in. To build and test instead:
 
-## Scope
+```bash
+cd microservices
+./mvnw clean install -DskipTests      # build every module (mvnw.cmd on Windows)
+./mvnw verify                         # every unit and integration test; needs only Docker
+```
 
-PayFlo was built to show how a payment backend is designed, run and measured, against a simulated bank on one machine. It was never meant to carry real money, so it leaves out what only that requires: a real acquirer and reconciliation, a PCI DSS assessment, a secret store and encrypted traffic between services, multi-factor login, and highly available data stores. What the design accepts, and why, is in [design trade-offs and scope](docs/architecture/trade-offs.md).
+To start each service by hand, see [first-time setup](docs/local-development/setup.md).
 
-## Tech stack
+### Commands
 
-| Layer | Technologies |
-|---|---|
-| Backend | Java 25, Spring Boot 4.1, Spring Cloud 2025.1 (Gateway, Eureka, Config, OpenFeign), Resilience4j, Spring Data JPA, Flyway, Lombok, MapStruct |
-| Data and messaging | PostgreSQL (one database per service), Redis, Apache Kafka, ShedLock |
-| Security | jjwt, bcrypt and AES-256-GCM via Spring Security Crypto |
-| Infrastructure | Docker Compose, Jib, Kubernetes (kind), Kustomize, GitHub Actions |
-| Observability and testing | Micrometer Tracing, Zipkin, Prometheus, Grafana, JUnit, Testcontainers, Apache JMeter |
-| Dashboard and tooling | Plain HTML, CSS and JavaScript modules (no build step); Python standard library for the demo, load-test and crash-test scripts |
+```bash
+python demo/demo.py                             # start everything, seed a merchant, serve the dashboard
+python demo/demo.py seed | status | stop        # more data, what is up, stop the services
+./mvnw verify                                   # every test, as CI runs it
+python ../docs/api/check_openapi.py             # the OpenAPI spec must match the controllers
+python chaos/crash_and_outage_test.py           # kill and outage tests against the running stack
+kubectl apply -k k8s                            # deploy to a kind cluster (k8s-scaled for three replicas)
+```
 
-Details and versions: [tech stack](docs/tech-stack.md).
+The full list is in [commands](docs/local-development/commands.md).
 
-## Project structure
+## Repository layout
 
 ```
 microservices/
-  common-lib/             shared entities, enums, errors, MerchantContext, rate limiters, idempotency, DTOs
+  common-lib/             shared entities, enums, errors, MerchantContext, idempotency, the outbox, DTOs
   discovery-service/      Eureka (:8761)
   config-service/         Spring Cloud Config over config-repo/ (:8888)
   config-repo/            every service's configuration, including the k8s profile
   api-gateway-service/    authentication, rate limiting, routing (:8080)
   merchant-service/       merchants, users, API keys, customers, webhook configs, the audit log (:8081)
-  payment-service/        orders, payments, state machine, saga, outbox, bank simulator (:8082)
+  payment-service/        orders, payments, state machine, saga, refunds, analytics, bank simulator (:8082)
   vault-service/          card tokenization and charging (:8083)
   operations-service/     webhook delivery and nightly settlement (:8084)
+  test-support/           the containers the integration tests share
   demo/                   the one-command demo
   dashboard/              the web dashboard and its server (:5173)
   k8s/, k8s-scaled/       Kubernetes manifests (Kustomize), and an overlay with three replicas
@@ -132,38 +210,33 @@ microservices/
   load-test/, chaos/      the JMeter plan and its scripts; the crash and outage tests
 services.docker-compose.yaml   local PostgreSQL, Redis, Kafka, Control Center
 docs/                     documentation
+.github/workflows/        CI: the OpenAPI check, every test, dependency and secret scans
 ```
 
 ## Deployment
 
-The whole system runs on a local kind cluster: one namespace, the six applications built as Jib images, PostgreSQL, Redis and Kafka as StatefulSets, and only the gateway exposed. Secrets come from a gitignored file through a Kustomize `secretGenerator`, and each pod gets only the secrets it needs.
+The whole system runs on a local kind cluster: one namespace, the six applications built as Jib images, PostgreSQL, Redis and Kafka as StatefulSets, and only the gateway exposed. Secrets come from a gitignored file through a Kustomize `secretGenerator`, and each pod gets only the secrets it needs. An overlay runs three replicas of the gateway and payment-service with rolling updates and disruption budgets.
 
 ![Kubernetes deployment topology](docs/assets/diagrams/deployment-topology.png)
 
-See [deployment](docs/deployment/README.md).
+See [deployment](docs/deployment/README.md) and [scaling](docs/deployment/scaling.md).
 
 ## Documentation
 
-| Section | Contents |
+Everything lives in [`docs/`](docs/README.md):
+
+| Section | Covers |
 |---|---|
+| [Features](docs/features.md) | Everything the system does, with its rules and limits |
+| [Project metrics](docs/metrics.md) | Every measured figure, and how to re-measure it |
 | [The demo and the dashboard](docs/local-development/demo-and-dashboard.md) | One command, and what to look at |
-| [What was built and what it measured](docs/project-summary.md) | The idea, each decision and optimisation, and its effect |
-| [Local development](docs/local-development/README.md) | Setup by hand, configuration, troubleshooting |
-| [Architecture](docs/architecture/README.md) | Services, request flows, security model, decision records, trade-offs |
+| [Local development](docs/local-development/README.md) | Prerequisites, setup, configuration, commands, troubleshooting |
+| [Architecture](docs/architecture/README.md) | Services, module map, request flows, security model, decision records |
+| [Data model](docs/schema/README.md) | Databases, tables, enums, state machines, conventions |
 | [API reference](docs/api/README.md) | Every endpoint, the OpenAPI spec, the mock acquirer, idempotency, errors |
-| [Data model](docs/schema/README.md) | Databases, entities, state machines, schema conventions |
-| [Engineering practices](docs/practices/README.md) | Conventions, testing, guardrails, known pitfalls |
-| [Deployment](docs/deployment/README.md) | Running and scaling on Kubernetes |
+| [Engineering practices](docs/practices/README.md) | Conventions, guardrails, testing, definition of done, known pitfalls |
+| [Deployment](docs/deployment/README.md) | Images, manifests, running and scaling on Kubernetes |
 | [Observability](docs/observability/README.md) | Tracing, metrics and the Grafana dashboard |
-| [Load testing](docs/load-testing/README.md) | Running the load test and the measured results |
+| [Load testing](docs/load-testing/README.md) | Running the load test, the results and the query review |
 | [Crash and outage tests](docs/reliability/crash-and-outage-tests.md) | What happens to a payment when something dies |
-
-The full index is at [`docs/`](docs/README.md), and the design targets are in [requirements](docs/requirements.md).
-
-## Contributing
-
-[`CONTRIBUTING.md`](CONTRIBUTING.md) describes how to work on the codebase: the workflow, conventions and checks every change goes through. To report a security issue, follow [`SECURITY.md`](SECURITY.md) instead of opening a public issue.
-
-## Project history
-
-PayFlo was built as a single Spring Boot application first, so the boundaries between its domains could be found and moved cheaply, then split into the current services along those boundaries ([ADR 0001](docs/architecture/decisions/0001-monolith-first-then-split.md)). The single application was removed once everything had been carried over; it remains in the repository's history.
+| [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) | Workflow and checks; reporting a vulnerability |
