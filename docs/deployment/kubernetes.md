@@ -70,7 +70,3 @@ The ConfigMap also sets `TRACING_SAMPLING_PROBABILITY=0.1`, so the cluster trace
 ## Start-up order
 
 Kustomize applies everything at once. Ordering comes from the services themselves: each fails fast and retries (`SPRING_CLOUD_CONFIG_FAIL_FAST`, up to 20 attempts) until config-service answers, and the startup probe gives it time. Expect a few restarts on a first deploy.
-
-## Not included
-
-One replica per service by default (several for the gateway and payment-service with `k8s-scaled`), no Ingress controller, no HorizontalPodAutoscaler, no `NetworkPolicy`, no alerting rules, and images loaded into kind rather than pushed to a registry. It is a local cluster for showing that the system runs and scales on Kubernetes, not a production manifest set.

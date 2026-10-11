@@ -115,14 +115,6 @@ A browser may only call the origin a page came from, so `serve.py` answers the p
 - It never forwards `/internal/**`, stores nothing, and logs one line per API call: the method, path and status, never a header or a body.
 - The page keeps the session (the JWT and refresh token, or the admin key) in `sessionStorage`, so closing the tab ends it. The only thing it remembers longer is the theme (light by default, dark from the button in the top bar), in `localStorage`. Its own `Content-Security-Policy` allows scripts and styles from itself only.
 
-### Limits
-
-- **It is a demo client, not a product.** There is no hosted checkout: the card form posts a card number to `POST /v1/vault/tokenize` like any API client would, which is fine for test cards and not how a real checkout should collect one (that takes hosted fields or a redirect, so the merchant's page never sees the number).
-- **Local only.** It isn't deployed to the Kubernetes cluster. On kind the gateway is on `localhost:8080` too, so `serve.py` works against it unchanged.
-- **Every dashboard user shares the server's address** as far as the gateway's per-address limits (signup, login, failed authentication) are concerned.
-- **No automated tests.** It was checked by hand, in a browser, against the running stack.
-- **System fonts.** The page's policy allows nothing remote, so it uses the fonts already on the machine (Segoe UI Variable on Windows, San Francisco on macOS, and Inter when it is installed) rather than loading a web font.
-
 ## API reference in the browser
 
 <http://localhost:5173/docs.html> renders [`docs/api/openapi.yaml`](../api/openapi.yaml) with Swagger UI, and "Try it out" calls the real API through the same server. Swagger UI itself is loaded from a CDN, so that page needs an internet connection; the spec does not. See the [API reference](../api/README.md#openapi-and-postman).

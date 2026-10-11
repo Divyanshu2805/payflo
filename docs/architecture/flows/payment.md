@@ -63,7 +63,7 @@ Each publishes its own event. Cancelling an order by hand (`CANCEL`) still has n
 
 ## Publishing
 
-`outbox/OutboxPoller` (every second, ShedLock) publishes `PENDING` outbox rows to `orders.events` / `payments.events`, keyed by merchant id, and marks each `PUBLISHED`, or `FAILED` after 3 attempts. `outbox/OutboxMaintenance` puts `FAILED` rows back to `PENDING` after 5 minutes, so a longer Kafka outage delays events instead of stranding them (a row that can never publish is retried every 5 minutes, logged), and deletes `PUBLISHED` rows older than 7 days (`app.outbox.retention-days`), 5,000 at a time. From there, [webhook delivery](webhook-delivery.md) takes over.
+`common-lib`'s `OutboxPoller` (every second, ShedLock) publishes `PENDING` outbox rows to `orders.events` / `payments.events`, keyed by merchant id, and marks each `PUBLISHED`, or `FAILED` after 3 attempts. `OutboxMaintenance` puts `FAILED` rows back to `PENDING` after 5 minutes, so a longer Kafka outage delays events instead of stranding them (a row that can never publish is retried every 5 minutes, logged), and deletes `PUBLISHED` rows older than 7 days (`app.outbox.retention-days`), 5,000 at a time. From there, [webhook delivery](webhook-delivery.md) takes over.
 
 ## Related
 

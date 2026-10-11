@@ -27,5 +27,4 @@ If you are new to the codebase, read these in order:
 
 - [Data model](../schema/README.md) — entities and tables, per service, and the state machines.
 - [API reference](../api/README.md) — every public endpoint and the internal API.
-- [Design trade-offs and scope](trade-offs.md) — what this design accepts, and what the project leaves to a real deployment.
-- [What was built and what it measured](../project-summary.md) — the idea, each decision and optimisation, and its effect.
+- [Project metrics](../metrics.md) — every measured figure, and how to re-check it.

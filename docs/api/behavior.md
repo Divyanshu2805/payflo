@@ -1,6 +1,6 @@
 # API Behavior Worth Knowing
 
-Response behaviour that is easy to mistake for a bug when integrating with the API. All of it is current, intended or at least known behaviour.
+Response behaviour that is easy to mistake for a bug when integrating with the API. All of it is intended.
 
 ## Another merchant's resource is a `404`
 

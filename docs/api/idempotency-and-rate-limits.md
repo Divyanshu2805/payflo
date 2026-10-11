@@ -2,7 +2,7 @@
 
 ## Idempotency
 
-Any `POST`, `PUT` or `PATCH` to a business service may send an `X-Idempotency-Key` header. `common-lib`'s `IdempotencyFilter`, registered in every business service, makes a retry with the same key safe:
+Any `POST`, `PUT` or `PATCH` to a business service may send an `X-Idempotency-Key` header. `common-lib`'s `IdempotencyFilter`, which runs in every business service, makes a retry with the same key safe:
 
 - The first request claims `idempotency:<merchantId>:<method>:<path>:<key>` in Redis with an atomic `SET NX` and a 30-second in-progress marker, then runs. The merchant, method and path are part of the key, so a stored response is only ever replayed to the merchant and endpoint it was created for.
 - On a successful response (`< 400`, non-empty), the status and body are stored for **24 hours**. On an error the claim is deleted, so the client can retry cleanly.
@@ -13,7 +13,7 @@ Any `POST`, `PUT` or `PATCH` to a business service may send an `X-Idempotency-Ke
 
 `POST /v1/payments` goes further: the same header becomes the payment's own `idempotency_key`, unique per merchant in the database, so even after the 24-hour window a retry returns the payment already created under that key rather than a second attempt.
 
-The same holds one layer down for the three endpoints that also keep the key in the database — orders, payments and refunds, each with a unique `(merchant_id, idempotency_key)` index: an order found under a key must have the same amount, receipt and notes, a payment the same order and method, and a refund the same payment and amount, or the request is `422 IDEMPOTENCY_KEY_REUSED`. This is what protects a retry after the 24-hour window, after Redis dropped the entry, or while Redis was down (the [crash tests](../reliability/crash-and-outage-tests.md#what-this-found) found orders were the one case that relied on Redis alone, now closed), and it makes two simultaneous requests with one key resolve to one record. A key longer than 100 characters on an order is `400 IDEMPOTENCY_KEY_TOO_LONG`.
+The same holds one layer down for the three endpoints that also keep the key in the database — orders, payments and refunds, each with a unique `(merchant_id, idempotency_key)` index: an order found under a key must have the same amount, receipt and notes, a payment the same order and method, and a refund the same payment and amount, or the request is `422 IDEMPOTENCY_KEY_REUSED`. This is what protects a retry after the 24-hour window, after Redis dropped the entry, or while Redis was down, and it makes two simultaneous requests with one key resolve to one record. A key longer than 100 characters on an order is `400 IDEMPOTENCY_KEY_TOO_LONG`.
 
 ### What is deliberately not stored or hashed
 
@@ -46,7 +46,7 @@ Every API-key response carries:
 
 An over-limit request is `429 RATE_LIMIT_EXCEEDED` with `Retry-After` in seconds, and never reaches a service.
 
-The algorithm is chosen by `app.rate-limit.method`: `fixed` (fixed window, the default), `sliding-lua` (a sliding window over a sorted set, checked and added atomically in Lua; `sliding` is an older name for the same limiter) or `bucket` (a token bucket in Lua). All of them **fail open**: if Redis can't be reached the request is let through, on the reasoning that an outage of the limiter should not become an outage of the API.
+The limiter is a fixed window per key in Redis (`FixedWindowRateLimiter`): one atomic increment per request, with the window started by the first request in it. It **fails open**: if Redis can't be reached the request is let through, so an outage of the limiter does not become an outage of the API.
 
 ## Velocity limits and card testing
 

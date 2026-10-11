@@ -38,9 +38,9 @@ management.metrics.distribution:
 
 Buckets (rather than percentiles computed inside each JVM) let Prometheus aggregate latency across instances and compute any percentile afterwards, and the 1 s bucket answers "what share of requests met the p99 < 1 s target" directly.
 
-## Queries for the requirements
+## Queries for the targets
 
-The [requirements](../requirements.md#non-functional) set throughput, latency and availability targets. Measured at the gateway — what a client experiences — excluding Actuator's own traffic:
+The [targets](../metrics.md#performance) cover throughput, latency and availability. Measured at the gateway — what a client experiences — excluding Actuator's own traffic:
 
 | Target | PromQL |
 |---|---|

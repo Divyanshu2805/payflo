@@ -8,7 +8,7 @@ All paths below are under `operations-service/src/main/java/com/project/payflo/o
 
 ## A saga, not a transaction
 
-Settlement used to be one database transaction wrapped around calls to payment-service, merchant-service and the bank, holding a connection (and, after a crash, leaving no clue how far it got). It is now a sequence of short transactions (`SettlementRecorder`) with the remote calls between them, driven by `SettlementTransactionExecutor`:
+Settlement never holds a database transaction across a call to payment-service, merchant-service or the bank. It is a sequence of short transactions (`SettlementRecorder`) with the remote calls between them, driven by `SettlementTransactionExecutor`:
 
 ```
 INITIATED --transfer accepted--> TRANSFER_PENDING --bank says yes--> PROCESSED --payments marked settled--> (done)
@@ -51,9 +51,9 @@ A crash or an outage between steps leaves a state `SettlementRecoveryJob` (every
 
 A payment refunded in part is paid out net of the refunds the bank has completed (`PaymentSettlementView.refundedAmountUnits`), and its settlement records them in `refund_amount`. A payment with a refund still pending is left for the next run, and a fully refunded payment is never paid out. A refund asked for after the payout is refused, since that money has left. See [refunds](../../api/refunds.md).
 
-## Limits
+## Who is settled
 
-The simulated bank can decline a transfer, refuse it, or never answer (see above), so the `FAILED` branches all run; what it cannot do is take a payout back after paying. Only `ACTIVE` merchants are settled; becoming `ACTIVE` is the (simulated) [KYC step](../../api/merchant-account.md#kyc). The fee and GST rates are global settings, not per merchant.
+Only `ACTIVE` merchants are settled; becoming `ACTIVE` is the (simulated) [KYC step](../../api/merchant-account.md#kyc). The fee and GST rates are global settings, not per merchant.
 
 ## Related
 

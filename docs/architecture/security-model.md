@@ -57,7 +57,7 @@ Someone has to be able to suspend a merchant, run a settlement and read the audi
 - **Every admin action is audited, in the same transaction as the change** — or, for the settlement run in operations-service, *before* it starts: if the audit log can't be written, nothing runs. See [the audit log](../api/audit-log.md).
 - The operator sees less than a merchant does: no payout account, PAN or GSTIN, and nothing in the admin API reads a card, a secret or a payment's details.
 
-The key is one shared secret, not a login per operator, so the audit log can say *the operator* did it but not *which* one, and rotating it means restarting the gateway. A real deployment would put the admin API behind SSO and per-person identity.
+The key is one shared secret held by the gateway, so the audit log records the operator's actions under the actor `platform-admin`.
 
 ## Trusted identity headers
 
@@ -91,15 +91,15 @@ Card data is confined to vault-service and its database — see [decision 0004](
 | Webhook signing secrets | AES-encrypted with `webhook.secret-encryption-key` (`WEBHOOK_SECRET_KEY`); decrypted only to sign a delivery. operations-service keeps the decrypted targets and secrets in memory for up to 30 s (`WebhookTargetCache`, `WebhookSecretResolver`), never in Redis or its database |
 | Card numbers | Envelope-encrypted, above |
 
-The JWT key, vault master key, webhook encryption key and internal token have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`. A real deployment needs a secret store; see [design trade-offs](trade-offs.md#secrets-have-development-defaults).
+The JWT key, vault master key, webhook encryption key and internal token have **committed development defaults** in `config-repo/`, overridable by environment variable. On Kubernetes they come from the `app-secrets` Secret built from a gitignored `secrets.env`.
 
-A service checks the secrets it holds at start-up (`SecretConfigurationChecker`). With `ENFORCE_STRONG_SECRETS=true` (`app.security.enforce-strong-secrets`) it **refuses to start** on a committed default, a JWT key or token that is too short, or a key that isn't 32 base64 bytes; with it off (the default) it logs a warning naming the secret. Set it in any shared environment, and give the vault master key and the webhook encryption key different values — both default to the same one. There is no key versioning: changing a key makes everything encrypted under the old one unreadable until it is re-encrypted.
+A service checks the secrets it holds at start-up (`SecretConfigurationChecker`). With `ENFORCE_STRONG_SECRETS=true` (`app.security.enforce-strong-secrets`) it **refuses to start** on a committed default, a JWT key or token that is too short, or a key that isn't 32 base64 bytes; with it off (the default) it logs a warning naming the secret. Set it in any shared environment, and give the vault master key and the webhook encryption key different values — both default to the same one.
 
 ## Network exposure
 
 The trust model above only holds if nothing but the gateway can reach a business service, so reachability is closed at every level:
 
-- **Locally**, every service listens on `127.0.0.1` (`server.address: ${SERVER_ADDRESS:127.0.0.1}`) and registers that address with Eureka, and the infrastructure containers (PostgreSQL, Redis, Kafka, Control Center, Zipkin, Prometheus, Grafana) publish their ports on `127.0.0.1` only. Another machine on the same network can reach none of them: before this, a service bound to every interface would accept a request carrying a forged `X-Merchant-Id` from anyone on the Wi-Fi. To demo to another machine, set `SERVER_ADDRESS=0.0.0.0` on the gateway alone.
+- **Locally**, every service listens on `127.0.0.1` (`server.address: ${SERVER_ADDRESS:127.0.0.1}`) and registers that address with Eureka, and the infrastructure containers (PostgreSQL, Redis, Kafka, Control Center, Zipkin, Prometheus, Grafana) publish their ports on `127.0.0.1` only. Another machine on the same network can reach none of them. To demo to another machine, set `SERVER_ADDRESS=0.0.0.0` on the gateway alone.
 - **On Kubernetes**, the ConfigMap sets `SERVER_ADDRESS=0.0.0.0` inside the pod (a pod's address is its own), and only the gateway has a NodePort; every other Service is `ClusterIP`.
 - **The tools that show or change data are not open.** Grafana has no anonymous access and no `admin`/`admin` (its password is `GRAFANA_ADMIN_PASSWORD`); the Kafka UI on Kubernetes needs a login (`KAFKA_UI_PASSWORD`); Control Center, which has no login of its own, is reachable only from this machine.
 
@@ -114,11 +114,11 @@ Continuous integration fails on a fixable HIGH or CRITICAL vulnerability in any 
 
 ## Transport and Redis
 
-Traffic is plain HTTP between the services and, by default, to the gateway. The gateway can serve TLS itself (`GATEWAY_TLS_ENABLED`, `GATEWAY_TLS_KEYSTORE`, `GATEWAY_TLS_KEYSTORE_PASSWORD`), but more often TLS is terminated by a load balancer or Ingress in front of it. **Inside the platform nothing is encrypted:** a card number travels from the merchant to the gateway and on to vault-service in clear unless the front is TLS *and* the hop between pods is protected by a service mesh or mTLS, which isn't set up. Redis, which holds the API-key cache and idempotency responses, accepts a password (`REDIS_PASSWORD`; empty means none, the development default) but not TLS.
+Traffic is plain HTTP between the services and, by default, to the gateway. The gateway can serve TLS itself (`GATEWAY_TLS_ENABLED`, `GATEWAY_TLS_KEYSTORE`, `GATEWAY_TLS_KEYSTORE_PASSWORD`), but more often TLS is terminated by a load balancer or Ingress in front of it. Redis, which holds the API-key cache and idempotency responses, accepts a password (`REDIS_PASSWORD`; empty is the development default).
 
 ## Webhook targets
 
-A webhook URL is merchant-supplied and operations-service calls it from inside the platform, so it is validated (`common-lib`'s `WebhookUrlValidator`) when the config is saved and again just before each delivery: `https`, no embedded credentials, and every address the host resolves to must be public. Without that a merchant could aim a webhook at `localhost`, a cluster Service such as `vault-service`, or a cloud metadata address. Link-local addresses are always refused; loopback, private ranges and plain `http` are allowed only while `WEBHOOK_ALLOW_PRIVATE_TARGETS` is `true`, which is the development default and must be `false` in a shared environment. Redirects aren't followed (POSTs aren't by the JDK client). The delivery-time check narrows, but doesn't close, a DNS-rebinding window — the connection isn't pinned to the address that was checked.
+A webhook URL is merchant-supplied and operations-service calls it from inside the platform, so it is validated (`common-lib`'s `WebhookUrlValidator`) when the config is saved and again just before each delivery: `https`, no embedded credentials, and every address the host resolves to must be public. Without that a merchant could aim a webhook at `localhost`, a cluster Service such as `vault-service`, or a cloud metadata address. Link-local addresses are always refused; loopback, private ranges and plain `http` are allowed only while `WEBHOOK_ALLOW_PRIVATE_TARGETS` is `true`, which is the development default and must be `false` in a shared environment. Redirects aren't followed (POSTs aren't by the JDK client). Checking again at delivery covers a host whose address changes after the config was saved.
 
 ## Webhook signatures
 

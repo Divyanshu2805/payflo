@@ -81,4 +81,4 @@ Every enum lives in `common-lib`'s `enums` package, so all services speak the sa
 
 **`WebhookEventStatus`** — `PENDING` when created and queued; `DELIVERED` on a `2xx`; `FAILED` after a failed attempt with `next_retry_at` set (and back to `DELIVERED` if a retry succeeds); `DEAD` after the seventh failure, with a `dlq_event` written.
 
-**`OutboxStatus`** — `PENDING` when written with the domain change; `PUBLISHED` once sent to Kafka; `FAILED` after the third failed publish, with no further retry.
+**`OutboxStatus`** — `PENDING` when written with the domain change; `PUBLISHED` once sent to Kafka; `FAILED` after the third failed publish, and back to `PENDING` five minutes later.

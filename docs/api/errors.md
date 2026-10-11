@@ -28,14 +28,14 @@ Every error response from every service has the same JSON shape, produced by one
 | `AccountSuspendedException` | 403 | `MERCHANT_SUSPENDED` — login or refresh for a suspended merchant |
 | `ForbiddenException` | 403 | Its own code — `ROLE_FORBIDDEN` (the role can't do this), `DASHBOARD_LOGIN_REQUIRED` (an API key tried a dashboard-only action), `INCORRECT_PASSWORD` |
 | `InvalidTokenException` | 401 | `INVALID_REFRESH_TOKEN` — a refresh token that is unknown, expired or already used |
-| `NoResourceFoundException` | 404 | `ROUTE_NOT_FOUND` — no such endpoint (this used to be a `500`) |
+| `NoResourceFoundException` | 404 | `ROUTE_NOT_FOUND` — no such endpoint |
 | `HttpRequestMethodNotSupportedException` | 405 | `METHOD_NOT_ALLOWED`, with an `Allow` header |
 | `HttpMediaTypeNotSupportedException` | 415 | `UNSUPPORTED_MEDIA_TYPE` — send `application/json` |
 | `MissingServletRequestParameterException` | 400 | `MISSING_PARAMETER` |
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST_BODY` |
 | `MethodArgumentTypeMismatchException` | 400 | `INVALID_PARAMETER` — e.g. a path id that isn't a UUID |
 | `ResourceNotFoundException` | 404 | `<RESOURCE>_NOT_FOUND` — `ORDER_NOT_FOUND`, `PAYMENT_NOT_FOUND`, `APIKEY_NOT_FOUND`, … |
-| `DuplicateResourceException` | 409 | Its own code — `DUPLICATE_USER_EMAIL`, `ORDER_RECEIPT_DUPLICATE`, `SETTLEMENT_RUN_IN_PROGRESS`. (Signup no longer answers `DUPLICATE_MERCHANT_EMAIL`: that confirmed an email was registered; see [authentication](authentication.md#signup-and-account-enumeration).) |
+| `DuplicateResourceException` | 409 | Its own code — `DUPLICATE_USER_EMAIL`, `ORDER_RECEIPT_DUPLICATE`, `SETTLEMENT_RUN_IN_PROGRESS`. Signup never answers with a duplicate: see [authentication](authentication.md#signup-and-account-enumeration). |
 | `ServiceUnavailableException` | 503 | Its own code — `AUDIT_LOG_UNAVAILABLE`: an admin action refused because it couldn't be recorded; nothing was done, try again |
 | `VelocityLimitException` | 429 | Its own code, with `Retry-After` — `CARD_TOKENIZATION_LIMIT_EXCEEDED`, `CARD_TESTING_SUSPECTED`: the pattern of someone testing card numbers. See [velocity limits](idempotency-and-rate-limits.md#velocity-limits-and-card-testing). (A fifth card payment on one order is a plain `400 ORDER_CARD_ATTEMPTS_EXCEEDED`.) |
 | `InvalidStateTransitionException` | 409 | `INVALID_STATE_TRANSITION` |

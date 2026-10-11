@@ -120,7 +120,7 @@ where o.receipt like 'idem-<run>-pay-%';
 
 ## 7. Webhook delivery SLA
 
-The requirement is that [99% of webhooks are delivered within 30 seconds of the change, and all within 24 hours](../requirements.md#non-functional). Run the load test with webhook merchants ([step 3](#3-create-api-keys)) and the `webhooks` section of the output is the measurement: the share of events the merchant's endpoint accepted within 30 seconds of the change that caused them, over every delivery made during the run and the wait after it.
+The target is that [99% of webhooks are delivered within 30 seconds of the change, and all within 24 hours](../metrics.md#performance). Run the load test with webhook merchants ([step 3](#3-create-api-keys)) and the `webhooks` section of the output is the measurement: the share of events the merchant's endpoint accepted within 30 seconds of the change that caused them, over every delivery made during the run and the wait after it.
 
 In Grafana the same number is live, on the dashboard's **Webhook SLA** row (the share delivered within 30 s over the time range, latency p50/p99 against the 30 s line, and the backlog with the age of the oldest event still waiting). It comes from the `payflo_webhook_delivery_latency_seconds` histogram; see [metrics](../observability/metrics.md).
 

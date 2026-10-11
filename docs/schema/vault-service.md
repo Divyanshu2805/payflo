@@ -17,7 +17,6 @@ A card, encrypted at rest. Never exposed directly — always reached through a `
 | `brand` | `CardBrand`, detected from the number's leading digits. |
 | `expiry_month`, `expiry_year` | Card expiry, stored as strings. |
 | `card_holder_name` | Name on the card. |
-| `deleted_at` | Soft-delete marker. |
 
 The CVV is validated on tokenization and never stored anywhere.
 

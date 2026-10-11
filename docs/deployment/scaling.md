@@ -1,6 +1,6 @@
 # Scaling Out
 
-Does PayFlo scale horizontally? On the kind cluster, the two services that take the traffic, the **gateway** and **payment-service**, run as several replicas, and throughput rises with the count: **338 → 758 → 999 req/s with 1, 2 and 3 replicas of each**. This page is how to run it, what makes it safe, what was measured, and where it stops.
+Does PayFlo scale horizontally? On the kind cluster, the two services that take the traffic, the **gateway** and **payment-service**, run as several replicas, and throughput rises with the count: **338 → 758 → 999 req/s with 1, 2 and 3 replicas of each**. This page is how to run it, what makes it safe and what was measured.
 
 ## Running it
 
@@ -36,18 +36,6 @@ A short warm run at 3 + 3 reached 1,245 req/s at p99 659 ms. One replica sits at
 
 Read the latency column for what it is: 200 users sharing one CPU per service queue up, and a fresh JVM at the start of each size is cold. The p99 under 1 s that [the local runs](../load-testing/results.md) show (171–245 ms at 100 users, with no CPU limit) is not what a 1-CPU pod gives at this load. These numbers are for comparing 1, 2 and 3 against each other, not against the local ones: the database here is empty, the CPU is limited, and traffic crosses Docker's network proxy.
 
-## What does not scale: the simulated bank
-
-The bank-callback simulator (`BankCallbackSimulator`), which answers and captures payments, runs on **one** replica at a time (its ShedLock), so it is capped by one pod's CPU however many replicas there are:
-
-| Replicas | Captures a second | Payments answered by the end of the run |
-|---|---|---|
-| 1 | 133 | 95% |
-| 2 | 136 | 79% (backlog peak 8,700; 7,100 at the end of the run, and not cleared within the 4-minute wait) |
-| 3 | 152 | the backlog of the run before was still being worked through |
-
-It scaled on a laptop with no CPU limit (400–500 captures a second, 96% answered by the end, [results](../load-testing/results.md#capture-under-load)). This is the stand-in for an external bank, whose callbacks would reach any replica; it is the only part of the request-to-captured path that doesn't spread. Letting every replica resolve disjoint batches (`FOR UPDATE SKIP LOCKED` instead of one lock holder) is the change that would make capture scale with the replicas.
-
 ## Rolling out under load
 
 With 3 + 3 replicas under 100 users for 200 seconds, `kubectl rollout restart` of the gateway and then of payment-service (each rolled one pod at a time, `maxUnavailable: 0`) cost **19 failed requests out of 226,834 (0.008%, availability 99.992%)**, with 1,133 requests a second throughout:
@@ -55,11 +43,4 @@ With 3 + 3 replicas under 100 users for 200 seconds, `kubectl rollout restart` o
 - **14 from the gateway rollout:** connections that were open through the NodePort when an old pod went away (`Connection reset`, `NoHttpResponseException`, one read timeout) — a client with keep-alive connections to a pod that stops sees a reset for the request in flight, whatever the `preStop` sleep. A client that retries an idempotent request (every write here takes an `X-Idempotency-Key`) loses nothing.
 - **5 from the payment-service rollout:** `500`s on requests that were mid-flight on a pod as it terminated.
 
-So a rollout is not perfectly lossless, but it is within the 99.99% availability target, and the database agrees nothing went wrong beyond those refused requests: after the run, across all 408,000 payments the cluster had made (the scaling runs included), no order had two live payments, no idempotency key was used twice, no payment was missing its transition log, none was stuck `AUTHORIZING`, and the outbox was empty. The slowest request took 30 s (one on a connection that was never closed). Closing the gap needs retries in the gateway for idempotent requests, which is not built.
-
-## What this does not show
-
-- **A real cluster.** All of the replicas run on one node, so a node failure takes all of them. Spreading them (`topologySpreadConstraints`) and a second node are what it would take.
-- **Autoscaling.** There is no HorizontalPodAutoscaler (it needs a metrics server, which kind doesn't have by default); the count is set by hand.
-- **The data tier.** PostgreSQL, Redis and Kafka are single instances. 3 + 3 replicas on one database is where this laptop's measurements stop being about the replicas.
-- **More than three replicas, or a larger database.** Not measured.
+That is within the 99.99% availability target, and the database agrees nothing went wrong beyond those refused requests: after the run, across all 408,000 payments the cluster had made (the scaling runs included), no order had two live payments, no idempotency key was used twice, no payment was missing its transition log, none was stuck `AUTHORIZING`, and the outbox was empty.

@@ -15,7 +15,7 @@ PayFlo is a payment gateway backend — what sits behind a merchant's "Pay now" 
 | `payment-service` | 8082 | Orders, payments, refunds, analytics, the payment state machine and transition log, the simulated bank callback. `/v1/orders/**`, `/v1/payments/**`, `/v1/refunds/**`, `/v1/analytics/**`. | `payflo_payment` |
 | `vault-service` | 8083 | Card tokenization and the only decryption of card numbers; the mock card acquirer. `/v1/vault/**`. | `payflo_vault` |
 | `operations-service` | 8084 | Webhook delivery (Kafka consumer → retries → DLQ) and nightly settlement. `/v1/settlements/**`, `/v1/webhook-deliveries/**`, `/v1/admin/settlements/**`, and `/webhook/**` (a test receiver). | `payflo_operations` |
-| `common-lib` | — | Not a service: shared entities (`BaseEntity`, `Money`), enums, exceptions and the error handler, `MerchantContext`, rate limiters, the idempotency filter, the API-key cache, and the DTOs services exchange. | — |
+| `common-lib` | — | Not a service: shared entities (`BaseEntity`, `Money`), enums, exceptions and the error handler, `MerchantContext`, the rate limiter, the idempotency filter, the transactional outbox, the API-key cache, and the DTOs services exchange. | — |
 
 The four databases live on one PostgreSQL server. A service never reads another service's tables: anything it needs from another domain it asks for over that service's [internal API](service-communication.md#internal-api), or learns from an event on Kafka.
 

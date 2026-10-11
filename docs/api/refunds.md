@@ -12,7 +12,7 @@ Giving money back on a captured payment. **Service:** payment-service · **Contr
 ## Rules
 
 - A payment can be refunded while it is `CAPTURED` or `PARTIALLY_REFUNDED`. Any other status is `400 PAYMENT_NOT_REFUNDABLE`.
-- **Once a payment has been paid out (`SETTLED`) it can't be refunded**: `400 PAYMENT_ALREADY_SETTLED`. The money has left; taking it back would need an adjustment to a later payout.
+- **Once a payment has been paid out (`SETTLED`) it can't be refunded**: `400 PAYMENT_ALREADY_SETTLED`. The money has left.
 - The refunds of a payment add up to at most its amount, and refunds still `PENDING` count, so two simultaneous requests can't both take the last of it: `400 REFUND_EXCEEDS_PAYMENT`. `amountUnits` is in the payment's currency, between 1 and the amount left.
 - Send `X-Idempotency-Key` to make a retry safe. The key is stored with the refund (unique per merchant), so it holds beyond the 24-hour replay window too.
 

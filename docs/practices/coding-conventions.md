@@ -39,7 +39,7 @@ Controllers read the merchant only from `MerchantContext` and pass it down; neve
 
 ## Events and scheduled jobs
 
-- Publish an event only by writing an outbox row in the same transaction as the change (`OutboxEventPublisher`). Never send to Kafka from a request.
+- Publish an event only by writing an outbox row in the same transaction as the change (`OutboxEventPublisher`, in `common-lib`'s `outbox` package). Never send to Kafka from a request. A service that starts publishing imports `OutboxConfiguration` on its application class and creates `outbox_event` in a migration.
 - Every `@Scheduled` method carries a ShedLock `@SchedulerLock` with sensible `lockAtMostFor` / `lockAtLeastFor`.
 - Change a payment's status only through `PaymentTransitionService.apply`.
 
