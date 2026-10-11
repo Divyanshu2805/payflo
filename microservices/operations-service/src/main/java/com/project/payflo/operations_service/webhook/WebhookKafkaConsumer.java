@@ -52,10 +52,10 @@ public class WebhookKafkaConsumer {
     private final WebhookDlqRecorder dlqRecorder;
 
     @KafkaListener(topics = {
-            "${app.kafka.topics.payments:payments.events}",
-            "${app.kafka.topics.orders:orders.events}",
-            "${app.kafka.topics.refunds:refunds.events}",
-            "${app.kafka.topics.settlements:settlements.events}"
+            "${app.kafka.topics.payment}",
+            "${app.kafka.topics.order}",
+            "${app.kafka.topics.refund}",
+            "${app.kafka.topics.settlement}"
     })
     public void onWebhookEvents(List<ConsumerRecord<String, Map<String, Object>>> records, Acknowledgment ack) {
         // The fast path: every record's deliveries, one transaction.

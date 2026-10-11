@@ -150,19 +150,3 @@ public class WebhookConfigServiceImpl implements WebhookConfigService {
                 .orElseThrow(() -> new ResourceNotFoundException("MerchantWebhookConfig", configId));
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

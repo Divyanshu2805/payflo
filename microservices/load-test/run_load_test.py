@@ -9,7 +9,7 @@ executable if your default Java is newer (the services themselves still run on 2
 Each run writes results/<timestamp>/: the raw samples (results.jtl), JMeter's HTML report
 (report/index.html), and summary.json with the numbers below.
 
-What it reports (docs/requirements.md):
+What it reports (docs/metrics.md):
   throughput   successful requests per second over the whole run. Reported, not graded: it is a property of
                the machine as much as of the system, so there is no number it must reach
   latency      p99 < 1s                        (per request type, and across all requests)
@@ -34,7 +34,6 @@ HERE = Path(__file__).resolve().parent
 TARGET_P99_MS = 1_000
 TARGET_AVAILABILITY = 0.9999
 
-
 def find_jmeter():
     home = os.environ.get("JMETER_HOME")
     names = ["jmeter.bat", "jmeter"] if os.name == "nt" else ["jmeter"]
@@ -49,13 +48,11 @@ def find_jmeter():
             return found
     sys.exit("JMeter not found: set JMETER_HOME or put jmeter on PATH (https://jmeter.apache.org/download_jmeter.cgi)")
 
-
 def percentile(sorted_values, p):
     if not sorted_values:
         return 0.0
     rank = max(0, math.ceil(p / 100 * len(sorted_values)) - 1)
     return float(sorted_values[rank])
-
 
 class CaptureWatcher:
     """Samples payment-service's transition counters through Prometheus while the test runs, and afterwards until
@@ -144,9 +141,8 @@ class CaptureWatcher:
     def _backlog(counts):
         return counts["AUTHORIZE_ATTEMPT"] - counts["AUTHORIZE_SUCCESS"] - counts["AUTHORIZE_FAIL"]
 
-
 class WebhookWatcher:
-    """The webhook SLA (docs/requirements.md: 99% delivered within 30 s) over a run, from operations-service's
+    """The webhook SLA (docs/metrics.md: 99% delivered within 30 s) over a run, from operations-service's
     payflo.webhook.delivery.latency histogram through Prometheus: every delivery accepted between start() and the
     end of the wait, and how long after the change it reports each was accepted. Reports nothing when the test's
     merchants have no webhook (see provision_keys.py --webhook-url). Good to Prometheus' 5 s scrape."""
@@ -260,7 +256,6 @@ class WebhookWatcher:
             "consumer_lag_at_end": int(lag),
         }
 
-
 def print_webhooks(webhooks):
     if not webhooks:
         return
@@ -272,7 +267,6 @@ def print_webhooks(webhooks):
           f"oldest unattempted {webhooks['peak_oldest_unattempted_age_seconds']} s, {webhooks['pending_at_end']} left at the end; "
           f"Kafka consumer lag peaked at {webhooks['peak_consumer_lag']} ({webhooks['consumer_lag_at_end']} at the end)")
 
-
 def print_capture(capture):
     if not capture:
         return
@@ -282,7 +276,6 @@ def print_capture(capture):
           f"ended (backlog {capture['backlog_at_end']}, peak {capture['peak_backlog']}); "
           + (f"cleared {drain} s after the run" if drain is not None else "NOT cleared within the wait")
           + f"; {capture['captured_per_second_during_run']} captures/s over the run")
-
 
 def summarize(run_dir: Path, capture=None, webhooks=None):
     rows = list(csv.DictReader(open(run_dir / "results.jtl", newline="", encoding="utf-8")))
@@ -341,7 +334,6 @@ def summarize(run_dir: Path, capture=None, webhooks=None):
     print(f"\nHTML report: {run_dir / 'report' / 'index.html'}")
     return summary
 
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--host", default="localhost")
@@ -389,7 +381,6 @@ def main():
     with open(run_dir / "results.jtl", newline="", encoding="utf-8") as samples:
         last = max(int(r["timeStamp"]) + int(r["elapsed"]) for r in csv.DictReader(samples)) / 1000
     summarize(run_dir, watcher.finish(last), webhook_watcher.finish())
-
 
 if __name__ == "__main__":
     main()

@@ -4,7 +4,6 @@ import com.project.payflo.common_lib.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -37,6 +36,4 @@ public class Customer  extends BaseEntity {
 
     @Column(length = 20)
     private String phone;
-
-    private LocalDateTime deletedAt;
 }

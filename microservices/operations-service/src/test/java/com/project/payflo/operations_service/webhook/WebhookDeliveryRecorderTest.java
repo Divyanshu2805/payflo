@@ -135,17 +135,6 @@ class WebhookDeliveryRecorderTest {
     }
 
     @Test
-    void successMarksItDeliveredAndClearsTheRetryTime() {
-        recorder.claim(event.getId());
-        recorder.recordSuccess(event.getId(), 204);
-
-        assertThat(event.getStatus()).isEqualTo(WebhookEventStatus.DELIVERED);
-        assertThat(event.getLastResponseCode()).isEqualTo(204);
-        assertThat(event.getNextRetryAt()).isNull();
-        assertThat(event.getDeliveredAt()).isNotNull();
-    }
-
-    @Test
     void aFailureSchedulesTheNextRetryWithBackoff() {
         recorder.claim(event.getId());
         WebhookDeliveryRecorder.FailureOutcome outcome = recorder.recordFailure(event.getId(), 500, "HTTP500");

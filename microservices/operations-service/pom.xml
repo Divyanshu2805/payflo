@@ -11,8 +11,8 @@
 	<groupId>com.project.payflo</groupId>
 	<artifactId>operations-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>operations-service</name>
+	<description>Webhook delivery and nightly settlement</description>
 	<url/>
 	<licenses>
 		<license/>

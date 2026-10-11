@@ -2,7 +2,6 @@ package com.project.payflo.payment_service.api;
 
 
 import com.project.payflo.common_lib.dto.PaymentSettlementView;
-import com.project.payflo.payment_service.entity.Payment;
 
 import java.time.LocalDateTime;
 import java.util.List;

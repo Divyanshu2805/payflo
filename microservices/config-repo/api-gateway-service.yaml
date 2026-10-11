@@ -67,7 +67,6 @@ app:
     # document. Checked before authentication, so an oversized request costs almost nothing to refuse.
     max-request-body-bytes: ${MAX_REQUEST_BODY_BYTES:1048576}
   rate-limit:
-    method: fixed
     use-case:
       api-key:
         # Per API key. Raise it (API_KEY_RATE_LIMIT_PER_MINUTE) for load tests, or every key tops out at 200/min.

@@ -1,28 +1,18 @@
-package com.project.payflo.operations_service.outbox;
+package com.project.payflo.common_lib.outbox;
 
 import com.project.payflo.common_lib.enums.OutboxStatus;
-import com.project.payflo.operations_service.entity.OutboxEvent;
-import com.project.payflo.operations_service.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Component
 @RequiredArgsConstructor
 public class OutboxResultHandler {
 
-    private final OutboxEventRepository outboxEventRepository;
-    private final Integer MAX_ATTEMPTS = 3;
+    private static final int MAX_ATTEMPTS = 3;
 
-    @Transactional
-    public void handleEventPublished(OutboxEvent event) {
-        event.setStatus(OutboxStatus.PUBLISHED);
-        event.setPublishedAt(LocalDateTime.now());
-        outboxEventRepository.save(event);
-    }
+    private final OutboxEventRepository outboxEventRepository;
 
     // One transaction and one UPDATE for a whole acknowledged batch, instead of one per event.
     @Transactional
@@ -41,11 +31,3 @@ public class OutboxResultHandler {
         outboxEventRepository.save(event);
     }
 }
-
-
-
-
-
-
-
-

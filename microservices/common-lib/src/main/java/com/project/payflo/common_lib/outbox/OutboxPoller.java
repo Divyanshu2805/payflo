@@ -1,15 +1,12 @@
-package com.project.payflo.payment_service.outbox;
+package com.project.payflo.common_lib.outbox;
 
 import com.project.payflo.common_lib.config.KafkaProperties;
 import com.project.payflo.common_lib.enums.OutboxStatus;
-import com.project.payflo.payment_service.entity.OutboxEvent;
-import com.project.payflo.payment_service.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -21,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-@Component
 @RequiredArgsConstructor
 @Slf4j
 public class OutboxPoller {
@@ -38,7 +34,7 @@ public class OutboxPoller {
     private static final long MAX_RUN_MILLIS = 30_000;
 
     @Scheduled(fixedDelay = 1000)
-    @SchedulerLock(name = "payment-service-outbox-poller", lockAtMostFor = "1m", lockAtLeastFor = "1s")
+    @SchedulerLock(name = "${spring.application.name}-outbox-poller", lockAtMostFor = "1m", lockAtLeastFor = "1s")
     public void poll() {
         long deadline = System.currentTimeMillis() + MAX_RUN_MILLIS;
         List<OutboxEvent> batch;
@@ -92,7 +88,6 @@ public class OutboxPoller {
             outboxResultHandler.handleEventsPublished(published);
         }
     }
-
 
     private static long occurredAtMillis(OutboxEvent event) {
         LocalDateTime createdAt = event.getCreatedAt();

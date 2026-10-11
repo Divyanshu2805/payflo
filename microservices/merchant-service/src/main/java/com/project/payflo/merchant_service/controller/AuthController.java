@@ -1,6 +1,5 @@
 package com.project.payflo.merchant_service.controller;
 
-import com.project.payflo.common_lib.context.MerchantContext;
 import com.project.payflo.merchant_service.dto.request.LoginRequest;
 import com.project.payflo.merchant_service.dto.request.MerchantSignupRequest;
 import com.project.payflo.merchant_service.dto.request.SessionRequests.ChangePasswordRequest;

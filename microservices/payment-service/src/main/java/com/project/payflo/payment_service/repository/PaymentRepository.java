@@ -2,9 +2,7 @@ package com.project.payflo.payment_service.repository;
 
 import com.project.payflo.common_lib.enums.PaymentMethod;
 import com.project.payflo.common_lib.enums.PaymentStatus;
-import com.project.payflo.payment_service.entity.OrderRecord;
 import com.project.payflo.payment_service.entity.Payment;
-import io.micrometer.observation.ObservationFilter;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;

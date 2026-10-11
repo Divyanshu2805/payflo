@@ -66,10 +66,6 @@ app:
       order: orders.events
       refund: refunds.events
       settlement: settlements.events
-      payments: payments.events
-      orders: orders.events
-      refunds: refunds.events
-      settlements: settlements.events
   webhook:
     # How long the consumer remembers a merchant's webhook targets before asking merchant-service again.
     target-cache-ttl-seconds: 30

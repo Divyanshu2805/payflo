@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.http.converter.autoconfigure.ClientHttpMessageConvertersCustomizer;
 import org.springframework.cloud.openfeign.support.FeignHttpMessageConverters;
-import org.springframework.cloud.openfeign.support.HttpMessageConverterCustomizer;
 import org.springframework.http.converter.HttpMessageConverter;
 
 import java.util.ArrayList;

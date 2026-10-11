@@ -5,7 +5,6 @@ import com.project.payflo.common_lib.enums.CardBrand;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -45,7 +44,4 @@ public class VaultCard extends BaseEntity {
 
     @Column(nullable = false)
     private String cardHolderName;
-
-    private LocalDateTime deletedAt;
 }
-
