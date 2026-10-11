@@ -110,7 +110,7 @@ The trust model above only holds if nothing but the gateway can reach a business
 
 ## Dependencies and the build
 
-Continuous integration fails on a fixable HIGH or CRITICAL vulnerability in any dependency and on a committed secret; see [testing](../practices/testing.md#continuous-integration). The scan found twelve vulnerable packages on the first run (Tomcat, Spring MVC, both generations of Jackson, Netty, BouncyCastle, the PostgreSQL driver, FreeMarker, HttpComponents): most were cleared by moving to Spring Boot 4.1.1 and Spring Cloud 2025.1.3, and Jackson, Tomcat and FreeMarker are pinned to their fixed releases in each module's `pom.xml` until Boot's own versions catch up.
+Continuous integration fails on a fixable HIGH or CRITICAL vulnerability in any dependency and on a committed secret; see [testing](../practices/testing.md#continuous-integration). The scan found twelve vulnerable packages on the first run (Tomcat, Spring MVC, both generations of Jackson, Netty, BouncyCastle, the PostgreSQL driver, FreeMarker, HttpComponents): most were cleared by moving to Spring Boot 4.1.1 and Spring Cloud 2025.1.3, and Jackson, Tomcat and FreeMarker are pinned to their fixed releases in each module's `pom.xml` until Boot's own versions catch up. `lz4-java`, which the Kafka client brings in, is pinned the same way in the modules that use Kafka.
 
 ## Transport and Redis
 

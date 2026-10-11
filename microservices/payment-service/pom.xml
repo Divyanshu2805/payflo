@@ -178,6 +178,13 @@
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
+			<!-- kafka-clients brings lz4-java 1.10.1, which has a HIGH vulnerability (CVE-2026-106451) that CI's dependency scan
+			     fails on. Pinned to the fixed release; drop this once the Kafka client's own version has caught up. -->
+			<dependency>
+				<groupId>at.yawk.lz4</groupId>
+				<artifactId>lz4-java</artifactId>
+				<version>1.11.4</version>
+			</dependency>
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
