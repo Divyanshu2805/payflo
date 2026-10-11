@@ -18,7 +18,9 @@ Everything about what PayFlo does, how it is built, and how to run and change it
 ## Reference
 
 - [API reference](api/README.md) — every endpoint, the mock acquirer's test values, idempotency, rate limits and errors; the [OpenAPI spec](api/openapi.yaml) and a Postman collection.
+- [Configuration](local-development/configuration.md) — where every setting lives, and the ones worth knowing.
 - [Project metrics](metrics.md) — measured performance, scaling, reliability, quality and security figures, and how to re-check them.
+- [Where to change things](architecture/where-to-change.md) — the file to open for a task.
 
 ## Measuring and operating it
 
@@ -39,4 +41,4 @@ Everything about what PayFlo does, how it is built, and how to run and change it
 
 ## Keeping these docs accurate
 
-These pages describe the system as it is now. A change that makes any of them inaccurate updates them in the same commit. Diagrams are generated from [`assets/diagrams/src/`](assets/diagrams/README.md): regenerate them rather than editing the images.
+These pages describe the system as it is now. A change that makes any of them inaccurate updates them in the same commit, and a number that changes is updated in [project metrics](metrics.md) and the README together. Diagrams are generated from [`assets/diagrams/src/`](assets/diagrams/README.md): regenerate them rather than editing the images.

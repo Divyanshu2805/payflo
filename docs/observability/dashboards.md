@@ -22,6 +22,8 @@ Prometheus's targets are in `observability/prometheus/prometheus.yml`: the gatew
 
 Provisioned from `observability/grafana/dashboards/payflo-overview.json`, refreshing every 5 s.
 
+![The PayFlo Grafana dashboard while the demo seeds payments](../assets/screenshots/grafana.webp)
+
 | Row | Panels |
 |---|---|
 | **Targets** | Gateway throughput, gateway p99 latency, gateway availability (share of non-5xx responses) and the share of requests under 1 s — each coloured against the [target](../metrics.md#performance) it tracks |
