@@ -1,6 +1,6 @@
 # Engineering Practices
 
-How code is written, tested and changed in this repository. For the contribution workflow itself — branches, commits, pull requests — see [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
+How code is written, tested and changed in this repository.
 
 | Page | Covers |
 |---|---|

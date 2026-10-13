@@ -33,9 +33,8 @@ Everything about what PayFlo does, how it is built, and how to run and change it
 - [Deployment](deployment/README.md) — the kind topology, manifests, container images and configuration.
 - [Scaling](deployment/scaling.md) — several replicas, rolling updates under load, and what was measured.
 
-## Contributing
+## Engineering
 
-- [`CONTRIBUTING.md`](../CONTRIBUTING.md) — the workflow, the checks and the commit style.
 - [Engineering practices](practices/README.md) — conventions, security guardrails, testing, definition of done, and known pitfalls.
 - [`SECURITY.md`](../SECURITY.md) — reporting a vulnerability.
 
