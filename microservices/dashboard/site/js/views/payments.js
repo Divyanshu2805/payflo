@@ -1,7 +1,7 @@
 import { api, query, newIdempotencyKey } from '../api.js';
 import {
   h, clear, money, units, amountCell, dateTime, shortDate, idCell, badge, mono, copyable, json, panel, pageHeader, button,
-  table, pagedList, details, hero, timeline, notice, dialog, form, errorBox, toast, toastError, methodLabel, sleep,
+  table, pagedList, details, hero, timeline, notice, dialog, form, errorBox, toast, toastError, methodLabel, sleep, liveBadge,
 } from '../ui.js';
 // orders.js imports this file too. That is fine for functions, which exist before either module's body runs;
 // don't import a const from it here.
@@ -28,7 +28,8 @@ export const PAYMENT_COLUMNS = [
 
 export function payments(root) {
   const list = pagedList({
-    load: (page, filters, size) => api('GET', '/v1/payments' + query({ status: filters.status, page, size })),
+    load: (page, filters, size, background) => api('GET', '/v1/payments' + query({ status: filters.status, page, size }), undefined, { background }),
+    live: 2500,
     tabs: { name: 'status', options: PAYMENT_TABS },
     columns: PAYMENT_COLUMNS,
     onRow: (p) => openPayment(p.id, () => list.refresh()),
@@ -36,7 +37,7 @@ export function payments(root) {
   });
   clear(root,
     pageHeader('Payments', 'Every attempt to pay an order. A status changes only through the validated state machine in payment-service.',
-      button('Refresh', () => list.refresh(), '', 'refresh')),
+      liveBadge(), button('Refresh', () => list.refresh(), '', 'refresh')),
     panel(null, null, list));
 }
 

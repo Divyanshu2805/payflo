@@ -1,7 +1,7 @@
 import { api, query } from '../api.js';
 import {
   h, clear, units, day, percent, card, panel, stat, pageHeader, button, table, form, notice, errorBox, trendChart,
-  shareBars, methodLabel, icon,
+  shareBars, methodLabel, icon, rowKey, liveBadge, whileShown,
 } from '../ui.js';
 import { quickPayment } from './orders.js';
 import { openPayment, PAYMENT_COLUMNS } from './payments.js';
@@ -49,20 +49,22 @@ export async function overview(root, ctx) {
   const reload = () => overview(root, ctx);
   const takePayment = () => quickPayment(reload);
   const header = pageHeader('Home', today,
-    button('Refresh', reload, '', 'refresh'),
+    liveBadge(), button('Refresh', reload, '', 'refresh'),
     button('Create payment', takePayment, 'primary', 'plus'));
+  const figures = h('div', {});
   clear(root, header, h('p', { class: 'loading' }, 'Loading…'));
-  try {
-    // The last two only feed the setup guide: if a login may not read them, the guide just shows those steps undone.
-    const [dashboard, profile, recent, keys, endpoints] = await Promise.all([
-      api('GET', '/v1/analytics/dashboard'), api('GET', '/v1/merchants/me'), api('GET', '/v1/payments?size=6'),
-      api('GET', '/v1/merchants/api-keys').catch(() => []), api('GET', '/v1/merchants/webhooks').catch(() => [])]);
-    const now = dashboard.todaySummary, week = dashboard.last7Days, currency = dashboard.currency;
 
-    clear(root, header,
-      profile.status === 'SUSPENDED'
-        ? notice('bad', h('strong', {}, 'This merchant is suspended. '), 'The platform operator has suspended it: the gateway refuses its API keys, and it is left out of settlement.')
-        : setupGuide(profile, keys, endpoints, recent.items.length > 0, takePayment),
+  // The figures and the recent payments, which are what change while a customer pays. Drawn again only when the
+  // API returns something different, so a hover on the chart isn't lost every few seconds.
+  let shown = null;
+  function draw(dashboard, recent, quiet) {
+    const snapshot = JSON.stringify([dashboard, recent.items]);
+    if (shown && shown.snapshot === snapshot) return;
+    const keys = recent.items.map(rowKey);
+    const fresh = quiet && shown ? new Set(keys.filter((key) => !shown.keys.includes(key))) : null;
+    shown = { snapshot, keys };
+    const now = dashboard.todaySummary, week = dashboard.last7Days, currency = dashboard.currency;
+    clear(figures,
       h('div', { class: 'grid-main even' },
         card(null,
           h('div', { class: 'headline' },
@@ -78,8 +80,35 @@ export async function overview(root, ctx) {
       h('div', { class: 'grid-main' },
         panel('Recent payments', h('a', { href: '#/payments' }, 'View all'),
           table(PAYMENT_COLUMNS.filter((c) => c.title !== 'Decline reason'), recent.items, (p) => openPayment(p.id, reload),
-            'No payments yet. Use "Create payment" to take the first one.')),
+            'No payments yet. Use "Create payment" to take the first one.', fresh)),
         card('Payment methods, 7 days', methodShares(dashboard.byMethod, currency))));
+  }
+
+  try {
+    // The last two only feed the setup guide: if a login may not read them, the guide just shows those steps undone.
+    const [dashboard, profile, recent, keys, endpoints] = await Promise.all([
+      api('GET', '/v1/analytics/dashboard'), api('GET', '/v1/merchants/me'), api('GET', '/v1/payments?size=6'),
+      api('GET', '/v1/merchants/api-keys').catch(() => []), api('GET', '/v1/merchants/webhooks').catch(() => [])]);
+    draw(dashboard, recent, false);
+    clear(root, header,
+      profile.status === 'SUSPENDED'
+        ? notice('bad', h('strong', {}, 'This merchant is suspended. '), 'The platform operator has suspended it: the gateway refuses its API keys, and it is left out of settlement.')
+        : setupGuide(profile, keys, endpoints, recent.items.length > 0, takePayment),
+      figures);
+    let busy = false;
+    whileShown(figures, 4000, async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const [latest, payments] = await Promise.all([
+          api('GET', '/v1/analytics/dashboard', undefined, { background: true }), api('GET', '/v1/payments?size=6', undefined, { background: true })]);
+        draw(latest, payments, true);
+      } catch {
+        // A missed beat: the figures stay, and the next one tries again.
+      } finally {
+        busy = false;
+      }
+    });
   } catch (error) {
     clear(root, header, errorBox(error));
   }

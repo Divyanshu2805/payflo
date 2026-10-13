@@ -143,6 +143,9 @@ strong { font-weight: 600; }
 .mode { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--test-bg); color: var(--test); font-size: .8rem; font-weight: 600; white-space: nowrap; }
 .mode::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .mode.quiet { background: var(--flat-bg); color: var(--flat); }
+.live { display: inline-flex; align-items: center; gap: 7px; padding: 0 4px; color: var(--good); font-size: .88rem; font-weight: 600; }
+.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: beat 1.6s ease-out infinite; }
+@keyframes beat { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
 .view { max-width: 1280px; margin: 0 auto; padding: 28px 32px 56px; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
 .page-header p { color: var(--muted); max-width: 70ch; margin: 6px 0 0; }
@@ -193,6 +196,8 @@ tbody tr:last-child td { border-bottom: 0; }
 tr.clickable { cursor: pointer; transition: background-color .1s; }
 tr.clickable:hover td { background: var(--surface-2); }
 tr.clickable:focus-visible { outline-offset: -2px; }
+tr.fresh td { animation: fresh 2.6s ease-out; }
+@keyframes fresh { from { background: var(--brand-soft); } }
 .card.flush th:first-child, .card.flush td:first-child { padding-left: 20px; }
 .card.flush th:last-child, .card.flush td:last-child { padding-right: 20px; }
 .amount { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
