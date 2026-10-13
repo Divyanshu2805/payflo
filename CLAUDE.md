@@ -55,9 +55,11 @@ microservices/
   k8s-scaled/           overlay on k8s/: 3 replicas of the gateway and payment-service, and more room for PostgreSQL/Redis/Kafka (a sibling, not inside k8s/: Kustomize forbids it)
   observability/        Zipkin/Prometheus/Grafana: docker-compose.yaml locally, kustomization.yaml (included by k8s/)
   load-test/            JMeter plan + provision_keys.py + run_load_test.py (also reports capture and webhook-SLA from Prometheus) + idempotency_replay_test.py; keys*.csv and results/ are gitignored
-  demo/                 demo.py: starts infrastructure and the seven services, seeds a demo merchant, serves the dashboard (logs/, .run/ gitignored)
+  demo/                 demo.py: starts infrastructure and the seven services, seeds a demo merchant, serves the dashboard and the shop (logs/, .run/ gitignored)
   dashboard/            a web dashboard over the PUBLIC API only: site/ (static HTML/CSS/JS modules, no build, no dependencies) and serve.py,
                         a loopback server that forwards /v1/** to the gateway. A client, not part of the system: never give it a path around the gateway
+  storefront/           a sample merchant's shop, also over the PUBLIC API only: site/ (shop, checkout with js/payflo.js, PayFlo's embedded payment form, and confirmation pages; no build) and serve.py,
+                        the merchant's backend: it holds the API key, creates the order and the payment, and verifies PayFlo's signed webhook
   inside each service (com.project.payflo.<module>): entity/ repository/ mapper/ service/ service/impl/
   controller/ dto/ client/ config/   and src/main/resources/db/migration/ (Flyway: V1__baseline.sql, V2__…)
 .github/                CI (build, every test, dependency scan)
@@ -72,7 +74,7 @@ docker compose -f services.docker-compose.yaml up -d            # infrastructure
 cd microservices && ./mvnw clean install -DskipTests            # build every module, install common-lib
 cd microservices && ./mvnw verify                               # EVERY test, as CI runs it: unit + integration on real PostgreSQL/Redis/Kafka
                                                                 # in containers (needs Docker; nothing else running — no config server, no Eureka)
-cd microservices && python demo/demo.py                         # ONE COMMAND: infrastructure, build if needed, 7 services, seed, dashboard on :5173
+cd microservices && python demo/demo.py                         # ONE COMMAND: infrastructure, build if needed, 7 services, seed, dashboard on :5173, shop on :5174
                                                                 # (seed | status | stop | --build | --port-offset 100 when ports are taken)
 python docs/api/check_openapi.py                                # the OpenAPI spec must match the controllers (CI runs it)
 cd microservices && python chaos/crash_and_outage_test.py       # kill/outage tests against the running stack
@@ -96,7 +98,7 @@ On Windows, use `mvnw.cmd`. Start order: discovery → config → the four busin
 - **Nothing is published beyond loopback**: services and infrastructure bind `127.0.0.1` locally (a service trusts `X-Merchant-Id`, so only the gateway may reach it). CI fails on a fixable HIGH/CRITICAL dependency vulnerability: upgrade or pin, don't silence it.
 - **New settings go in `config-repo`**, with a `-k8s.yaml` override and a ConfigMap / `secrets.env.example` entry when they differ in-cluster. A new Feign client needs a `url = "${<X>_SERVICE_URI:}"` override for Kubernetes.
 - **A new, removed or moved endpoint changes `docs/api/openapi.yaml` in the same change** (hand-written; `check_openapi.py` fails CI otherwise), and its page in `docs/api/`. The dashboard and the Postman collection call the same endpoints: update them when a shape they use changes.
-- **The dashboard stays a client of the gateway.** It needs no gateway change: no CORS, no static files on the gateway, no addition to `public-routes`, no loosening of the gateway's CSP. `serve.py` binds loopback only and never forwards `/internal/**`.
+- **The dashboard and the shop stay clients of the gateway.** They need no gateway change: no CORS, no static files on the gateway, no addition to `public-routes`, no loosening of the gateway's CSP. Each `serve.py` binds loopback only; the dashboard's never forwards `/internal/**`, and the shop's keeps the API key on the server, never logs a request body (it can hold a card number) and takes amounts only from its own price list.
 - **On Windows, connect to `127.0.0.1`, not `localhost`, from scripts**: the services listen on IPv4 only and each `localhost` call first waits about two seconds on `::1`.
 - **A sealed type crossing Feign needs `@JsonTypeInfo`.**
 - **Check performance-sensitive changes with the load test**, not just a single request: every bottleneck it has found (gateway proxy pool, Open-Session-In-View, pool sizing, the outbox poller, breaker scope) was invisible one request at a time.

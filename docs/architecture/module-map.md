@@ -24,7 +24,10 @@ microservices/
   chaos/                  the crash and outage tests
   dashboard/              a web dashboard over the public API: a static page and a loopback server that
                           forwards its /v1/** calls to the gateway. A client of the system, not part of it
-  demo/                   demo.py: start everything, seed a demo merchant, serve the dashboard
+  storefront/             a sample merchant's shop: shop, checkout and confirmation pages, and serve.py, the
+                          merchant's backend, which calls the gateway with the API key and verifies the signed
+                          webhook. A client of the system, not part of it
+  demo/                   demo.py: start everything, seed a demo merchant, serve the dashboard and the shop
 services.docker-compose.yaml   local PostgreSQL, Redis, Kafka, Control Center
 docs/                     this documentation
 ```

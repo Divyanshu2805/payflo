@@ -128,8 +128,9 @@ See [audit log](api/audit-log.md) and [admin API](api/admin.md).
 
 ## Operating it
 
-- **One-command demo.** `python demo/demo.py` starts the infrastructure and the seven services, seeds a merchant through the public API (KYC, an API key, webhooks, payments by every method, the failure cases, a refund, a settlement) and serves the dashboard.
-- **Dashboard.** A web client over the public API: overview and reports, orders with a checkout, payments, refunds, settlements, webhook endpoints and deliveries, API keys, team, the audit log and the operator's console, with a bar listing every API request the page makes.
+- **One-command demo.** `python demo/demo.py` starts the infrastructure and the seven services, seeds a merchant through the public API (KYC, an API key, webhooks, payments by every method, the failure cases, a refund, a settlement) and serves the dashboard and the shop.
+- **Dashboard.** A web client over the public API: overview and reports, orders with a checkout, payments, refunds, settlements, webhook endpoints and deliveries, API keys, team, the audit log and the operator's console, with a bar listing every API request the page makes. Home, Payments and Orders reload themselves every few seconds and tint what is new.
+- **Sample shop.** A merchant's website over the same public API: a tea shop with a cart, a checkout for contact and delivery details with PayFlo's embedded Payment Element (card, UPI, net banking and wallet), and an order confirmation with a tracker. Its server holds the API key, creates the order and the payment with idempotency keys, tokenizes the card, retries a refused capture and verifies the signed webhook before confirming the order.
 - **API reference.** A hand-written OpenAPI 3.0 spec, checked against the controllers in CI, rendered by Swagger UI; and a Postman collection that walks the same API.
 - **Observability.** One trace per request across every service in Zipkin, Prometheus metrics with latency histograms, and a Grafana dashboard for throughput, p99, availability, the outbox, payments and the webhook SLA.
 - **Kubernetes.** Kustomize manifests for a local kind cluster, and an overlay with three replicas of the gateway and payment-service, rolling updates and disruption budgets.

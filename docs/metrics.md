@@ -135,7 +135,8 @@ See the [crash and outage tests](reliability/crash-and-outage-tests.md).
 | Scheduled jobs, each under a distributed lock | 11 |
 | Payment statuses / state-machine events | 11 / 12 ([enums](schema/enums.md)) |
 | Architecture decision records | 8 |
-| Dashboard | about 2,700 lines of HTML, CSS and JavaScript, no build step and no dependencies |
+| Dashboard | about 2,800 lines of HTML, CSS and JavaScript, no build step and no dependencies |
+| Sample shop | about 1,600 lines of HTML, CSS and JavaScript and a 530-line Python server (standard library only), no build step and no dependencies |
 | Tooling scripts (Python, standard library only) | about 2,000 lines: the demo, the load-test runner, the crash tests, the OpenAPI check |
 
 ## Re-measuring
