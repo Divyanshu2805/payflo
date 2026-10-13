@@ -1,7 +1,7 @@
 import {
   api, currentSession, isAdmin, login, signup, logout, adminLogin, adminLogout, onSessionEnded, apiCalls, onApiCall,
 } from './api.js';
-import { h, clear, form, toast, toastError, icon, logoMark, statusLabel } from './ui.js';
+import { h, clear, form, toast, toastError, icon, logoMark, wordmark, statusLabel } from './ui.js';
 import { overview, reports } from './views/analytics.js';
 import { orders, openOrder } from './views/orders.js';
 import { payments, refunds, openPayment } from './views/payments.js';
@@ -102,7 +102,7 @@ function loginPage() {
     ['₹2,500.00', 'bad', 'Failed', 'Net banking · HDFC'], ['₹750.00', 'wait', 'Authorized', 'UPI · capture refused, retry']];
   clear(app, h('main', { class: 'login' },
     h('section', { class: 'login-main' },
-      h('div', { class: 'brand' }, logoMark(28), 'PayFlo'),
+      h('div', { class: 'brand' }, logoMark(32), wordmark()),
       box,
       h('div', { class: 'login-foot' },
         h('a', { href: '/docs.html', target: '_blank', rel: 'noopener' }, 'API reference'),

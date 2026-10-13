@@ -55,21 +55,40 @@ export function icon(name, size = 16) {
   return svg;
 }
 
-/** PayFlo's mark: two offset bars, money moving from one side to the other. */
+let logoCount = 0;
+
+/**
+ * PayFlo's mark: two slanted, offset bars, money moving from one side to the other, on an indigo tile that turns
+ * violet at the top. The same drawing as docs/assets/logo.svg; each copy gets its own gradient ids.
+ */
 export function logoMark(size = 26) {
-  const svg = document.createElementNS(SVG, 'svg');
-  svg.setAttribute('viewBox', '0 0 28 28');
-  svg.setAttribute('width', size);
-  svg.setAttribute('height', size);
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', 'logo-mark');
-  const shapes = [['rect', { width: 28, height: 28, rx: 7, class: 'logo-bg' }],
-    ['rect', { x: 6, y: 8.5, width: 12, height: 4.5, rx: 2.25, class: 'logo-bar' }],
-    ['rect', { x: 10, y: 15, width: 12, height: 4.5, rx: 2.25, class: 'logo-bar dim' }]];
-  for (const [tag, attrs] of shapes) {
+  const id = `pf-logo-${++logoCount}`;
+  const make = (tag, attrs, ...children) => {
     const el = document.createElementNS(SVG, tag);
     for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
-    svg.append(el);
-  }
-  return svg;
+    el.append(...children);
+    return el;
+  };
+  return make('svg', { viewBox: '0 0 32 32', width: size, height: size, 'aria-hidden': 'true', class: 'logo-mark' },
+    make('defs', {},
+      make('linearGradient', { id: `${id}-tile`, x1: 3, y1: 2, x2: 29, y2: 30, gradientUnits: 'userSpaceOnUse' },
+        make('stop', { offset: 0, 'stop-color': '#7067ff' }), make('stop', { offset: 0.55, 'stop-color': '#3b4ce8' }),
+        make('stop', { offset: 1, 'stop-color': '#2733c2' })),
+      make('linearGradient', { id: `${id}-sheen`, x1: 0, y1: 0, x2: 0, y2: 17, gradientUnits: 'userSpaceOnUse' },
+        make('stop', { offset: 0, 'stop-color': '#fff', 'stop-opacity': 0.24 }), make('stop', { offset: 1, 'stop-color': '#fff', 'stop-opacity': 0 }))),
+    make('rect', { width: 32, height: 32, rx: 9, fill: `url(#${id}-tile)` }),
+    make('rect', { x: 0.5, y: 0.5, width: 31, height: 31, rx: 8.5, fill: `url(#${id}-sheen)`, stroke: '#fff', 'stroke-opacity': 0.14 }),
+    make('g', { transform: 'translate(3.6 0) skewX(-12)' },
+      make('rect', { x: 7.5, y: 9, width: 12.5, height: 5.5, rx: 2.75, fill: '#fff' }),
+      make('rect', { x: 13.5, y: 17.5, width: 12.5, height: 5.5, rx: 2.75, fill: '#c3c8ff' })));
+}
+
+/** The name, with "Flo" in the brand colour. */
+export function wordmark() {
+  const word = document.createElement('span');
+  word.className = 'wordmark';
+  const flo = document.createElement('span');
+  flo.textContent = 'Flo';
+  word.append('Pay', flo);
+  return word;
 }

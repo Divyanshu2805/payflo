@@ -1,8 +1,8 @@
 // DOM helpers and components shared by every view. Everything is built with createElement and text nodes, never
 // innerHTML: receipts, notes, webhook payloads and error text all come from the API and must not become markup.
-import { icon, logoMark } from './icons.js';
+import { icon, logoMark, wordmark } from './icons.js';
 
-export { icon, logoMark };
+export { icon, logoMark, wordmark };
 
 export function h(tag, attrs, ...children) {
   const el = document.createElement(tag);
