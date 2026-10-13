@@ -20,14 +20,12 @@
   <img src="https://img.shields.io/badge/Resilience4j-Breakers-0a0b0d" alt="Resilience4j" />
   <img src="https://img.shields.io/badge/Docker-Compose-0a0b0d?logo=docker" alt="Docker Compose" />
   <img src="https://img.shields.io/badge/Kubernetes-kind-0a0b0d?logo=kubernetes" alt="Kubernetes on kind" />
-  <img src="https://img.shields.io/badge/Jib-Images-0a0b0d?logo=googlecloud" alt="Jib" />
   <img src="https://img.shields.io/badge/Prometheus-Metrics-0a0b0d?logo=prometheus" alt="Prometheus" />
   <img src="https://img.shields.io/badge/Grafana-Dashboards-0a0b0d?logo=grafana" alt="Grafana" />
   <img src="https://img.shields.io/badge/Zipkin-Tracing-0a0b0d" alt="Zipkin" />
   <img src="https://img.shields.io/badge/JUnit-Unit_tests-0a0b0d?logo=junit5" alt="JUnit" />
   <img src="https://img.shields.io/badge/Testcontainers-Integration-0a0b0d" alt="Testcontainers" />
   <img src="https://img.shields.io/badge/JMeter-Load_tests-0a0b0d?logo=apachejmeter" alt="Apache JMeter" />
-  <img src="https://img.shields.io/badge/Trivy-Dependency_scan-0a0b0d?logo=aqua" alt="Trivy" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0a0b0d" alt="MIT License" /></a>
 </p>
 
