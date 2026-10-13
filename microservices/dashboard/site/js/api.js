@@ -79,7 +79,9 @@ export function onApiCall(listener) {
   return () => listeners.delete(listener);
 }
 
-function record(call) {
+// A live view asks again every few seconds. Those repeats are left out, or they would push everything else off the list.
+function record(call, background) {
+  if (background && call.status >= 200 && call.status < 300) return;
   calls.unshift(call);
   if (calls.length > 80) calls.pop();
   listeners.forEach((listener) => listener(call));
@@ -87,7 +89,7 @@ function record(call) {
 
 // ---- requests
 
-async function send(method, path, body, { idempotencyKey, admin, token } = {}) {
+async function send(method, path, body, { idempotencyKey, admin, token, background } = {}) {
   const headers = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (admin) headers['X-Admin-Key'] = adminKey || '';
@@ -99,7 +101,7 @@ async function send(method, path, body, { idempotencyKey, admin, token } = {}) {
   try {
     response = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch {
-    record({ method, path, status: 0, ms: Math.round(performance.now() - started), code: 'NETWORK', at: new Date() });
+    record({ method, path, status: 0, ms: Math.round(performance.now() - started), code: 'NETWORK', at: new Date() }, background);
     throw new ApiError(0, { errorCode: 'NETWORK', errorDescription: 'The dashboard server did not answer' });
   }
   const text = await response.text();
@@ -114,7 +116,7 @@ async function send(method, path, body, { idempotencyKey, admin, token } = {}) {
     code: response.ok ? null : parsed && parsed.errorCode, idempotencyKey,
     credential: admin ? 'admin key' : token ? 'JWT' : 'none',
     remaining: response.headers.get('X-RateLimit-Remaining'),
-  });
+  }, background);
   if (!response.ok) throw new ApiError(response.status, parsed, response.headers.get('Retry-After'));
   return parsed;
 }

@@ -1,7 +1,7 @@
 import { api, query, newIdempotencyKey } from '../api.js';
 import {
   h, clear, money, amountCell, dateTime, shortDate, shortId, idCell, badge, mono, copyable, json, panel, pageHeader,
-  button, table, pagedList, details, hero, dialog, form, notice, errorBox, toast, toastError, confirmDialog, methodLabel, sleep,
+  button, table, pagedList, details, hero, dialog, form, notice, errorBox, toast, toastError, confirmDialog, methodLabel, sleep, liveBadge,
 } from '../ui.js';
 import { openPayment, methodCell } from './payments.js';
 
@@ -9,7 +9,8 @@ const ORDER_STATUSES = ['CREATED', 'ATTEMPTED', 'PAID', 'CANCELLED', 'EXPIRED'];
 
 export function orders(root) {
   const list = pagedList({
-    load: (page, filters, size) => api('GET', '/v1/orders' + query({ status: filters.status, page, size })),
+    load: (page, filters, size, background) => api('GET', '/v1/orders' + query({ status: filters.status, page, size }), undefined, { background }),
+    live: 2500,
     tabs: { name: 'status', options: ORDER_STATUSES },
     columns: [
       { title: 'Amount', cell: (o) => amountCell(o.amount) },
@@ -24,7 +25,7 @@ export function orders(root) {
   });
   clear(root,
     pageHeader('Orders', 'What a customer is paying for. An order is paid by one successful payment, after any number of failed attempts.',
-      button('Refresh', () => list.refresh(), '', 'refresh'),
+      liveBadge(), button('Refresh', () => list.refresh(), '', 'refresh'),
       button('Create order', () => openNewOrder((order) => { list.refresh(); openOrder(order.id, () => list.refresh()); }), 'primary', 'plus')),
     panel(null, null, list));
 }

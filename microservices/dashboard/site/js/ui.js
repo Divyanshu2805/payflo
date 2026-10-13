@@ -203,15 +203,42 @@ export function timeline(items) {
     item.time ? h('time', { class: 'muted small' }, dateTime(item.time)) : null)));
 }
 
+/** What a live view compares between two loads: a row is news when it is new or its status has changed. */
+export function rowKey(row) {
+  return `${row.id}:${row.status}`;
+}
+
+/** The marker beside a view that keeps itself up to date. */
+export function liveBadge() {
+  return h('span', { class: 'live', title: 'This view asks the API again every few seconds.' }, 'Live');
+}
+
 /**
- * columns: [{ title, cell: (row) => node or text, align }]. onRow makes a row clickable.
+ * Calls tick() every `every` ms for as long as `el` is on the page, and not while the tab is hidden. It stops for
+ * good once the element has been removed, which is what moving to another view does.
  */
-export function table(columns, rows, onRow, emptyMessage = 'Nothing here yet.') {
+export function whileShown(el, every, tick) {
+  let attached = false;
+  const timer = setInterval(() => {
+    if (!el.isConnected) {
+      if (attached) clearInterval(timer);
+      return;
+    }
+    attached = true;
+    if (!document.hidden) tick();
+  }, every);
+}
+
+/**
+ * columns: [{ title, cell: (row) => node or text, align }]. onRow makes a row clickable. fresh: a Set of rowKeys
+ * to draw attention to, once.
+ */
+export function table(columns, rows, onRow, emptyMessage = 'Nothing here yet.', fresh) {
   if (!rows.length) return empty(emptyMessage);
   return h('div', { class: 'table-wrap' }, h('table', {},
     h('thead', {}, h('tr', {}, columns.map((c) => h('th', { class: c.align || '', scope: 'col' }, c.title)))),
     h('tbody', {}, rows.map((row) => h('tr', {
-      class: onRow ? 'clickable' : '',
+      class: (onRow ? 'clickable' : '') + (fresh && fresh.has(rowKey(row)) ? ' fresh' : ''),
       tabindex: onRow ? '0' : null,
       onclick: onRow ? () => onRow(row) : null,
       onkeydown: onRow ? (e) => { if (e.key === 'Enter') onRow(row); } : null,
@@ -232,8 +259,10 @@ export function select(options, value, onchange) {
  * A list the API pages with { items, page, size, hasNext }: status tabs, a table, and previous/next.
  * load(page, filters, size) returns that shape. tabs: { name, options: [value, ...] } is drawn as a tab per value;
  * filters: [{ name, label, options }] as a drop-down each, for a value with too many choices for tabs.
+ * live: a number of milliseconds makes the list load again that often, quietly, and flash what is new;
+ * load's fourth argument is then true, for the view to pass on as the API call's `background`.
  */
-export function pagedList({ load, columns, onRow, tabs, filters = [], size = 20, emptyMessage }) {
+export function pagedList({ load, columns, onRow, tabs, filters = [], size = 20, emptyMessage, live }) {
   const state = { page: 0, filters: Object.fromEntries([...filters.map((f) => [f.name, '']), ...(tabs ? [[tabs.name, '']] : [])]) };
   const body = h('div', { class: 'list-body' }, h('p', { class: 'loading' }, 'Loading…'));
   const pager = h('div', { class: 'pager' });
@@ -255,27 +284,42 @@ export function pagedList({ load, columns, onRow, tabs, filters = [], size = 20,
       select([['', 'All'], ...f.options.map((o) => [o, statusLabel(o)])], '', (v) => { state.filters[f.name] = v; state.page = 0; refresh(); })))) : null,
     body, pager);
 
-  async function refresh() {
-    body.classList.add('stale');          // the old rows stay, dimmed, until the new ones arrive: no jump, no flash
+  let shown = null;          // { view, keys }: what is on screen, to tell what a quiet reload brought
+  let loading = false;
+
+  async function refresh(quiet = false) {
+    if (quiet && loading) return;
+    loading = true;
+    const view = JSON.stringify([state.page, state.filters]);
+    if (!quiet) body.classList.add('stale');          // the old rows stay, dimmed, until the new ones arrive: no jump, no flash
     try {
-      const result = await load(state.page, state.filters, size);
-      clear(body, table(columns, result.items, onRow, emptyMessage));
+      const result = await load(state.page, state.filters, size, quiet);
+      if (view !== JSON.stringify([state.page, state.filters])) return;          // the tab or page changed meanwhile
+      const keys = result.items.map(rowKey);
+      const same = shown && shown.view === view;
+      if (quiet && same && keys.join() === shown.keys.join()) return;          // nothing new: leave the rows (and a hover) alone
+      const fresh = quiet && same ? new Set(keys.filter((key) => !shown.keys.includes(key))) : null;
+      shown = { view, keys };
+      clear(body, table(columns, result.items, onRow, emptyMessage, fresh));
       clear(pager,
         h('span', { class: 'muted' }, result.items.length ? `Page ${state.page + 1}` : ''),
         h('div', { class: 'pager-buttons' },
           h('button', { class: 'small', type: 'button', disabled: state.page === 0, onclick: () => { state.page--; refresh(); } }, icon('left', 14), 'Newer'),
           h('button', { class: 'small', type: 'button', disabled: !result.hasNext, onclick: () => { state.page++; refresh(); } }, 'Older', icon('right', 14))));
     } catch (error) {
+      if (quiet) return;          // a missed beat: the rows stay, and the next one tries again
       clear(body, errorBox(error));
       clear(pager);
     } finally {
+      loading = false;
       body.classList.remove('stale');
     }
   }
 
-  root.refresh = refresh;
+  root.refresh = () => refresh();
   drawTabs();
   refresh();
+  if (live) whileShown(root, live, () => refresh(true));
   return root;
 }
 
