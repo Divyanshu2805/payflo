@@ -114,10 +114,10 @@ strong { font-weight: 600; }
 .workspace-name { font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-sub { color: var(--muted); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace > div { min-width: 0; }
-.logo-bg { fill: var(--brand); }
-.logo-bar { fill: #fff; }
-.logo-bar.dim { opacity: .62; }
-.brand { display: flex; align-items: center; gap: 9px; font-weight: 650; font-size: 1.2rem; letter-spacing: -.02em; color: var(--text); }
+.logo-mark { flex: none; display: block; border-radius: 28%; box-shadow: 0 1px 2px rgb(39 51 194 / 22%), 0 4px 12px rgb(59 76 232 / 16%); }
+.wordmark { letter-spacing: -.03em; }
+.wordmark span { color: var(--brand-ink); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.4rem; letter-spacing: -.02em; color: var(--text); }
 .nav-group { display: grid; gap: 1px; margin-top: 10px; }
 .nav-title { font-size: .76rem; font-weight: 600; color: var(--muted); padding: 0 8px 4px; }
 .nav-group a { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: var(--radius-sm); color: var(--text-2); font-weight: 500; transition: background-color .12s, color .12s; }
@@ -374,7 +374,7 @@ dialog.drawer > header h2 { color: var(--muted); font-size: .93rem; font-weight:
 .login-box > p { color: var(--muted); margin-bottom: 22px; }
 .login-box .form + p { margin: 14px 0 0; }
 .login-foot { color: var(--muted); font-size: .9rem; display: flex; gap: 16px; flex-wrap: wrap; }
-.login-aside { background: #0c1630; color: #e8edf7; padding: clamp(28px, 5vw, 64px); display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+.login-aside { background: radial-gradient(90% 60% at 100% 0%, rgb(112 103 255 / 22%), transparent 70%), linear-gradient(rgb(255 255 255 / 3%) 1px, transparent 1px) 0 0 / 32px 32px, linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px) 0 0 / 32px 32px, #0b1226; color: #e8edf7; padding: clamp(28px, 5vw, 64px); display: flex; flex-direction: column; justify-content: center; gap: 28px; }
 .login-aside h2 { font-size: clamp(1.7rem, 2.6vw, 2.4rem); line-height: 1.15; letter-spacing: -.03em; font-weight: 650; max-width: 17ch; }
 .login-aside > p { color: #a9b6cf; max-width: 50ch; margin: -14px 0 0; font-size: 1.05rem; }
 .sample { background: #fff; color: #0f1b2d; border-radius: 12px; box-shadow: 0 24px 60px rgb(0 0 0 / 35%); max-width: 460px; overflow: hidden; font-size: .93rem; }
