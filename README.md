@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="PayFlo" width="820" />
+  <img src="docs/assets/banner.svg" alt="PayFlo: the backend behind a Pay now button" width="100%">
 </p>
 
 <p align="center">
@@ -8,18 +8,31 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml"><img src="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml"><img src="https://github.com/Divyanshu2805/payflo/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
   <img src="https://img.shields.io/badge/Java-25-0a0b0d?logo=openjdk" alt="Java 25" />
-  <img src="https://img.shields.io/badge/Spring%20Boot-4.1-0a0b0d?logo=springboot" alt="Spring Boot 4.1" />
-  <img src="https://img.shields.io/badge/Spring%20Cloud-2025.1-0a0b0d?logo=spring" alt="Spring Cloud 2025.1" />
-  <img src="https://img.shields.io/badge/PostgreSQL-per%20service-0a0b0d?logo=postgresql" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Kafka-outbox-0a0b0d?logo=apachekafka" alt="Kafka" />
-  <img src="https://img.shields.io/badge/Redis-cache%20%26%20locks-0a0b0d?logo=redis" alt="Redis" />
-  <img src="https://img.shields.io/badge/Kubernetes-kind-0a0b0d?logo=kubernetes" alt="Kubernetes" />
-  <img src="https://img.shields.io/badge/Resilience4j-breakers-0a0b0d" alt="Resilience4j" />
-  <img src="https://img.shields.io/badge/Testcontainers-integration-0a0b0d" alt="Testcontainers" />
-  <img src="https://img.shields.io/badge/JMeter-load%20tests-0a0b0d?logo=apachejmeter" alt="JMeter" />
+  <img src="https://img.shields.io/badge/Spring_Boot-4.1-0a0b0d?logo=springboot" alt="Spring Boot 4.1" />
+  <img src="https://img.shields.io/badge/Spring_Cloud-2025.1-0a0b0d?logo=spring" alt="Spring Cloud 2025.1" />
+  <img src="https://img.shields.io/badge/Gateway-Eureka_and_Config-0a0b0d?logo=spring" alt="Spring Cloud Gateway, Eureka and Config" />
+  <img src="https://img.shields.io/badge/PostgreSQL-per_service-0a0b0d?logo=postgresql" alt="PostgreSQL, a database per service" />
+  <img src="https://img.shields.io/badge/Flyway-Migrations-0a0b0d?logo=flyway" alt="Flyway" />
+  <img src="https://img.shields.io/badge/Kafka-Outbox-0a0b0d?logo=apachekafka" alt="Apache Kafka, through a transactional outbox" />
+  <img src="https://img.shields.io/badge/Redis-Cache_and_locks-0a0b0d?logo=redis" alt="Redis" />
+  <img src="https://img.shields.io/badge/Resilience4j-Breakers-0a0b0d" alt="Resilience4j" />
+  <img src="https://img.shields.io/badge/Docker-Compose-0a0b0d?logo=docker" alt="Docker Compose" />
+  <img src="https://img.shields.io/badge/Kubernetes-kind-0a0b0d?logo=kubernetes" alt="Kubernetes on kind" />
+  <img src="https://img.shields.io/badge/Jib-Images-0a0b0d?logo=googlecloud" alt="Jib" />
+  <img src="https://img.shields.io/badge/Prometheus-Metrics-0a0b0d?logo=prometheus" alt="Prometheus" />
+  <img src="https://img.shields.io/badge/Grafana-Dashboards-0a0b0d?logo=grafana" alt="Grafana" />
+  <img src="https://img.shields.io/badge/Zipkin-Tracing-0a0b0d" alt="Zipkin" />
+  <img src="https://img.shields.io/badge/JUnit-Unit_tests-0a0b0d?logo=junit5" alt="JUnit" />
+  <img src="https://img.shields.io/badge/Testcontainers-Integration-0a0b0d" alt="Testcontainers" />
+  <img src="https://img.shields.io/badge/JMeter-Load_tests-0a0b0d?logo=apachejmeter" alt="Apache JMeter" />
+  <img src="https://img.shields.io/badge/Trivy-Dependency_scan-0a0b0d?logo=aqua" alt="Trivy" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0a0b0d" alt="MIT License" /></a>
+</p>
+
+<p align="center">
+  <a href="#try-it"><b>Run it locally with one command</b></a>
 </p>
 
 ---
@@ -43,6 +56,7 @@ One command starts PostgreSQL, Redis and Kafka, builds the services, starts all 
 | | |
 |---|---|
 | **Dashboard** | <http://localhost:5173> |
+| **Shop** | <http://localhost:5174>: the demo merchant's tea shop. Check out as a customer and pay by card `4111 1111 1111 1111` (any future expiry, any CVC) or UPI `buyer@okaxis`, with the dashboard open beside it to watch the payment arrive |
 | **Demo login** | `demo@payflo.test` / `demo-password-1` (owner), or `analyst@payflo.test` with the same password (a read-only `TEAM` login) |
 | **Operator console** | The login page's operator tab, with the development admin key from the [admin API](docs/api/admin.md) page |
 | **API reference** | <http://localhost:5173/docs.html>: Swagger UI over [`openapi.yaml`](docs/api/openapi.yaml), with "Try it out" calling the real API |
@@ -62,6 +76,15 @@ If ports 8080 to 8084 are taken, `python demo/demo.py --port-offset 100` moves e
 | Paying an order, with the test values one click away | A payment and every status change it went through |
 | <img src="docs/assets/screenshots/webhooks.webp" alt="Webhook deliveries with their status, attempts and response codes" /> | <img src="docs/assets/screenshots/settlement.webp" alt="A settlement showing gross, refunds, fee, GST and the net paid out" /> |
 | Webhook deliveries: attempts, responses and replay | A payout: gross − refunds − fee − GST = net |
+
+**The demo merchant's shop**, the customer's side of the same payments. Its server holds the API key and calls PayFlo; the browser never sees it.
+
+| | |
+|---|---|
+| <img src="docs/assets/screenshots/shop.webp" alt="Chai & Co., the demo merchant's tea shop: a hero, the shop's promises and its products" /> | <img src="docs/assets/screenshots/shop-cart.webp" alt="The cart drawer with two products, free shipping unlocked and the checkout button" /> |
+| A merchant's storefront, built on the public API | The cart: prices come from the shop's server, never the browser |
+| <img src="docs/assets/screenshots/shop-checkout.webp" alt="The checkout: delivery details and PayFlo's payment form with card, UPI, net banking and wallet tabs" /> | <img src="docs/assets/screenshots/shop-confirmation.webp" alt="The order confirmation with a tracker whose Payment confirmed step is ticked" /> |
+| Checkout, with PayFlo's embedded payment form | "Payment confirmed" ticks when PayFlo's signed webhook arrives |
 
 <p align="center">
   <img src="docs/assets/screenshots/grafana.webp" alt="The Grafana dashboard: gateway throughput, p99 latency, availability, payment transitions, the outbox backlog and the webhook SLA" width="900" />
@@ -96,7 +119,7 @@ The Grafana dashboard while the demo seeds payments. All screenshots are from th
 **Running and watching it**
 - **Analytics**: a live dashboard and reports by day, week or month
 - **Observability**: one trace per request across every service in Zipkin, Prometheus metrics, and a Grafana dashboard for throughput, p99, availability and the webhook SLA
-- **A web dashboard** over the public API, a hand-written OpenAPI spec checked against the controllers, and a Postman collection
+- **A web dashboard** over the public API, with live payments, and **a sample shop** whose checkout embeds PayFlo's payment form, a hand-written OpenAPI spec checked against the controllers, and a Postman collection
 
 Everything, with its rules and limits: [features](docs/features.md).
 
@@ -189,7 +212,7 @@ To start each service by hand, see [first-time setup](docs/local-development/set
 ### Commands
 
 ```bash
-python demo/demo.py                             # start everything, seed a merchant, serve the dashboard
+python demo/demo.py                             # start everything, seed a merchant, serve the dashboard and the shop
 python demo/demo.py seed | status | stop        # more data, what is up, stop the services
 ./mvnw verify                                   # every test, as CI runs it
 python ../docs/api/check_openapi.py             # the OpenAPI spec must match the controllers
@@ -215,6 +238,7 @@ microservices/
   test-support/           the containers the integration tests share
   demo/                   the one-command demo
   dashboard/              the web dashboard and its server (:5173)
+  storefront/             a sample merchant's shop and checkout, and its backend (:5174)
   k8s/, k8s-scaled/       Kubernetes manifests (Kustomize), and an overlay with three replicas
   observability/          Zipkin, Prometheus, Grafana
   load-test/, chaos/      the JMeter plan and its scripts; the crash and outage tests
@@ -239,7 +263,7 @@ Everything lives in [`docs/`](docs/README.md):
 |---|---|
 | [Features](docs/features.md) | Everything the system does, with its rules and limits |
 | [Project metrics](docs/metrics.md) | Every measured figure, and how to re-measure it |
-| [The demo and the dashboard](docs/local-development/demo-and-dashboard.md) | One command, and what to look at |
+| [The demo, the dashboard and the shop](docs/local-development/demo-and-dashboard.md) | One command, and what to look at |
 | [Local development](docs/local-development/README.md) | Prerequisites, setup, configuration, commands, troubleshooting |
 | [Architecture](docs/architecture/README.md) | Services, module map, request flows, security model, decision records |
 | [Data model](docs/schema/README.md) | Databases, tables, enums, state machines, conventions |
@@ -249,7 +273,7 @@ Everything lives in [`docs/`](docs/README.md):
 | [Observability](docs/observability/README.md) | Tracing, metrics and the Grafana dashboard |
 | [Load testing](docs/load-testing/README.md) | Running the load test, the results and the query review |
 | [Crash and outage tests](docs/reliability/crash-and-outage-tests.md) | What happens to a payment when something dies |
-| [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) | Workflow and checks; reporting a vulnerability |
+| [Security](SECURITY.md) | Reporting a vulnerability |
 
 ## License
 
