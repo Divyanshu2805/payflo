@@ -1,11 +1,11 @@
-"""One command to see PayFlo working: start everything, fill it with a merchant's day, open the dashboard.
+"""One command to see PayFlo working: start everything, fill it with a merchant's day, open the dashboard and a shop.
 
-    python demo/demo.py            # start what isn't running, seed the demo merchant, serve the dashboard
+    python demo/demo.py            # start what isn't running, seed the demo merchant, serve the dashboard and the shop
     python demo/demo.py seed       # only add another batch of orders and payments to a running stack
     python demo/demo.py status     # what is up
-    python demo/demo.py stop       # stop the services and the dashboard this script started
+    python demo/demo.py stop       # stop the services, the dashboard and the shop this script started
     python demo/demo.py --build    # rebuild the jars first (needed after a code change)
-    python demo/demo.py --port-offset 100     # if 8080-8084, 8761, 8888 or 5173 are taken: use 8180-8184, 8861, ...
+    python demo/demo.py --port-offset 100     # if 8080-8084, 8761, 8888, 5173 or 5174 are taken: use 8180-8184, 8861, ...
 
 Run it from microservices/. It needs Docker, a JDK 25 and Python 3.10+, and nothing else: standard library only.
 
@@ -18,6 +18,7 @@ What "up" does, skipping every step that is already done:
   5. seeds: a merchant that has passed KYC, an API key, two webhook endpoints (one that works, one that fails),
      a team member, orders paid by card, UPI, net banking and wallet, the test values that fail, a refund,
      and a settlement run by the platform operator
+  6. starts the demo merchant's shop on http://localhost:5174 (storefront/serve.py), where a shopper pays
 
 Everything goes through the gateway on :8080, the way a merchant's own code would. The seed is safe to run again:
 it logs in to the same merchant and adds a new batch.
@@ -62,12 +63,13 @@ BUSINESS = ["merchant-service", "vault-service", "payment-service", "operations-
 OFFSET = 0
 SERVICES = {}          # name: (port, URL that answers 200 once it is ready). Started top to bottom.
 SERVICE_ENV = {}       # what every service needs to find discovery and config on their (possibly moved) ports
-GATEWAY = DASHBOARD = WEBHOOK_OK = WEBHOOK_FAILING = ""
-DASHBOARD_PORT = 0
+GATEWAY = DASHBOARD = STOREFRONT = WEBHOOK_OK = WEBHOOK_FAILING = WEBHOOK_STOREFRONT = ""
+DASHBOARD_PORT = STOREFRONT_PORT = 0
 
 
 def use_ports(offset):
-    global OFFSET, GATEWAY, DASHBOARD, DASHBOARD_PORT, WEBHOOK_OK, WEBHOOK_FAILING
+    global OFFSET, GATEWAY, DASHBOARD, DASHBOARD_PORT, STOREFRONT, STOREFRONT_PORT
+    global WEBHOOK_OK, WEBHOOK_FAILING, WEBHOOK_STOREFRONT
     OFFSET = offset
     port = lambda base: base + offset
     health = lambda base: f"http://127.0.0.1:{port(base)}/actuator/health"
@@ -90,6 +92,9 @@ def use_ports(offset):
     DASHBOARD = f"http://localhost:{DASHBOARD_PORT}"
     WEBHOOK_OK = f"http://localhost:{port(8084)}/webhook/success"            # operations-service's test receiver: 204
     WEBHOOK_FAILING = f"http://localhost:{port(8084)}/webhook/unreachable"   # no such endpoint: every attempt fails
+    STOREFRONT_PORT = port(5174)
+    STOREFRONT = f"http://localhost:{STOREFRONT_PORT}"
+    WEBHOOK_STOREFRONT = f"http://127.0.0.1:{STOREFRONT_PORT}/webhooks/payflo"   # the shop's own receiver, which checks the signature
 
 
 def log(message=""):
@@ -293,10 +298,33 @@ def start_dashboard():
     log(f"   serving {DASHBOARD}")
 
 
+def storefront_up():
+    return fetch(f"http://127.0.0.1:{STOREFRONT_PORT}/healthz").strip() == "payflo-storefront"
+
+
+def start_storefront():
+    """The demo merchant's shop. Its server is the merchant's backend, so it needs the API key the seed saves."""
+    step("The demo merchant's shop")
+    if storefront_up():
+        log(f"   running at {STOREFRONT}")
+        return
+    if read_json("api-key.json", {}).get("email") != DEMO_EMAIL:
+        log("   not started: it needs the demo merchant's API key, which the seed creates (python demo/demo.py seed)")
+        return
+    holder = pid_on_port(STOREFRONT_PORT)
+    if holder is not None:
+        fail(f"port {STOREFRONT_PORT} is taken by another program (pid {holder}), so the shop can't start. "
+             f"Stop that program, or move PayFlo with: python demo/demo.py --port-offset 100")
+    spawn("storefront", [sys.executable, str(ROOT / "storefront" / "serve.py"), "--port", str(STOREFRONT_PORT),
+                         "--gateway", GATEWAY], ROOT / "storefront")
+    wait_for("the shop", storefront_up, 30)
+    log(f"   serving {STOREFRONT}")
+
+
 def stop():
     step("Stopping what this script started")
     started = read_json("started.json", {})
-    ports = dict({name: port for name, (port, _) in SERVICES.items()}, dashboard=DASHBOARD_PORT)
+    ports = dict({name: port for name, (port, _) in SERVICES.items()}, dashboard=DASHBOARD_PORT, storefront=STOREFRONT_PORT)
     for name in reversed(list(started)):
         # Only if that process still holds the port it was started for: a recorded pid may have been reused since.
         pid = pid_on_port(ports[name])
@@ -319,6 +347,7 @@ def status():
     for name, (port, url) in SERVICES.items():
         log(f"   {'up  ' if answers(url) else 'DOWN'}  {name} :{port}")
     log(f"   {'up  ' if dashboard_up() else 'DOWN'}  dashboard {DASHBOARD}")
+    log(f"   {'up  ' if storefront_up() else 'DOWN'}  shop {STOREFRONT}")
 
 
 # ------------------------------------------------------------------------------------------------ the API, as a client sees it
@@ -426,6 +455,24 @@ class Merchant:
                           token=self.token), "create webhook")
                 log(f"   registered webhook {url} ({events})")
 
+    def storefront_webhook(self):
+        """The shop's own endpoint for payment events. Its signing secret is shown once, so it is kept in demo/.run
+        for the shop's server (storefront/serve.py), which checks every delivery against it."""
+        saved = read_json("storefront.json", {})
+        configs = must(http("GET", "/v1/merchants/webhooks", token=self.token), "list webhooks")
+        existing = next((w for w in configs if w["targetUrl"] == WEBHOOK_STOREFRONT), None)
+        if existing and saved.get("webhookId") == existing["id"]:
+            return
+        if existing:          # registered, but its secret isn't here any more: the only way to have one is a new one
+            config = must(http("POST", f"/v1/merchants/webhooks/{existing['id']}/rotate-secret", token=self.token),
+                          "rotate the shop's webhook secret")
+        else:
+            config = must(http("POST", "/v1/merchants/webhooks", {"targetUrl": WEBHOOK_STOREFRONT,
+                                                                   "eventTypes": "PAYMENT_STATUS_CHANGED"},
+                               token=self.token), "create the shop's webhook")
+        write_json("storefront.json", {"webhookId": config["id"], "webhookSecret": config["webhookSecret"]})
+        log(f"   registered the shop's webhook {WEBHOOK_STOREFRONT} (secret saved in demo/.run/storefront.json)")
+
     def team(self):
         users = must(http("GET", "/v1/merchants/users", token=self.token), "list users")
         if any(u["email"] == TEAM_EMAIL for u in users):
@@ -479,6 +526,7 @@ def seed():
     merchant.activate()
     merchant.api_key()
     merchant.webhooks()
+    merchant.storefront_webhook()
     merchant.team()
 
     batch = uuid.uuid4().hex[:6]
@@ -576,9 +624,12 @@ PayFlo is running.
                 log in as {DEMO_EMAIL} / {DEMO_PASSWORD}   (owner)
                        or {TEAM_EMAIL} / the same password  (read-only TEAM)
                 operator console: the admin key is the gateway's ADMIN_API_KEY (the development default is in docs/api/admin.md)
+  Shop          {STOREFRONT}
+                the demo merchant's shop: add something to the cart and pay by card 4111 1111 1111 1111,
+                with the dashboard open beside it
   API docs      {DASHBOARD}/docs.html   (Swagger UI over docs/api/openapi.yaml)
   Gateway       {GATEWAY}   (what the dashboard and your own curl calls talk to)
-  API key       demo/.run/api-key.json
+  API key       demo/.run/api-key.json   (the shop's server reads it; the browser never sees it)
   Logs          demo/logs/
 
   python demo/demo.py seed     another batch of orders and payments
@@ -610,6 +661,7 @@ def main():
         if not answers(SERVICES["api-gateway-service"][1]):
             fail("the stack isn't running: run 'python demo/demo.py' first")
         seed()
+        start_storefront()
         return summary()
 
     start_infrastructure()
@@ -618,6 +670,7 @@ def main():
     start_dashboard()
     if not args.no_seed:
         seed()
+    start_storefront()
     summary()
 
 
