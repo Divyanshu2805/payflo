@@ -5,7 +5,7 @@ Everything about what PayFlo does, how it is built, and how to run and change it
 ## Getting started
 
 - [Features](features.md) — everything the system does, by area, with its rules and limits.
-- [The demo and the dashboard](local-development/demo-and-dashboard.md) — one command that starts everything and seeds a merchant, and a web dashboard over the API.
+- [The demo, the dashboard and the shop](local-development/demo-and-dashboard.md) — one command that starts everything and seeds a merchant, a web dashboard over the API, and a sample shop to pay in.
 - [Local development](local-development/README.md) — prerequisites, setup, configuration, commands, troubleshooting.
 - [Tech stack](tech-stack.md) — the languages, frameworks and services in use.
 

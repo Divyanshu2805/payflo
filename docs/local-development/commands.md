@@ -8,6 +8,7 @@ On Windows, use `mvnw.cmd` in place of `./mvnw`.
 |---|---|
 | `python demo/demo.py` | Start everything, seed a demo merchant and serve the dashboard; `seed`, `status`, `stop`, `--build`, `--port-offset N` ([the demo](demo-and-dashboard.md)) |
 | `python dashboard/serve.py` | Only the dashboard and Swagger UI, on <http://localhost:5173>, against a gateway that is already running |
+| `python storefront/serve.py` | Only the sample shop, on <http://localhost:5174>, against a gateway that is already running (it needs the API key an earlier `demo.py` saved) |
 | `./mvnw clean install -DskipTests` | Build every module and install `common-lib` locally |
 | `../mvnw spring-boot:run` (from a module directory) | Run one service — see the [start order](setup.md#4-start-the-services-in-order) |
 | `./mvnw -pl common-lib,<module> compile` | Compile one service against `common-lib` from source |
