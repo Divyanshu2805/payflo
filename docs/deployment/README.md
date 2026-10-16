@@ -2,8 +2,6 @@
 
 How PayFlo runs on Kubernetes: every service, PostgreSQL, Redis and Kafka in one namespace on a local [kind](https://kind.sigs.k8s.io/) cluster, assembled with Kustomize from `microservices/k8s/`. It runs the same code as local development, with two substitutions: **Kubernetes Services replace Eureka**, and **one PostgreSQL StatefulSet hosts all four databases**, each with its own user.
 
-![Kubernetes deployment topology](../assets/diagrams/deployment-topology.png)
-
 **Key properties**
 
 - **One public entry point.** Only the gateway's Service is a `NodePort` (`30080`, published on `localhost:8080` by kind). Every other Service is `ClusterIP`, so `/internal/**` is unreachable from outside the cluster.

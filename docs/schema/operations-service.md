@@ -2,8 +2,6 @@
 
 Webhook deliveries and their dead letters, settlements, and this service's own outbox. Database: `payflo_operations`.
 
-![operations-service entity-relationship diagram](../assets/diagrams/er-operations.png)
-
 ## WEBHOOK_EVENT
 
 One delivery of one domain event to one merchant endpoint, with its retry bookkeeping.

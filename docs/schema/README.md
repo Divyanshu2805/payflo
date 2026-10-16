@@ -20,4 +20,4 @@ Data is split across **four PostgreSQL databases, one per business service**. Tw
 | [Enums and state machines](enums.md) | Every status and type value, and the payment, settlement and delivery lifecycles |
 | [Conventions](conventions.md) | Entities, money, enums, uniqueness, and how to change the schema |
 
-Keep these pages and the ER diagrams in step with each service's `entity/` package: update them in the same change as any entity edit.
+Keep these pages in step with each service's `entity/` package: update them in the same change as any entity edit.

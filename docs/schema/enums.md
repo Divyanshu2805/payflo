@@ -44,8 +44,6 @@ Every enum lives in `common-lib`'s `enums` package, so all services speak the sa
 
 `PaymentStatus` is the state and `PaymentEvent` the trigger. `PaymentStateMachine` holds the table of allowed pairs; `PaymentTransitionService.apply` validates a move against it — an undefined pair is `409 INVALID_STATE_TRANSITION` — sets the new status and writes a `payment_transition_log` row. See [decision 0007](../architecture/decisions/0007-validated-payment-state-machine.md).
 
-![Payment state machine](../assets/diagrams/state-payment.png)
-
 | From | Event | To | Fired by |
 |---|---|---|---|
 | `CREATED` | `AUTHORIZE_ATTEMPT` | `AUTHORIZING` | the payment saga, before calling the acquirer |
@@ -65,8 +63,6 @@ Every enum lives in `common-lib`'s `enums` package, so all services speak the sa
 
 ## Settlement status
 
-![Settlement status](../assets/diagrams/state-settlement.png)
-
 | From | To | When |
 |---|---|---|
 | — | `INITIATED` | Amounts computed and payment links saved |
@@ -76,8 +72,6 @@ Every enum lives in `common-lib`'s `enums` package, so all services speak the sa
 | `TRANSFER_PENDING` | `FAILED` | The payout callback reported an error; `SETTLEMENT_FAILED` published. The payout simulator declines a share of transfers, and all of them in `FAILURE` mode |
 
 ## Delivery status
-
-![Delivery status](../assets/diagrams/state-delivery.png)
 
 **`WebhookEventStatus`** — `PENDING` when created and queued; `DELIVERED` on a `2xx`; `FAILED` after a failed attempt with `next_retry_at` set (and back to `DELIVERED` if a retry succeeds); `DEAD` after the seventh failure, with a `dlq_event` written.
 

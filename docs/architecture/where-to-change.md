@@ -40,7 +40,7 @@ A task-oriented index into the code. Paths are relative to each module's `src/ma
 | Add a public endpoint | The owning service's `controller/` and DTOs, the [API reference](../api/README.md) — and, if the path prefix is new, a route in `config-repo/api-gateway-service.yaml` **and** `api-gateway-service-k8s.yaml` |
 | Make an endpoint public (no credential) | `app.security.public-routes` in `config-repo/api-gateway-service.yaml` — think twice |
 | Add a service-to-service call | An `Internal*Controller` endpoint in the owner, a Feign client method in the caller's `client/` with Resilience4j annotations and a `config-repo` instance, a `common-lib` DTO if shared, and the table in [service communication](service-communication.md#internal-api) |
-| Add a column or table | A Flyway migration in the owning service (`src/main/resources/db/migration`) and the entity, then the [data model](../schema/README.md) and the ER diagram |
+| Add a column or table | A Flyway migration in the owning service (`src/main/resources/db/migration`) and the entity, then the [data model](../schema/README.md) |
 | Change authentication | api-gateway `security/` (`GatewayAuthFilter`, `JwtAuthHandler`, `ApiKeyAuthHandler`); token issuing in merchant `security/JwtUtil.java` |
 | Change rate limits | `app.rate-limit.*` and `app.security.*` in `config-repo/api-gateway-service.yaml`; the limiter is `common-lib` `ratelimit/FixedWindowRateLimiter.java` |
 | Change the error shape or a status mapping | `common-lib` `exception/GlobalExceptionHandler.java` — every service picks it up |

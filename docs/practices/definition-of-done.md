@@ -12,4 +12,4 @@ A change is done when every item that applies is true:
 - [ ] **A new, removed or moved endpoint is in `docs/api/openapi.yaml`** — `python docs/api/check_openapi.py` passes (CI runs it) — and a changed request or response shape is changed there too.
 - [ ] **A new path prefix has a gateway route** in both `api-gateway-service.yaml` and `api-gateway-service-k8s.yaml`.
 - [ ] **No security guardrail was weakened** ([guardrails](security-guardrails.md)).
-- [ ] **Every doc the change makes inaccurate is updated in the same commit** — architecture, API reference, data model, local development, deployment, `CLAUDE.md` — and any diagram it affects is regenerated from `docs/assets/diagrams/src/`.
+- [ ] **Every doc the change makes inaccurate is updated in the same commit** — architecture, API reference, data model, local development, deployment, `CLAUDE.md`.

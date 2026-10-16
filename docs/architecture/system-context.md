@@ -2,8 +2,6 @@
 
 PayFlo is a payment gateway backend — what sits behind a merchant's "Pay now" button. It is a set of Spring Boot 4.1 (Java 25) services under `microservices/`: four business services, each with its own database, behind one API gateway, with Eureka for discovery and a config server that serves settings from the repository. Merchants call the API from a dashboard (with a JWT) or from their own backend (with an API key); the [dashboard](../local-development/demo-and-dashboard.md) in this repository is one such client, not part of the system.
 
-![PayFlo system architecture](../assets/diagrams/system-architecture.png)
-
 ## Services
 
 | Service | Port | Owns | Database |

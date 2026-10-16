@@ -28,7 +28,7 @@ These are authoritative and kept current:
 | The load test and measured results | [`docs/load-testing/`](docs/load-testing/README.md) |
 | What happens when a service or a data store dies | [`docs/reliability/`](docs/reliability/crash-and-outage-tests.md) |
 
-If a change would make any of these inaccurate, **update that doc in the same change**. The docs describe what the system does: no known-gaps, limitations or roadmap sections. Diagrams are generated: edit the owning `d_*.py` in `docs/assets/diagrams/src/`, run `build.py` and `render.py`, and commit the regenerated SVG and PNG.
+If a change would make any of these inaccurate, **update that doc in the same change**. The docs describe what the system does: no known-gaps, limitations or roadmap sections.
 
 ## Repository structure
 

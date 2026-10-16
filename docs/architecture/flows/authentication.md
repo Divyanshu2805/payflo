@@ -2,8 +2,6 @@
 
 How a merchant gets credentials, and how every other service trusts a request without checking a credential itself. merchant-service issues credentials; the gateway verifies them.
 
-![Authentication at the gateway](../../assets/diagrams/flow-authentication.png)
-
 ## Getting credentials
 
 1. **Sign up.** `POST /v1/auth/signup` is a public route. `AuthController` → `AuthServiceImpl.signup` bcrypt-hashes the password first (so every signup costs the same), then `MerchantRegistrar.register` creates the `Merchant` (status forced to `PENDING_KYC`) and its first `AppUser` (role `OWNER`) in one transaction. An email that already logs in — or a unique-index race on it, which only surfaces at commit — is not an error: the answer is a `201` with a made-up id, indistinguishable from success, so signup can't be used to find which emails are registered ([the details](../../api/authentication.md#signup-and-account-enumeration)).
