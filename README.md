@@ -62,6 +62,30 @@ One command starts PostgreSQL, Redis and Kafka, builds the services, starts all 
 | **API reference** | <http://localhost:5173/docs.html>: Swagger UI over [`openapi.yaml`](docs/api/openapi.yaml), with "Try it out" calling the real API |
 | **Postman** | Import [`payflo.postman_collection.json`](docs/api/payflo.postman_collection.json): the same API as a walkthrough |
 
+### See it working: a 5-minute walkthrough
+
+Everything below uses test data only. The bank is simulated, so no real card, account or money is involved.
+
+1. **Wait for the demo to finish.** `python demo/demo.py` prints the dashboard and shop addresses when the seed is done. `python demo/demo.py status` shows what is up.
+2. **Sign in to the dashboard** at <http://localhost:5173> with `demo@payflo.test` / `demo-password-1`. The home page already shows the seeded payments, a seven-day trend and the payment methods. The **Payments**, **Refunds**, **Webhooks** and **Settlements** pages show the rest of what the seed created.
+3. **Pay in the shop.** Open <http://localhost:5174>, add something to the cart and check out with any name and address. Keep the dashboard's **Payments** page open beside it.
+
+   | Pay with | Test value | Result |
+   |---|---|---|
+   | Card | `4111 1111 1111 1111`, any future expiry, any CVC | Authorized, then captured within seconds |
+   | Card | `4000 0000 0000 0002` | Declined: the checkout says so and the same order can be paid again |
+   | UPI | `buyer@okaxis` | Authorized, then captured |
+   | UPI | `fail@okaxis` | Rejected |
+   | UPI | `capturefail@okaxis` | Authorized, then the capture is refused; the payment waits as `AUTHORIZED` |
+
+   The payment appears in the dashboard on its own and moves `AUTHORIZING` to `CAPTURED`. The confirmation page ticks "Payment confirmed" when PayFlo's signed webhook reaches the shop.
+4. **Check the webhook.** On the dashboard's **Webhooks** page the delivery shows its status, attempts and response code. It carries `X-PayFlo-Timestamp` and `X-PayFlo-Signature`.
+5. **Look at a refund.** The dashboard's **Refunds** page lists the refund the seed made, and a payment's detail page shows it on its timeline. The dashboard only reads: to refund a payment you just made, use `POST /v1/payments/{paymentId}/refunds` from step 7 (leave `amountUnits` out to refund the whole payment). It resolves in a few seconds.
+6. **Run a settlement.** Settlement normally runs at 23:00. To see it now, open the login page's **operator** tab, enter the development admin key `dev-admin-api-key-change-me` and run a settlement for the demo merchant. The **Settlements** page then shows gross, refunds, fee, GST and net.
+7. **Call the API yourself.** Open <http://localhost:5173/docs.html> and use "Try it out", or import the [Postman collection](docs/api/payflo.postman_collection.json). The demo saves an API key in `microservices/demo/.run/api-key.json`.
+
+`analyst@payflo.test` / `demo-password-1` is a read-only login: it can look at everything but not change anything. All the test values are listed in the [mock acquirer](docs/api/mock-acquirer.md). These logins and the admin key are development defaults, so never reuse them in a shared environment.
+
 If ports 8080 to 8084 are taken, `python demo/demo.py --port-offset 100` moves everything; `python demo/demo.py stop` stops the services. See [the demo and the dashboard](docs/local-development/demo-and-dashboard.md).
 
 ## Screenshots
