@@ -39,7 +39,6 @@ When it finishes it prints the dashboard's and the shop's addresses, the demo me
 | An API key | Saved in `demo/.run/api-key.json` (gitignored), since the secret is shown only once |
 | Two webhook endpoints | One that works (operations-service's test receiver) and one that fails, so retries and `FAILED` deliveries are visible |
 | The shop's webhook endpoint | `PAYMENT_STATUS_CHANGED` to the shop's server, with the signing secret saved in `demo/.run/storefront.json` (gitignored) for it to check deliveries against |
-| A `TEAM` user | A read-only login |
 | Payments by UPI, card, net banking and wallet | The simulated bank authorizing and capturing within seconds, and declining some on its own |
 | `fail@okaxis`, a declined card then UPI on the same order | The [test values](../api/mock-acquirer.md), and two attempts on one order |
 | `capturefail@okaxis`, then a manual capture | A refused capture left `AUTHORIZED`, captured on retry |
@@ -92,7 +91,7 @@ The frame is exactly the height of the window and never scrolls: the sidebar and
 | Audit log | The merchant's own entries |
 | **Operator** (a separate login, with the admin key) | Merchants (suspend, reactivate), a settlement run on demand, the audit log across merchants |
 
-Log in as the demo merchant, as its `TEAM` user to see a read-only login refused by the gateway (`403 ROLE_FORBIDDEN`), or create a new account from the login page.
+Log in as the demo merchant, or create a new account from the login page.
 
 **Home, Payments and Orders are live.** Each asks the API again every few seconds while it is on screen (marked **Live** beside its Refresh button), and a row that is new, or whose status has changed, is tinted for a moment. Nothing is pushed: it is the same `GET` a refresh makes, so the gateway needed no change. These repeats are left out of the API requests bar, which would otherwise show nothing else.
 

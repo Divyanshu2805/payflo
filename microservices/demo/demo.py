@@ -16,7 +16,7 @@ What "up" does, skipping every step that is already done:
   3. starts discovery, config, the four business services and the gateway, in that order, and waits for each
   4. starts the dashboard on http://localhost:5173 (dashboard/serve.py)
   5. seeds: a merchant that has passed KYC, an API key, two webhook endpoints (one that works, one that fails),
-     a team member, orders paid by card, UPI, net banking and wallet, the test values that fail, a refund,
+     orders paid by card, UPI, net banking and wallet, the test values that fail, a refund,
      and a settlement run by the platform operator
   6. starts the demo merchant's shop on http://localhost:5174 (storefront/serve.py), where a shopper pays
 
@@ -50,7 +50,6 @@ WINDOWS = platform.system() == "Windows"
 # default (docs/api/admin.md); set ADMIN_API_KEY if yours differs.
 DEMO_EMAIL = os.environ.get("DEMO_EMAIL", "demo@payflo.test")
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo-password-1")
-TEAM_EMAIL = os.environ.get("DEMO_TEAM_EMAIL", "analyst@payflo.test")
 ADMIN_KEY = os.environ.get("ADMIN_API_KEY", "dev-admin-api-key-change-me")
 
 PG_CONTAINER, PG_USER = "pgvector-payflo", "user"
@@ -473,17 +472,6 @@ class Merchant:
         write_json("storefront.json", {"webhookId": config["id"], "webhookSecret": config["webhookSecret"]})
         log(f"   registered the shop's webhook {WEBHOOK_STOREFRONT} (secret saved in demo/.run/storefront.json)")
 
-    def team(self):
-        users = must(http("GET", "/v1/merchants/users", token=self.token), "list users")
-        if any(u["email"] == TEAM_EMAIL for u in users):
-            return
-        status_code, body = http("POST", "/v1/merchants/users", {"email": TEAM_EMAIL, "password": DEMO_PASSWORD,
-                                                                 "role": "TEAM"}, token=self.token)
-        if status_code == 201:
-            log(f"   added {TEAM_EMAIL} as a read-only TEAM member (same password)")
-        else:
-            log(f"   could not add {TEAM_EMAIL}: {body.get('errorCode')}")
-
     # ---- orders and payments, with the API key, as the merchant's backend
 
     def order(self, amount_units, label, batch, idempotency_key=None, customer="buyer@example.com"):
@@ -527,7 +515,6 @@ def seed():
     merchant.api_key()
     merchant.webhooks()
     merchant.storefront_webhook()
-    merchant.team()
 
     batch = uuid.uuid4().hex[:6]
     good_card = merchant.tokenize("4111111111111111")
@@ -621,8 +608,7 @@ def summary():
 PayFlo is running.
 
   Dashboard     {DASHBOARD}
-                log in as {DEMO_EMAIL} / {DEMO_PASSWORD}   (owner)
-                       or {TEAM_EMAIL} / the same password  (read-only TEAM)
+                log in as {DEMO_EMAIL} / {DEMO_PASSWORD}
                 operator console: the admin key is the gateway's ADMIN_API_KEY (the development default is in docs/api/admin.md)
   Shop          {STOREFRONT}
                 the demo merchant's shop: add something to the cart and pay by card 4111 1111 1111 1111,
