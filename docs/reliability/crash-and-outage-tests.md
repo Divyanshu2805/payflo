@@ -2,18 +2,19 @@
 
 What happens to a payment when something dies in the middle of it? These tests answer that by doing it: a service is killed with no warning, or PostgreSQL, Redis or Kafka is switched off, while customers are placing and paying orders, and then the system is checked for the three failures that matter in a payment system — a payment **lost**, **duplicated** or **stuck**.
 
-**Result: all seven scenarios pass all eight checks.** In every one, every customer's order and payment exists exactly once, every payment reached an end state, the money adds up, and every captured payment's webhook reached the merchant.
+**Result: all seven scenarios pass all eight checks.** In every one, every customer's order and payment exists exactly once, every payment reached an end state, the money adds up, and every captured payment's webhook reached the merchant. Each run also times the recovery: once the component is back, a new payment goes through within **13 seconds** in the worst case, and every payment has settled and the outbox drained within **22 seconds**.
 
 ## Running it
 
 ```bash
 cd microservices
-python chaos/crash_and_outage_test.py                         # every scenario, about 15 minutes
+python chaos/crash_and_outage_test.py                         # every scenario, about 12 minutes
 python chaos/crash_and_outage_test.py redis-outage            # one
+python chaos/crash_and_outage_test.py --port-offset 100       # a stack started with demo.py --port-offset 100
 python chaos/crash_and_outage_test.py --list
 ```
 
-It needs the stack running as for the [hand checks](../practices/testing.md#what-is-verified-by-hand) (the gateway, the four services, and the PostgreSQL, Redis and Kafka containers), Docker and Python 3.10+, and nothing else: it uses only the standard library. It restarts the gateway first with the per-key rate limit raised, because customers retry hard during a fault and the default 200 requests a minute would mistake that for abuse. It writes a JSON report to `chaos/results/` (gitignored) and each service's log to `chaos/logs/`.
+It needs the stack running as for the [hand checks](../practices/testing.md#what-is-verified-by-hand) (the gateway, the four services, and the PostgreSQL, Redis and Kafka containers), Docker and Python 3.10+, and nothing else: it uses only the standard library. It restarts the gateway first with the per-key rate limit raised, because customers retry hard during a fault and the default 200 requests a minute would mistake that for abuse. It prints the checks and a recovery table, writes a JSON report to `chaos/results/` (gitignored), with each scenario's checks, counts and recovery times, and writes each service's log to `chaos/logs/`.
 
 ## What each scenario does
 
@@ -44,23 +45,37 @@ Each scenario creates six fresh merchants, each with an API key, a vaulted test 
 | **Outbox drained** | Every event written to the outbox was published to Kafka |
 | **Events delivered** | Every captured payment's webhook reached the merchant's server, at least once |
 
+## How recovery is timed
+
+The clock starts when the broken component is **back**: a restarted service reports healthy, or a stopped container has been started again. From then on it measures two things:
+
+| Measure | Means |
+|---|---|
+| **First payment** | Seconds until a new customer's payment goes through again. A new order is paid by UPI every second, by a seventh merchant that no check reads, until one is seen `CAPTURED` |
+| **All settled** | Seconds until every customer is done, every one of their payments has ended `CAPTURED` or `FAILED`, and none of their events is still waiting in the outbox. The database is read every second |
+
+A payment takes a few seconds even with nothing broken, because the simulated bank answers a UPI payment in 1 to 3 seconds. So each scenario first times three payments before the fault, and reports the middle one as the **normal** time to read the first figure against. "All settled" can be shorter than "first payment": when every customer had already finished during the fault, there is nothing left to settle.
+
 ## Results
 
-| Scenario | Customers that had to retry | Payments `CAPTURED` / `FAILED` | Webhooks received |
-|---|---|---|---|
-| `payment-service-crash` | 26 of 36 | 36 / 0 | 108 |
-| `vault-service-crash` | 0 | 8 / 28 | 72 |
-| `gateway-crash` | 30 | 31 / 5 | 106 |
-| `operations-service-crash` | 0 | 34 / 2 | 108 |
-| `kafka-outage` | 0 | 32 / 4 | 108 |
-| `redis-outage` | 32 | 35 / 1 | 108 |
-| `postgres-outage` | 25 | 34 / 2 | 105 |
+Measured on 2026-10-16. Recovery times are in seconds from the component being back; "normal" is a payment with nothing broken.
+
+| Scenario | Customers that had to retry | Payments `CAPTURED` / `FAILED` | Webhooks received | Recovery: first payment (normal) | Recovery: all settled |
+|---|---|---|---|---|---|
+| `payment-service-crash` | 14 of 36 | 30 / 6 | 108 | 4.1 s (2.9 s) | 6.9 s |
+| `vault-service-crash` | 0 | 21 / 15 | 94 | 1.9 s (3.0 s) | 0.6 s |
+| `gateway-crash` | 20 | 34 / 2 | 108 | 3.3 s (3.0 s) | 6.8 s |
+| `operations-service-crash` | 0 | 35 / 1 | 108 | 3.0 s (3.0 s) | 0.6 s |
+| `kafka-outage` | 0 | 33 / 3 | 108 | 2.4 s (4.0 s) | 21.3 s |
+| `redis-outage` | 21 | 32 / 4 | 108 | 10.2 s (3.0 s) | 16.9 s |
+| `postgres-outage` | 16 | 36 / 0 | 108 | 12.8 s (2.1 s) | 20.1 s |
 
 What the numbers show:
 
-- **A `FAILED` payment is not a lost one.** The simulated bank declines a few payments by design (5–10%), which is most of the `FAILED` column. The vault scenario is the exception on purpose: with the vault down, 27 of the 28 failures are the saga **compensating** (`PAYMENT_GATEWAY_ROUTER_UNREACHABLE`: nothing was charged, the order stays payable) and one is a bank decline. No customer had to retry, because a clean `FAILED` is an answer, not an error.
-- **Crashes are absorbed by retries plus idempotency.** When payment-service, the gateway, Redis or PostgreSQL was down, 25–32 of 36 customers retried, and the keys meant none of those retries created a second order or payment.
+- **A `FAILED` payment is not a lost one.** The simulated bank declines a few payments by design (5–10%), which is most of the `FAILED` column. The vault scenario is the exception on purpose: with the vault down, 14 of the 15 failures are the saga **compensating** (`PAYMENT_GATEWAY_ROUTER_UNREACHABLE`: nothing was charged, the order stays payable) and one is a bank decline. No customer had to retry, because a clean `FAILED` is an answer, not an error.
+- **Crashes are absorbed by retries plus idempotency.** When payment-service, the gateway, Redis or PostgreSQL was down, 14–21 of 36 customers retried, and the keys meant none of those retries created a second order or payment.
 - **The outages that don't touch the request path are invisible to customers.** Killing operations-service or stopping Kafka delayed webhooks and left the outbox to catch up afterwards (0 customers retried), and every event still arrived.
+- **A crashed service recovers in about the time of a normal payment; a data store takes longer.** Once a crashed service is healthy, a new payment is captured in about the normal time, a second or so more after payment-service. A data store takes longer: after Redis or PostgreSQL is started, the services' connections have to notice it is back and reconnect, so the first payment comes 10 to 13 seconds later, against 2 to 3 seconds normally. Kafka doesn't stop payments at all (the outbox holds the events), but the outbox takes 21 seconds to drain once the producers reconnect.
 - **Webhooks are at least once.** The receiver saw more webhooks than payments because each payment sends several events (created, authorized, captured); the check is that none is *missing*, not that none is repeated, and each carries a stable event id so a receiver can drop a duplicate.
 
 ## What this found

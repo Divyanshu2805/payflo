@@ -1,6 +1,6 @@
 # Project Metrics
 
-Measured figures for PayFlo, each with how to re-check it. Nothing here is an estimate unless it says "about". The performance, scaling and reliability figures are from runs made on 2026-10-07; the test and code counts were taken on 2026-10-11.
+Measured figures for PayFlo, each with how to re-check it. Nothing here is an estimate unless it says "about". The performance and scaling figures are from runs made on 2026-10-07, the crash and outage results (with their recovery times) from 2026-10-16; the test and code counts were taken on 2026-10-11.
 
 Everything was measured on one development laptop (32 logical cores, 16 GB for Docker) that ran the load generator, PostgreSQL, Redis, Kafka and all seven services together.
 
@@ -54,6 +54,7 @@ On a single-node kind cluster, 200 virtual users for 3 minutes, each replica lim
 |---|---|---|
 | Crash and outage scenarios | **7 of 7 pass all 8 checks**: kill payment-service, vault-service, the gateway or operations-service, or stop Kafka, Redis or PostgreSQL, while 36 customers pay | `python chaos/crash_and_outage_test.py` |
 | Payments lost, duplicated or stuck across the 7 scenarios | 0 | same |
+| Recovery once the failed component is back, worst case | **12.8 s** until a new payment is captured (PostgreSQL; 2.1 s normally), **21.3 s** until every payment has settled and the outbox is drained (Kafka) | same |
 | Webhooks for captured payments that reached the merchant | All of them, in every scenario | same |
 | Duplicate requests under one idempotency key | **33,600 sent, 0 took effect** (24,000 payment and 9,600 order requests, 20 at the same instant per key) | `python idempotency_replay_test.py` |
 | Settlement interrupted after any of its steps | Finished by the recovery job, never paid twice | `SettlementIntegrationTest` |
