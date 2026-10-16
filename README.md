@@ -57,7 +57,7 @@ One command starts PostgreSQL, Redis and Kafka, builds the services, starts all 
 |---|---|
 | **Dashboard** | <http://localhost:5173> |
 | **Shop** | <http://localhost:5174>: the demo merchant's tea shop. Check out as a customer and pay by card `4111 1111 1111 1111` (any future expiry, any CVC) or UPI `buyer@okaxis`, with the dashboard open beside it to watch the payment arrive |
-| **Demo login** | `demo@payflo.test` / `demo-password-1` (owner), or `analyst@payflo.test` with the same password (a read-only `TEAM` login) |
+| **Demo login** | `demo@payflo.test` / `demo-password-1` (owner) |
 | **Operator console** | The login page's operator tab, with the development admin key from the [admin API](docs/api/admin.md) page |
 | **API reference** | <http://localhost:5173/docs.html>: Swagger UI over [`openapi.yaml`](docs/api/openapi.yaml), with "Try it out" calling the real API |
 | **Postman** | Import [`payflo.postman_collection.json`](docs/api/payflo.postman_collection.json): the same API as a walkthrough |
@@ -84,7 +84,7 @@ Everything below uses test data only. The bank is simulated, so no real card, ac
 6. **Run a settlement.** Settlement normally runs at 23:00. To see it now, open the login page's **operator** tab, enter the development admin key `dev-admin-api-key-change-me` and run a settlement for the demo merchant. The **Settlements** page then shows gross, refunds, fee, GST and net.
 7. **Call the API yourself.** Open <http://localhost:5173/docs.html> and use "Try it out", or import the [Postman collection](docs/api/payflo.postman_collection.json). The demo saves an API key in `microservices/demo/.run/api-key.json`.
 
-`analyst@payflo.test` / `demo-password-1` is a read-only login: it can look at everything but not change anything. All the test values are listed in the [mock acquirer](docs/api/mock-acquirer.md). These logins and the admin key are development defaults, so never reuse them in a shared environment.
+All the test values are listed in the [mock acquirer](docs/api/mock-acquirer.md). These logins and the admin key are development defaults, so never reuse them in a shared environment.
 
 If ports 8080 to 8084 are taken, `python demo/demo.py --port-offset 100` moves everything; `python demo/demo.py stop` stops the services. See [the demo and the dashboard](docs/local-development/demo-and-dashboard.md).
 
