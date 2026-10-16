@@ -1,4 +1,10 @@
 <p align="center">
+  <img src="docs/assets/logo.svg" alt="PayFlo" width="96" height="96">
+  <br/>
+  <b style="font-size:2em">PayFlo</b>
+</p>
+
+<p align="center">
   <b>The backend behind a "Pay now" button.</b><br/>
   Orders, payments, a card vault, signed webhooks and nightly payouts, as Spring Boot microservices.
 </p>
