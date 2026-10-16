@@ -5,6 +5,7 @@ containers). Standard library only, Python 3.10+.
 
     python chaos/crash_and_outage_test.py                      # every scenario
     python chaos/crash_and_outage_test.py payment-service-crash kafka-outage
+    python chaos/crash_and_outage_test.py --port-offset 100    # a stack started with demo.py --port-offset 100
     python chaos/crash_and_outage_test.py --list
 
 Each scenario starts a fresh set of merchants, registers a webhook to a receiver run by this script, and has a crowd of
@@ -18,6 +19,15 @@ checks, from the database and from what the clients and the webhook receiver saw
   money is consistent a captured payment's order is paid, a paid order has a captured payment
   events delivered    every captured payment's webhook reached the merchant's server (at least once)
   outbox drained      every event written to the outbox was published to Kafka
+
+and it times the recovery, from the moment the component is back (a restarted service reports healthy, a stopped
+container is started again):
+
+  first payment       until a new customer's payment goes through again: a fresh order paid by UPI and seen CAPTURED
+  all settled         until every customer's payment has ended CAPTURED or FAILED and the outbox is drained
+
+A new payment takes a second or two even with nothing broken (the simulated bank answers a UPI payment in 1-3 s), so
+each scenario also times a few payments before the fault, as the baseline to read the first figure against.
 
 "kill" is a hard kill (SIGKILL / taskkill /F): no shutdown hooks, no draining, the same as a crashed process or a pulled
 plug. "outage" stops a container.
@@ -40,7 +50,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]            # microservices/
-BASE = os.environ.get("CHAOS_BASE_URL", "http://localhost:8080")
+BASE = ""                         # the gateway, set by use_ports()
 PG_CONTAINER = os.environ.get("CHAOS_PG_CONTAINER", "pgvector-payflo")
 PG_USER, PG_PASSWORD = os.environ.get("CHAOS_PG_USER", "user"), os.environ.get("CHAOS_PG_PASSWORD", "password")
 REDIS_CONTAINER = os.environ.get("CHAOS_REDIS_CONTAINER", "redis")
@@ -48,19 +58,36 @@ KAFKA_CONTAINER = os.environ.get("CHAOS_KAFKA_CONTAINER", "kafka-razorpay-me")
 LOG_DIR = Path(os.environ.get("CHAOS_LOG_DIR", ROOT / "chaos" / "logs"))
 RESULTS_DIR = ROOT / "chaos" / "results"
 
-SERVICES = {                      # name: (port, health URL)
-    "api-gateway-service": (8080, "http://127.0.0.1:9081/actuator/health"),
-    "merchant-service": (8081, "http://127.0.0.1:8081/actuator/health"),
-    "payment-service": (8082, "http://127.0.0.1:8082/actuator/health"),
-    "vault-service": (8083, "http://127.0.0.1:8083/actuator/health"),
-    "operations-service": (8084, "http://127.0.0.1:8084/actuator/health"),
-}
+SERVICES = {}                     # name: (port, health URL), set by use_ports()
+SERVICE_ENV = {}                  # what a restarted service needs to find discovery and config on their (possibly moved) ports
+
+
+def use_ports(offset):
+    """Every port moves by --port-offset, as with demo.py's option of the same name."""
+    global BASE
+    port = lambda base: base + offset
+    health = lambda base: f"http://127.0.0.1:{port(base)}/actuator/health"
+    SERVICES.clear()
+    SERVICES.update({
+        "api-gateway-service": (port(8080), health(9081)),            # its Actuator is on the management port
+        "merchant-service": (port(8081), health(8081)),
+        "payment-service": (port(8082), health(8082)),
+        "vault-service": (port(8083), health(8083)),
+        "operations-service": (port(8084), health(8084)),
+    })
+    SERVICE_ENV.clear()
+    SERVICE_ENV.update({"EUREKA_URL": f"http://localhost:{port(8761)}/eureka", "CONFIG_SERVER_URL": f"http://localhost:{port(8888)}",
+                        "MANAGEMENT_PORT": str(port(9081))})
+    BASE = os.environ.get("CHAOS_BASE_URL", f"http://127.0.0.1:{port(8080)}")
+
+
 WINDOWS = platform.system() == "Windows"
 
 MERCHANTS = 6                     # customers are spread over these, so no single API key hits its rate limit
 CUSTOMERS = 36
 CLIENT_DEADLINE = 150             # seconds a customer keeps retrying before it gives up
 SETTLE_TIMEOUT = 300              # seconds allowed for the system to converge after the fault
+BASELINE_PAYMENTS = 3             # payments timed before the fault, to know how long one takes with nothing broken
 
 
 def log(message):
@@ -104,8 +131,9 @@ GATEWAY_ENV = {"API_KEY_RATE_LIMIT_PER_MINUTE": "100000", "PUBLIC_AUTH_RATE_LIMI
 def start_service(name, env=None):
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     out = open(LOG_DIR / f"{name}.log", "ab")
-    full_env = dict(os.environ, **(GATEWAY_ENV if name == "api-gateway-service" else {}), **(env or {}))
-    subprocess.Popen(["java", "-Duser.timezone=Asia/Kolkata", "-jar", f"target/{name}-0.0.1-SNAPSHOT.jar"], cwd=ROOT / name,
+    full_env = dict(os.environ, **SERVICE_ENV, **(GATEWAY_ENV if name == "api-gateway-service" else {}), **(env or {}))
+    subprocess.Popen(["java", "-Duser.timezone=Asia/Kolkata", "-jar", f"target/{name}-0.0.1-SNAPSHOT.jar",
+                      f"--server.port={SERVICES[name][0]}"], cwd=ROOT / name,
                      stdout=out, stderr=subprocess.STDOUT, env=full_env,
                      creationflags=(0x08000000 | 0x00000008) if WINDOWS else 0)     # no console window, detached
     log(f"  started {name}")
@@ -119,21 +147,23 @@ def healthy(url):
         return False
 
 
-def wait_healthy(name, timeout=240):
+def wait_healthy(name, timeout=240, on_up=None):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         if healthy(SERVICES[name][1]):
+            if on_up:
+                on_up()
             time.sleep(8 if name != "api-gateway-service" else 3)         # a moment for Eureka to hand out the new address
             return True
         time.sleep(2)
     return False
 
 
-def restart_service(name, downtime=0, env=None):
+def restart_service(name, downtime=0, env=None, on_back=None):
     kill_service(name)
     time.sleep(downtime)
     start_service(name, env)
-    if not wait_healthy(name):
+    if not wait_healthy(name, on_up=on_back):
         raise RuntimeError(f"{name} did not come back")
     log(f"  {name} is back")
 
@@ -155,8 +185,10 @@ def container_stop(container):
     log(f"  stopped {container}")
 
 
-def container_start(container, settle=12):
+def container_start(container, settle=12, on_back=None):
     docker("start", container)
+    if on_back:
+        on_back()
     time.sleep(settle)
     log(f"  started {container}")
 
@@ -232,7 +264,11 @@ class Receiver:
             def log_message(self, *args):
                 pass
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        class Server(ThreadingHTTPServer):
+            request_queue_size = 256      # the default backlog of 5 resets most of a burst of deliveries, as a failed attempt
+            daemon_threads = True
+
+        self.server = Server(("127.0.0.1", 0), Handler)
         self.url = f"http://127.0.0.1:{self.server.server_address[1]}/hook"
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
@@ -244,7 +280,7 @@ class Receiver:
 # ------------------------------------------------------------------------------------------------ one scenario
 
 class Merchant:
-    def __init__(self, label, receiver):
+    def __init__(self, label, receiver=None):
         suffix = uuid.uuid4().hex[:8]
         email, password = f"chaos-{label}-{suffix}@payflo.test", "Chaos-Pass-" + suffix
         status, signup = call("POST", "/v1/auth/signup", {"name": "Chaos", "email": email, "password": password,
@@ -254,8 +290,9 @@ class Merchant:
         self.jwt = call("POST", "/v1/auth/login", {"email": email, "password": password})[1]["accessToken"]
         key = call("POST", "/v1/merchants/api-keys", {"environment": "TEST"}, token=self.jwt)[1]
         self.basic = f"{key['keyId']}:{key['keySecret']}"
-        hook = call("POST", "/v1/merchants/webhooks", {"targetUrl": receiver.url}, token=self.jwt)
-        assert hook[0] == 200, f"webhook registration failed: {hook}"
+        if receiver:
+            hook = call("POST", "/v1/merchants/webhooks", {"targetUrl": receiver.url}, token=self.jwt)
+            assert hook[0] == 200, f"webhook registration failed: {hook}"
         status, card = call("POST", "/v1/vault/tokenize", {"pan": "4111111111111111", "cvv": "123", "expiryMonth": 12, "expiryYear": 2031,
                                                           "cardHolderName": "Chaos Test"}, basic=self.basic)
         assert status == 201, f"tokenize failed: {status} {card}"
@@ -289,6 +326,88 @@ def customer(index, merchant, run_id, card_share, fault_started, outcome):
     outcome[index]["payment"] = paid["id"]
 
 
+def probe_payment(merchant, wait=30):
+    """A new customer paying by UPI, once, with no retry: the moment its payment is seen CAPTURED, or None."""
+    ref = "probe-" + uuid.uuid4().hex[:12]
+    status, order = call("POST", "/v1/orders", {"amount": {"amountUnits": 10_000, "currency": "INR"}, "notes": {"ref": ref}},
+                         basic=merchant.basic, key=f"o-{ref}")
+    if status not in (200, 201):
+        return None
+    status, paid = call("POST", "/v1/payments", {"orderId": order["id"], "method": "UPI", "methodDetails": {"vpa": f"{ref}@okaxis"}},
+                        basic=merchant.basic, key=f"p-{ref}")
+    if status not in (200, 201):
+        return None
+    end = time.monotonic() + wait
+    while time.monotonic() < end:
+        status, payment = call("GET", f"/v1/payments/{paid['id']}", basic=merchant.basic)
+        if status == 200 and payment["status"] == "CAPTURED":
+            return time.monotonic()
+        if status == 200 and payment["status"] == "FAILED":                  # the simulated bank declines a few by design
+            return None
+        time.sleep(0.25)
+    return None
+
+
+class RecoveryClock:
+    """Times the recovery from the moment the fault's component is back.
+
+    first payment: a new payment is started every second, by a merchant of its own so the scenario's checks don't see
+    it, until one is captured. all settled: the database is read every second until every customer is done, each of
+    their payments has ended CAPTURED or FAILED, and none of their events is waiting in the outbox.
+    """
+
+    def __init__(self, probe_merchant, customers, unsettled):
+        self.probe_merchant, self.customers, self.unsettled = probe_merchant, customers, unsettled
+        self.fault_started = self.back = self.first_payment = self.settled = None
+        self.lock, self.done = threading.Lock(), threading.Event()
+
+    def component_back(self):
+        if self.back is not None:
+            return
+        self.back = time.monotonic()
+        log(f"  component back {self.back - self.fault_started:.1f} s after the fault: timing the recovery")
+        threading.Thread(target=self._probe, daemon=True).start()
+        threading.Thread(target=self._watch, daemon=True).start()
+
+    def _probe(self):
+        def one():
+            captured = probe_payment(self.probe_merchant)
+            if captured is not None:
+                with self.lock:
+                    self.first_payment = min(self.first_payment or captured, captured)
+        end = self.back + SETTLE_TIMEOUT
+        while self.first_payment is None and time.monotonic() < end:
+            threading.Thread(target=one, daemon=True).start()
+            time.sleep(1)
+
+    def _watch(self):
+        end = self.back + CLIENT_DEADLINE + SETTLE_TIMEOUT
+        while time.monotonic() < end:
+            try:
+                if not any(t.is_alive() for t in self.customers) and self.unsettled() == 0:
+                    self.settled = time.monotonic()
+                    break
+            except RuntimeError:                                              # PostgreSQL not answering yet
+                pass
+            time.sleep(1)
+        self.done.set()
+
+    def wait(self):
+        if self.back is None:                                                 # the fault never healed: nothing to time
+            return
+        self.done.wait(CLIENT_DEADLINE + SETTLE_TIMEOUT + 10)
+        wait_until(lambda: self.first_payment is not None, 40, interval=1)   # a probe still waiting on the bank
+
+    def seconds(self, since, moment):
+        return None if since is None or moment is None else round(moment - since, 1)
+
+    def summary(self, normal):
+        return {"component_back_after_fault_s": self.seconds(self.fault_started, self.back),
+                "first_payment_captured_s": self.seconds(self.back, self.first_payment),
+                "all_settled_and_drained_s": self.seconds(self.back, self.settled),
+                "normal_payment_capture_s": normal}
+
+
 class Report:
     def __init__(self, scenario):
         self.scenario, self.checks = scenario, []
@@ -317,22 +436,43 @@ def run_scenario(name, fault, card_share):
     receiver = Receiver()
     run_id = uuid.uuid4().hex[:8]
     merchants = [Merchant(f"{name[:12]}-{i}", receiver) for i in range(MERCHANTS)]
-    time.sleep(35)                                                            # the delivery side caches a merchant's webhook targets briefly
+    probe_merchant = Merchant(f"{name[:12]}-probe")                          # its payments time the recovery; no check reads them
+    ready_at = time.monotonic() + 35                                          # the delivery side caches a merchant's webhook targets briefly
+    baseline = []
+    for _ in range(BASELINE_PAYMENTS):
+        began = time.monotonic()
+        captured = probe_payment(probe_merchant)
+        if captured is not None:
+            baseline.append(captured - began)
+    normal = round(sorted(baseline)[len(baseline) // 2], 1) if baseline else None
+    log(f"  with nothing broken, a new payment is captured in {normal} s")
+    time.sleep(max(0.0, ready_at - time.monotonic()))
     ids = ",".join(f"'{m.id}'" for m in merchants)
+    theirs = f"payload::text similar to '%({'|'.join(m.id for m in merchants)})%'"
+
+    def unsettled():
+        return int(psql("payflo_payment", f"select (select count(*) from payment where merchant_id in ({ids}) and status not in ('CAPTURED', 'FAILED'))"
+                                          f" + (select count(*) from outbox_event where status <> 'PUBLISHED' and {theirs})"))
 
     outcome, started = {}, threading.Event()
     threads = [threading.Thread(target=customer, args=(i, merchants[i % MERCHANTS], run_id, card_share, started, outcome)) for i in range(CUSTOMERS)]
+    clock = RecoveryClock(probe_merchant, threads, unsettled)
     log(f"  {CUSTOMERS} customers starting; the fault lands in 6 seconds")
     for t in threads:
         t.start()
     time.sleep(6)
     started.set()
+    clock.fault_started = time.monotonic()
     try:
-        fault()
+        fault(clock.component_back)
     except Exception as e:
         report.check("the fault could be injected and healed", False, e)
     for t in threads:
         t.join(timeout=CLIENT_DEADLINE + 30)
+    clock.wait()
+    report.recovery = clock.summary(normal)
+    log(f"  recovery after the component was back: a new payment captured in {report.recovery['first_payment_captured_s']} s, "
+        f"everything settled and the outbox drained in {report.recovery['all_settled_and_drained_s']} s")
 
     acknowledged_orders = [o["order"] for o in outcome.values() if o["order"]]
     acknowledged_payments = [o["payment"] for o in outcome.values() if o["payment"]]
@@ -348,7 +488,7 @@ def run_scenario(name, fault, card_share):
 
     end_states = {"CAPTURED", "FAILED"}
     wait_until(lambda: set(payment_states()) <= end_states, SETTLE_TIMEOUT)
-    wait_until(lambda: psql("payflo_payment", f"select count(*) from outbox_event where status <> 'PUBLISHED' and payload::text similar to '%({'|'.join(m.id for m in merchants)})%'") == "0", 120)
+    wait_until(lambda: psql("payflo_payment", f"select count(*) from outbox_event where status <> 'PUBLISHED' and {theirs}") == "0", 120)
     captured_ids = {line for line in psql("payflo_payment", f"select id from payment where merchant_id in ({ids}) and status = 'CAPTURED'").splitlines()}
     wait_until(lambda: captured_ids <= receiver.captured(), SETTLE_TIMEOUT)
 
@@ -380,7 +520,7 @@ def run_scenario(name, fault, card_share):
     report.check("money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
                  unpaid_captured == 0 and paid_without_capture == 0, f"{unpaid_captured} captured but unpaid, {paid_without_capture} paid without capture")
 
-    undelivered = int(psql("payflo_payment", f"select count(*) from outbox_event where status <> 'PUBLISHED' and payload::text similar to '%({'|'.join(m.id for m in merchants)})%'"))
+    undelivered = int(psql("payflo_payment", f"select count(*) from outbox_event where status <> 'PUBLISHED' and {theirs}"))
     report.check("outbox drained: every event was published to Kafka", undelivered == 0, f"{undelivered} still waiting")
 
     missing = captured_ids - receiver.captured()
@@ -396,14 +536,14 @@ def run_scenario(name, fault, card_share):
 # ------------------------------------------------------------------------------------------------ the faults
 
 def crash(service, downtime=6):
-    return lambda: restart_service(service, downtime)
+    return lambda back: restart_service(service, downtime, on_back=back)
 
 
 def outage(container, seconds=25):
-    def fault():
+    def fault(back):
         container_stop(container)
         time.sleep(seconds)
-        container_start(container)
+        container_start(container, on_back=back)
     return fault
 
 
@@ -421,8 +561,11 @@ SCENARIOS = {
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("scenarios", nargs="*", help="which to run (default: all)")
+    parser.add_argument("--port-offset", type=int, default=int(os.environ.get("CHAOS_PORT_OFFSET", 0)),
+                        help="the stack's ports moved by this much (demo.py --port-offset)")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
+    use_ports(args.port_offset)
     if args.list:
         print("\n".join(SCENARIOS))
         return 0
@@ -444,9 +587,18 @@ def main():
     log("SUMMARY")
     for report in reports:
         log(f"  {'PASS' if report.passed else 'FAIL'}  {report.scenario}   {report.counts}")
+    log("")
+    log("RECOVERY, in seconds from the component being back (a new payment takes the 'normal' time with nothing broken)")
+    shown = lambda value: "-" if value is None else f"{value:.1f}"
+    log(f"  {'scenario':<26}{'back after':>11}{'normal':>8}{'first payment':>15}{'all settled':>13}")
+    for r in reports:
+        rec = r.recovery
+        log(f"  {r.scenario:<26}{shown(rec['component_back_after_fault_s']):>11}{shown(rec['normal_payment_capture_s']):>8}"
+            f"{shown(rec['first_payment_captured_s']):>15}{shown(rec['all_settled_and_drained_s']):>13}")
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = RESULTS_DIR / (time.strftime("%Y%m%d-%H%M%S") + ".json")
-    out.write_text(json.dumps([{"scenario": r.scenario, "passed": r.passed, "counts": r.counts, "checks": r.checks} for r in reports], indent=2))
+    out.write_text(json.dumps([{"scenario": r.scenario, "passed": r.passed, "counts": r.counts, "recovery": r.recovery, "checks": r.checks}
+                               for r in reports], indent=2))
     log(f"  results written to {out}")
     return 0 if all(r.passed for r in reports) else 1
 
