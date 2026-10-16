@@ -1,8 +1,8 @@
 <p align="center">
   <img src="docs/assets/logo.svg" alt="PayFlo" width="96" height="96">
-  <br/>
-  <b style="font-size:2em">PayFlo</b>
 </p>
+
+<h1 align="center">PayFlo</h1>
 
 <p align="center">
   <b>The backend behind a "Pay now" button.</b><br/>
