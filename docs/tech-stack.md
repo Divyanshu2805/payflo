@@ -36,7 +36,3 @@ Versions are the ones pinned in the `pom.xml` files, `services.docker-compose.ya
 | Prometheus 3.5 | Scraping and storing metrics |
 | Grafana 12.1 | The provisioned PayFlo dashboard |
 | Apache JMeter 5.6 | The load test (`microservices/load-test/`), run headless by a Python script |
-
-## Documentation
-
-Diagrams are generated SVG and PNG from Python (`docs/assets/diagrams/src/`), rendered with headless Chrome or Edge.

@@ -2,8 +2,6 @@
 
 Orders, payments and their history, refunds, and the outbox. Database: `payflo_payment`.
 
-![payment-service entity-relationship diagram](../assets/diagrams/er-payment.png)
-
 `merchant_id` and `customer_id` here are plain UUIDs — merchants and customers live in merchant-service's database, so a foreign key was never possible.
 
 ## ORDER_RECORD

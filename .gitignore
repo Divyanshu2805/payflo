@@ -34,8 +34,6 @@ build/
 ### Kubernetes secrets ###
 microservices/k8s/secrets.env
 
-### Generated diagram output ###
-docs/assets/diagrams/src/out/
 __pycache__/
 
 ### Load test ###

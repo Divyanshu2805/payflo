@@ -2,8 +2,6 @@
 
 How PayFlo tells a merchant's own system that something happened. A domain event on Kafka becomes one signed delivery per subscribed endpoint, retried on a fixed schedule for up to 24 hours and dead-lettered after that. It runs in operations-service.
 
-![Webhook delivery](../../assets/diagrams/flow-webhook-delivery.png)
-
 All paths below are under `operations-service/src/main/java/com/project/payflo/operations_service/`.
 
 ## From event to delivery row

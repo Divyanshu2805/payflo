@@ -2,8 +2,6 @@
 
 An order and a payment, from the merchant's request to money captured. It runs in payment-service, which reaches merchant-service for customers and vault-service for cards, and never holds a database transaction open across either call.
 
-![An order and a card payment](../../assets/diagrams/flow-payment.png)
-
 All paths below are under `payment-service/src/main/java/com/project/payflo/payment_service/`.
 
 ## Creating an order

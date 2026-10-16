@@ -2,8 +2,6 @@
 
 The only database that holds card data. Database: `payflo_vault`.
 
-![vault-service entity-relationship diagram](../assets/diagrams/er-vault.png)
-
 ## VAULT_CARD
 
 A card, encrypted at rest. Never exposed directly — always reached through a `card_token`.

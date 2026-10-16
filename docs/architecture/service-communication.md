@@ -2,8 +2,6 @@
 
 Clients talk to one origin, the gateway. The services talk to each other in two ways: synchronously over a private internal API that the gateway never exposes, and asynchronously through events on Kafka.
 
-![Service-to-service communication](../assets/diagrams/service-communication.png)
-
 ## The gateway
 
 `api-gateway-service` matches each request path against the route table in `config-repo/api-gateway-service.yaml` and forwards it to the owning service, resolved through Eureka:

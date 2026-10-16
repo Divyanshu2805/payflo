@@ -2,8 +2,6 @@
 
 Merchants, the people who log in for them, their API keys, their customers and their webhook endpoints. Database: `payflo_merchant`.
 
-![merchant-service entity-relationship diagram](../assets/diagrams/er-merchant.png)
-
 Every table here is merchant-scoped by a real foreign key to `merchant` — they all live in this one database.
 
 ## MERCHANT

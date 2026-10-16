@@ -2,8 +2,6 @@
 
 How merchants get paid. Every night each active merchant's captured, not-yet-settled payments are totalled, refunds and the platform fee and GST are taken off, and the rest is sent to the merchant's bank account as one transfer. It runs in operations-service, which owns settlements but reads payments and bank details from the services that own them.
 
-![Nightly settlement](../../assets/diagrams/flow-settlement.png)
-
 All paths below are under `operations-service/src/main/java/com/project/payflo/operations_service/settlement/`.
 
 ## A saga, not a transaction

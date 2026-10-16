@@ -28,6 +28,6 @@ The schema is owned by **Flyway**. Each service has its own migrations in `src/m
 2. **Change the entity to match.** `contextLoads` runs every migration on an empty PostgreSQL and lets Hibernate validate the entities against it, so a migration and an entity that disagree fail the build.
 3. **A new enum constant widens its check constraint in the same migration**. `PaymentMethodTest` and the enum tests fail until you do.
 4. **Never join another service's data.** A new reference to a merchant, customer or payment is a plain id.
-5. **Update these pages and the ER diagram** in the same change.
+5. **Update these pages** in the same change.
 
 A database that existed before Flyway was baselined at version 1 (`baseline-on-migrate`), so it keeps its data and only runs what came after. `V1__baseline.sql` is the schema as it stood, and builds it on an empty database.

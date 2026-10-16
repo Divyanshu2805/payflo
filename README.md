@@ -1,8 +1,4 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="PayFlo: the backend behind a Pay now button" width="100%">
-</p>
-
-<p align="center">
   <b>The backend behind a "Pay now" button.</b><br/>
   Orders, payments, a card vault, signed webhooks and nightly payouts, as Spring Boot microservices.
 </p>
@@ -132,8 +128,6 @@ Everything, with its rules and limits: [features](docs/features.md).
 
 ## Architecture
 
-![PayFlo system architecture](docs/assets/diagrams/system-architecture.png)
-
 A Spring Cloud Gateway authenticates every request and routes it to one of four business services (**merchant**, **payment**, **vault** and **operations**), each with its own PostgreSQL database. Services find each other through Eureka, pull their configuration from a config server, call each other over a private `/internal` API with circuit breakers and retries, and exchange events through Kafka. Card numbers never leave vault-service, and authentication happens in exactly one place.
 
 | Area | Choice |
@@ -248,8 +242,6 @@ docs/                     documentation
 ## Deployment
 
 The whole system runs on a local kind cluster: one namespace, the six applications built as Jib images, PostgreSQL, Redis and Kafka as StatefulSets, and only the gateway exposed. Secrets come from a gitignored file through a Kustomize `secretGenerator`, and each pod gets only the secrets it needs. An overlay runs three replicas of the gateway and payment-service with rolling updates and disruption budgets.
-
-![Kubernetes deployment topology](docs/assets/diagrams/deployment-topology.png)
 
 See [deployment](docs/deployment/README.md) and [scaling](docs/deployment/scaling.md).
 

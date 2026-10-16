@@ -40,4 +40,4 @@ Everything about what PayFlo does, how it is built, and how to run and change it
 
 ## Keeping these docs accurate
 
-These pages describe the system as it is now. A change that makes any of them inaccurate updates them in the same commit, and a number that changes is updated in [project metrics](metrics.md) and the README together. Diagrams are generated from [`assets/diagrams/src/`](assets/diagrams/README.md): regenerate them rather than editing the images.
+These pages describe the system as it is now. A change that makes any of them inaccurate updates them in the same commit, and a number that changes is updated in [project metrics](metrics.md) and the README together.
