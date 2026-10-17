@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" alt="PayFlo" width="96" height="96">
+  <img src="docs/assets/banner.svg" alt="PayFlo: the backend behind a Pay now button" width="100%">
 </p>
-
-<h1 align="center">PayFlo</h1>
 
 <p align="center">
   <b>The backend behind a "Pay now" button.</b><br/>
@@ -57,7 +55,7 @@ One command starts PostgreSQL, Redis and Kafka, builds the services, starts all 
 |---|---|
 | **Dashboard** | <http://localhost:5173> |
 | **Shop** | <http://localhost:5174>: the demo merchant's tea shop. Check out as a customer and pay by card `4111 1111 1111 1111` (any future expiry, any CVC) or UPI `buyer@okaxis`, with the dashboard open beside it to watch the payment arrive |
-| **Demo login** | `demo@payflo.test` / `demo-password-1` (owner) |
+| **Demo login** | `demo@payflo.test` / `demo-password-1`: the owner of Chai & Co. Online, the merchant behind the shop. The seed creates it on your machine with KYC done, payments by every method, webhooks, a refund and a settlement |
 | **Operator console** | The login page's operator tab, with the development admin key from the [admin API](docs/api/admin.md) page |
 | **API reference** | <http://localhost:5173/docs.html>: Swagger UI over [`openapi.yaml`](docs/api/openapi.yaml), with "Try it out" calling the real API |
 | **Postman** | Import [`payflo.postman_collection.json`](docs/api/payflo.postman_collection.json): the same API as a walkthrough |
