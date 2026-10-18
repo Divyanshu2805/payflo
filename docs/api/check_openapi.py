@@ -5,7 +5,7 @@
 The spec is written by hand, so this is what keeps it honest: every public mapping in a controller
 (`@GetMapping`, `@PostMapping`, ... under the class's `@RequestMapping`) must be a path and method in the spec, and
 the spec must name nothing the controllers don't have. `Internal*Controller`s are skipped: `/internal/**` is the
-service-to-service API, never routed by the gateway, and documented in docs/api/internal.md instead.
+service-to-service API, never routed by the gateway, and listed in docs/architecture.md instead.
 
 It compares paths and methods, not request and response shapes. Standard library only (so the YAML is read by its
 layout, which this file's own two-space indentation keeps predictable). CI runs it.
@@ -68,7 +68,7 @@ def main():
         print(f"not in any controller: {verb:<6} {path}")
     if missing or stale:
         print(f"\n{len(missing)} endpoint(s) undocumented, {len(stale)} documented but gone. Update docs/api/openapi.yaml "
-              f"(and the page in docs/api/) in the same change as the controller.")
+              f"(and docs/api/README.md) in the same change as the controller.")
         return 1
     print(f"openapi.yaml matches the controllers: {len(spec)} endpoints.")
     return 0
