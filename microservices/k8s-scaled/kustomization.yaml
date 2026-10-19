@@ -5,7 +5,7 @@
 #
 # More replicas of the stateless tiers move the limit to what they share, so the data tier gets room too: the base
 # gives PostgreSQL one CPU and 1.5 GiB, which would cap any number of replicas at what one CPU of PostgreSQL can do
-# (docs/deployment/scaling.md has the measurements).
+# (docs/results.md has the measurements).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

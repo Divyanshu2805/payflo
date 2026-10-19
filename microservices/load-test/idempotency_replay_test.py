@@ -13,7 +13,7 @@ creates (receipt `idem-<run>-…`, notes.idemRun), so the result can be cross-ch
     python idempotency_replay_test.py
     python idempotency_replay_test.py --payments 1000 --order-keys 400 --merchants 20
 
-Needs keys.csv from provision_keys.py and the rate limit raised (see docs/load-testing/running.md).
+Needs keys.csv from provision_keys.py and the rate limit raised (see docs/results.md).
 Exits 1 if any key resolved to more than one id. Only standard library.
 """
 import argparse

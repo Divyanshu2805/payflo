@@ -7,7 +7,7 @@ metadata:
   labels:
     app: api-gateway-service
 spec:
-  # One replica by default; `kubectl apply -k microservices/k8s-scaled` runs three (see docs/deployment/scaling.md).
+  # One replica by default; `kubectl apply -k microservices/k8s-scaled` runs three (see docs/deployment.md).
   # The gateway keeps no state of its own (keys, rate limits and revocations are in Redis), so replicas are interchangeable.
   replicas: 1
   # A rollout starts the new pod and waits for it to be ready before stopping an old one, so none is ever missing.

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- PayFlo load test: order creation + payment initiation through the API gateway.
-     Run it with run_load_test.py (docs/load-testing/). Tunable with -J properties:
+     Run it with run_load_test.py (docs/results.md). Tunable with -J properties:
        host, port, protocol, threads, rampup, duration (seconds), keys (CSV of keyId,secret). -->
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
 <hashTree>

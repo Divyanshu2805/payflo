@@ -9,7 +9,7 @@ executable if your default Java is newer (the services themselves still run on 2
 Each run writes results/<timestamp>/: the raw samples (results.jtl), JMeter's HTML report
 (report/index.html), and summary.json with the numbers below.
 
-What it reports (docs/metrics.md):
+What it reports (docs/results.md):
   throughput   successful requests per second over the whole run. Reported, not graded: it is a property of
                the machine as much as of the system, so there is no number it must reach
   latency      p99 < 1s                        (per request type, and across all requests)
@@ -142,7 +142,7 @@ class CaptureWatcher:
         return counts["AUTHORIZE_ATTEMPT"] - counts["AUTHORIZE_SUCCESS"] - counts["AUTHORIZE_FAIL"]
 
 class WebhookWatcher:
-    """The webhook SLA (docs/metrics.md: 99% delivered within 30 s) over a run, from operations-service's
+    """The webhook SLA (docs/results.md: 99% delivered within 30 s) over a run, from operations-service's
     payflo.webhook.delivery.latency histogram through Prometheus: every delivery accepted between start() and the
     end of the wait, and how long after the change it reports each was accepted. Reports nothing when the test's
     merchants have no webhook (see provision_keys.py --webhook-url). Good to Prometheus' 5 s scrape."""

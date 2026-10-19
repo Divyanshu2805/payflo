@@ -7,7 +7,7 @@ metadata:
   labels:
     app: payment-service
 spec:
-  # One replica by default; `kubectl apply -k microservices/k8s-scaled` runs three (see docs/deployment/scaling.md).
+  # One replica by default; `kubectl apply -k microservices/k8s-scaled` runs three (see docs/deployment.md).
   # Every @Scheduled job is ShedLock-guarded and state changes are row-locked, so replicas can run side by side.
   replicas: 1
   # A rollout starts the new pod and waits for it to be ready before stopping an old one, so none is ever missing.

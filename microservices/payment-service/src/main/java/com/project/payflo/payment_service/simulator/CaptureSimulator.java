@@ -15,7 +15,7 @@ import java.util.Optional;
  * {@code CAPTURE_FAIL} transition and the manual capture endpoint could never be reached.
  *
  * <p>A payment's capture is refused when its processor reference carries {@link #FAIL_TAG} (the processors
- * stamp it for the test values in docs/api/mock-acquirer.md) or when its id falls inside
+ * stamp it for the test values in docs/api/README.md) or when its id falls inside
  * {@code payment.simulator.capture.failure-rate}. It is refused {@code failures-before-success} times, counted
  * from the transition log, and then goes through, so a merchant's retry can succeed.
  */

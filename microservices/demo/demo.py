@@ -47,7 +47,7 @@ WINDOWS = platform.system() == "Windows"
 
 
 # Development-only values, like every default in config-repo. The admin key is the gateway's documented development
-# default (docs/api/admin.md); set ADMIN_API_KEY if yours differs.
+# default (docs/api/README.md); set ADMIN_API_KEY if yours differs.
 DEMO_EMAIL = os.environ.get("DEMO_EMAIL", "demo@payflo.test")
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo-password-1")
 ADMIN_KEY = os.environ.get("ADMIN_API_KEY", "dev-admin-api-key-change-me")
@@ -609,7 +609,7 @@ PayFlo is running.
 
   Dashboard     {DASHBOARD}
                 log in as {DEMO_EMAIL} / {DEMO_PASSWORD}
-                operator console: the admin key is the gateway's ADMIN_API_KEY (the development default is in docs/api/admin.md)
+                operator console: the admin key is the gateway's ADMIN_API_KEY (the development default is in docs/api/README.md)
   Shop          {STOREFRONT}
                 the demo merchant's shop: add something to the cart and pay by card 4111 1111 1111 1111,
                 with the dashboard open beside it

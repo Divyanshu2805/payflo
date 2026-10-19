@@ -5,7 +5,7 @@ server:
   # TLS for the public listener, off by default. To turn it on, point it at a PKCS12 keystore and set
   # GATEWAY_TLS_ENABLED=true. In production TLS is more often terminated by a load balancer or Ingress in
   # front of the gateway, in which case leave this off. The hop from the gateway to the services is plain
-  # HTTP either way (see docs/architecture/security-model.md).
+  # HTTP either way (see docs/architecture.md).
   ssl:
     enabled: ${GATEWAY_TLS_ENABLED:false}
     key-store: ${GATEWAY_TLS_KEYSTORE:}

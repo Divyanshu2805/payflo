@@ -7,7 +7,7 @@ spring:
     username: ${DB_USER:user}
     password: ${DB_PASS:password}
     hikari:
-      # Sized from load testing (docs/load-testing/). Keep the sum across services under Postgres
+      # Sized from load testing (docs/results.md). Keep the sum across services under Postgres
       # max_connections. Fail fast when the pool is exhausted instead of queueing for 30s.
       maximum-pool-size: ${PAYMENT_DB_POOL_SIZE:40}
       connection-timeout: 5000
@@ -100,7 +100,7 @@ payment:
     batch-size: 50
     concurrency: 4
     chaos-mode: NORMAL
-    # The acquirer refusing a capture (CaptureSimulator). The test values (docs/api/mock-acquirer.md) always do;
+    # The acquirer refusing a capture (CaptureSimulator). The test values (docs/api/README.md) always do;
     # failure-rate also refuses this percent of payments, chosen from each payment's id. A refused capture leaves the
     # payment AUTHORIZED, and it is refused failures-before-success times before one goes through.
     capture:

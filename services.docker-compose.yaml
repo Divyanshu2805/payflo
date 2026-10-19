@@ -7,7 +7,7 @@ services:
     # Memory and WAL: the defaults (128 MB of cache, a checkpoint every 1 GB of WAL) are far too small
     # for write-heavy load; fsync and synchronous_commit stay on.
     # pg_stat_statements: per-statement time and call counts, for finding the slow queries under load
-    # (docs/load-testing/query-review.md). Create the extension once per database to read it.
+    # (docs/results.md). Create the extension once per database to read it.
     command: [ "postgres",
                "-c", "commit_delay=1000", "-c", "commit_siblings=5",
                "-c", "shared_buffers=2GB", "-c", "effective_cache_size=6GB", "-c", "wal_buffers=64MB",

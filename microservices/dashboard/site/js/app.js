@@ -83,7 +83,7 @@ function loginPage() {
       lead = 'Suspend merchants, run settlements and read every audit entry. No merchant login opens these endpoints.';
       content = [form([
         { name: 'key', label: 'Admin key', type: 'password', required: true, autocomplete: 'off',
-          hint: 'The gateway\'s ADMIN_API_KEY, sent as X-Admin-Key. Its development default is in docs/api/admin.md.' },
+          hint: 'The gateway\'s ADMIN_API_KEY, sent as X-Admin-Key. Its development default is in docs/api/README.md.' },
       ], async (v) => { await adminLogin(v.key); start(); }, { submit: 'Open the console', block: true })];
     }
     clear(box, h('h1', {}, title), h('p', {}, lead),
@@ -95,7 +95,7 @@ function loginPage() {
   }
 
   draw();
-  // The figures are the measured ones from docs/load-testing/results.md and docs/reliability.
+  // The figures are the measured ones from docs/results.md.
   const facts = [['1,272 req/s', 'On one laptop, p99 171 ms, 0 errors'], ['99.85%', 'Of webhooks delivered within 30 s'],
     ['0 lost', 'Payments across 7 crash and outage tests'], ['3.0×', 'Throughput on 3 Kubernetes replicas']];
   const sample = [['₹1,299.00', 'good', 'Captured', 'Card'], ['₹499.00', 'good', 'Captured', 'UPI · buyer@okaxis'],
