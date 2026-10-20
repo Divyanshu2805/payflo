@@ -48,3 +48,7 @@ microservices/chaos/results/
 # One-command demo: service logs, pids, and the demo merchant's API key
 microservices/demo/logs/
 microservices/demo/.run/
+
+### Local agent notes (not published)
+CLAUDE.md
+.claude/
