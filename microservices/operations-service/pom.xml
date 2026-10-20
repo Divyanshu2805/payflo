@@ -163,6 +163,14 @@
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
+			<!-- kafka-clients brings snappy-java 1.1.10.7, which has two HIGH vulnerabilities (GHSA-gwq9-9ffj-mvrv,
+			     GHSA-q233-g92q-qxp6) that CI's dependency scan fails on. Pinned to a fixed release; drop this once the Kafka
+			     client's own version has caught up. -->
+			<dependency>
+				<groupId>org.xerial.snappy</groupId>
+				<artifactId>snappy-java</artifactId>
+				<version>1.1.10.12</version>
+			</dependency>
 			<!-- kafka-clients brings lz4-java 1.10.1, which has a HIGH vulnerability (CVE-2026-106451) that CI's dependency scan
 			     fails on. Pinned to the fixed release; drop this once the Kafka client's own version has caught up. -->
 			<dependency>

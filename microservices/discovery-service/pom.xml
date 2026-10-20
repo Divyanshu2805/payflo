@@ -54,6 +54,13 @@
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
+			<!-- The Eureka server brings guava 33.0.0-jre, which has a HIGH vulnerability (CVE-2026-102554) that CI's dependency
+			     scan fails on. Pinned to a fixed release; drop this once Spring Cloud's own version has caught up. -->
+			<dependency>
+				<groupId>com.google.guava</groupId>
+				<artifactId>guava</artifactId>
+				<version>33.8.0-jre</version>
+			</dependency>
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
