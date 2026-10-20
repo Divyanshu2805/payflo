@@ -110,15 +110,11 @@ Measured on one laptop that also ran the load generator and the databases. Detai
 
 | Measure | Result |
 |---|---|
-| Throughput | **1,272 req/s**, up from 250 after 19 fixes found under load |
-| p99 latency | **171 ms** for the slowest request type |
-| Errors under load | **0** in 227,613 requests |
-| Webhooks within 30 s | **99.85%** of 91,644 events |
-| Horizontal scaling | **338 → 758 → 999 req/s** on 1, 2 and 3 replicas (3.0×) |
-| Rolling restart under load | **99.992%** of 226,834 requests succeeded |
-| Crash and outage tests | **7 of 7 pass**: nothing lost, duplicated or stuck |
+| Throughput | **1,272 req/s** at p99 **171 ms**, 0 errors: 5× the first build |
+| Webhooks within 30 s | **99.85%**, from 5.4% |
+| Horizontal scaling | **3.0×** on 3 replicas |
+| Crash and outage tests | **7 of 7**: no payment lost, duplicated or stuck |
 | Duplicate requests | **0 of 33,600** took effect |
-| Tests | **633**, unit and integration on real PostgreSQL, Redis and Kafka |
 
 ## How it works
 

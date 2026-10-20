@@ -190,7 +190,7 @@ On Windows use `mvnw.cmd`.
 | Unit | `./mvnw test -Dtest='!*IntegrationTest,!*ApplicationTests,!*Tests'` | Money, security and state logic with collaborators mocked |
 | Integration | `./mvnw -pl <module> test` | Each service as the real application on real PostgreSQL, Redis and Kafka via Testcontainers; only other services are stubbed |
 | Everything | `./mvnw verify` | Both, in every module. Needs only Docker |
-| Crash and outage | `python chaos/crash_and_outage_test.py` | Kills a service or stops a data store under load. See [results](results.md#crash-and-outage-tests) |
+| Crash and outage | `python chaos/crash_and_outage_test.py` | Kills a service or stops a data store under load. See [results](results.md#failure-testing) |
 | Load and idempotency | `microservices/load-test/` | See [results](results.md#reproducing) |
 
 | Integration test | Proves |
