@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.AopTestUtils;
 
 import java.time.Duration;
 import java.util.List;
@@ -61,11 +62,11 @@ class SettlementIntegrationTest extends OperationsIntegrationTest {
 
     // ---- helpers
 
-    // Scheduled jobs hold a ShedLock for at least ten seconds after every run, and a call that finds the lock held is
-    // skipped without a word. Tests call the job themselves, so each call first drops the lock a previous one left.
+    // The job's ShedLock lives on the Spring proxy, and a call that finds the lock held is skipped without a word. The
+    // same job also runs on its own schedule in this application, so going through the proxy races it: if the scheduled
+    // run takes the lock first, the test's call does nothing. Tests call the job object itself, outside the lock.
     private void recoverNow() {
-        redis.delete("job-lock:default:operations-service-settlement-recovery");
-        recovery.recover();
+        ((SettlementRecoveryJob) AopTestUtils.getUltimateTargetObject(recovery)).recover();
     }
 
     private List<Map<String, Object>> settlements() {
