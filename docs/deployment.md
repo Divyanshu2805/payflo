@@ -38,7 +38,7 @@ flowchart TB
 | One entry point | Only the gateway has a NodePort; every other Service is `ClusterIP` |
 | No Dockerfiles | Jib builds each image from its `pom.xml` |
 | Least secrets | Each pod gets only the secrets it needs; only vault-service gets `VAULT_MASTER_KEY` |
-| Zero-downtime rollouts | `RollingUpdate` with `maxUnavailable: 0`, a 5 s `preStop`, graceful shutdown, and a `PodDisruptionBudget` for the gateway and payment-service |
+| Rolling updates | `RollingUpdate` with `maxUnavailable: 0`, a 5 s `preStop`, graceful shutdown, and a `PodDisruptionBudget` for the gateway and payment-service |
 
 ## Running on kind
 

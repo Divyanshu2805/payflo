@@ -111,19 +111,7 @@ Keep the dashboard's Payments page open beside the shop: the payment appears on 
 **Running it**
 - A merchant dashboard and a sample shop, both clients of the public API.
 - One trace per request in Zipkin, Prometheus metrics, and a Grafana dashboard for throughput, p99 and the webhook SLA.
-- Kustomize manifests for kind, with a three-replica overlay and zero-downtime rollouts.
-
-## Results
-
-Measured on one laptop that also ran the load generator and the databases. Details in [docs/results.md](docs/results.md).
-
-| Measure | Result |
-|---|---|
-| Throughput | **1,272 req/s** at p99 **171 ms**, 0 errors: 5× the first build |
-| Webhooks within 30 s | **99.85%**, from 5.4% |
-| Horizontal scaling | **3.0×** on 3 replicas |
-| Crash and outage tests | **7 of 7**: no payment lost, duplicated or stuck |
-| Duplicate requests | **0 of 33,600** took effect |
+- Kustomize manifests for kind, with a three-replica overlay, rolling updates and disruption budgets.
 
 ## How it works
 
@@ -211,7 +199,7 @@ Starting services by hand, configuration and troubleshooting are in [docs/develo
 | Integration | Each service as the real application on PostgreSQL, Redis and Kafka in containers |
 | Crash and outage | Kill a service or stop a data store under load, then check the database |
 | Load | JMeter through the gateway, graded on p99, errors, capture and webhook SLA |
-| Idempotency | 33,600 duplicate requests under shared keys |
+| Idempotency | Concurrent duplicate requests under shared keys, checked against the database |
 
 Every push runs the OpenAPI check against the controllers, every test, and a dependency and secret scan that fails on a fixable HIGH or CRITICAL vulnerability.
 
