@@ -1,0 +1,442 @@
+[
+  {
+    "scenario": "payment-service-crash",
+    "passed": true,
+    "counts": {
+      "customers": 36,
+      "orders": 36,
+      "payments": 36,
+      "payment_states": {
+        "FAILED": "6",
+        "CAPTURED": "30"
+      },
+      "customers_that_retried": 14,
+      "webhooks_received": 108
+    },
+    "recovery": {
+      "component_back_after_fault_s": 21.8,
+      "first_payment_captured_s": 4.1,
+      "all_settled_and_drained_s": 6.9,
+      "normal_payment_capture_s": 2.9
+    },
+    "checks": [
+      {
+        "check": "every customer got through (the clients' retries were enough)",
+        "ok": true,
+        "detail": "{}"
+      },
+      {
+        "check": "no duplicates: one order per customer",
+        "ok": true,
+        "detail": "36 orders in the database, 36 acknowledged; duplicated: "
+      },
+      {
+        "check": "no duplicates: one payment per order",
+        "ok": true,
+        "detail": "36 payments over 36 orders, 36 acknowledged"
+      },
+      {
+        "check": "nothing lost: every payment a client was told about is in the database",
+        "ok": true,
+        "detail": "36 of 36"
+      },
+      {
+        "check": "nothing stuck: every payment reached CAPTURED or FAILED",
+        "ok": true,
+        "detail": "{'FAILED': '6', 'CAPTURED': '30'}"
+      },
+      {
+        "check": "money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
+        "ok": true,
+        "detail": "0 captured but unpaid, 0 paid without capture"
+      },
+      {
+        "check": "outbox drained: every event was published to Kafka",
+        "ok": true,
+        "detail": "0 still waiting"
+      },
+      {
+        "check": "events delivered: every captured payment's webhook reached the merchant (at least once)",
+        "ok": true,
+        "detail": "0 of 30 missing"
+      }
+    ]
+  },
+  {
+    "scenario": "vault-service-crash",
+    "passed": true,
+    "counts": {
+      "customers": 36,
+      "orders": 36,
+      "payments": 36,
+      "payment_states": {
+        "FAILED": "15",
+        "CAPTURED": "21"
+      },
+      "customers_that_retried": 0,
+      "webhooks_received": 94
+    },
+    "recovery": {
+      "component_back_after_fault_s": 19.1,
+      "first_payment_captured_s": 1.9,
+      "all_settled_and_drained_s": 0.6,
+      "normal_payment_capture_s": 3.0
+    },
+    "checks": [
+      {
+        "check": "every customer got through (the clients' retries were enough)",
+        "ok": true,
+        "detail": "{}"
+      },
+      {
+        "check": "no duplicates: one order per customer",
+        "ok": true,
+        "detail": "36 orders in the database, 36 acknowledged; duplicated: "
+      },
+      {
+        "check": "no duplicates: one payment per order",
+        "ok": true,
+        "detail": "36 payments over 36 orders, 36 acknowledged"
+      },
+      {
+        "check": "nothing lost: every payment a client was told about is in the database",
+        "ok": true,
+        "detail": "36 of 36"
+      },
+      {
+        "check": "nothing stuck: every payment reached CAPTURED or FAILED",
+        "ok": true,
+        "detail": "{'FAILED': '15', 'CAPTURED': '21'}"
+      },
+      {
+        "check": "money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
+        "ok": true,
+        "detail": "0 captured but unpaid, 0 paid without capture"
+      },
+      {
+        "check": "outbox drained: every event was published to Kafka",
+        "ok": true,
+        "detail": "0 still waiting"
+      },
+      {
+        "check": "events delivered: every captured payment's webhook reached the merchant (at least once)",
+        "ok": true,
+        "detail": "0 of 21 missing"
+      }
+    ]
+  },
+  {
+    "scenario": "gateway-crash",
+    "passed": true,
+    "counts": {
+      "customers": 36,
+      "orders": 36,
+      "payments": 36,
+      "payment_states": {
+        "FAILED": "2",
+        "CAPTURED": "34"
+      },
+      "customers_that_retried": 20,
+      "webhooks_received": 108
+    },
+    "recovery": {
+      "component_back_after_fault_s": 15.3,
+      "first_payment_captured_s": 3.3,
+      "all_settled_and_drained_s": 6.8,
+      "normal_payment_capture_s": 3.0
+    },
+    "checks": [
+      {
+        "check": "every customer got through (the clients' retries were enough)",
+        "ok": true,
+        "detail": "{}"
+      },
+      {
+        "check": "no duplicates: one order per customer",
+        "ok": true,
+        "detail": "36 orders in the database, 36 acknowledged; duplicated: "
+      },
+      {
+        "check": "no duplicates: one payment per order",
+        "ok": true,
+        "detail": "36 payments over 36 orders, 36 acknowledged"
+      },
+      {
+        "check": "nothing lost: every payment a client was told about is in the database",
+        "ok": true,
+        "detail": "36 of 36"
+      },
+      {
+        "check": "nothing stuck: every payment reached CAPTURED or FAILED",
+        "ok": true,
+        "detail": "{'FAILED': '2', 'CAPTURED': '34'}"
+      },
+      {
+        "check": "money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
+        "ok": true,
+        "detail": "0 captured but unpaid, 0 paid without capture"
+      },
+      {
+        "check": "outbox drained: every event was published to Kafka",
+        "ok": true,
+        "detail": "0 still waiting"
+      },
+      {
+        "check": "events delivered: every captured payment's webhook reached the merchant (at least once)",
+        "ok": true,
+        "detail": "0 of 34 missing"
+      }
+    ]
+  },
+  {
+    "scenario": "operations-service-crash",
+    "passed": true,
+    "counts": {
+      "customers": 36,
+      "orders": 36,
+      "payments": 36,
+      "payment_states": {
+        "FAILED": "1",
+        "CAPTURED": "35"
+      },
+      "customers_that_retried": 0,
+      "webhooks_received": 108
+    },
+    "recovery": {
+      "component_back_after_fault_s": 24.2,
+      "first_payment_captured_s": 3.0,
+      "all_settled_and_drained_s": 0.6,
+      "normal_payment_capture_s": 3.0
+    },
+    "checks": [
+      {
+        "check": "every customer got through (the clients' retries were enough)",
+        "ok": true,
+        "detail": "{}"
+      },
+      {
+        "check": "no duplicates: one order per customer",
+        "ok": true,
+        "detail": "36 orders in the database, 36 acknowledged; duplicated: "
+      },
+      {
+        "check": "no duplicates: one payment per order",
+        "ok": true,
+        "detail": "36 payments over 36 orders, 36 acknowledged"
+      },
+      {
+        "check": "nothing lost: every payment a client was told about is in the database",
+        "ok": true,
+        "detail": "36 of 36"
+      },
+      {
+        "check": "nothing stuck: every payment reached CAPTURED or FAILED",
+        "ok": true,
+        "detail": "{'FAILED': '1', 'CAPTURED': '35'}"
+      },
+      {
+        "check": "money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
+        "ok": true,
+        "detail": "0 captured but unpaid, 0 paid without capture"
+      },
+      {
+        "check": "outbox drained: every event was published to Kafka",
+        "ok": true,
+        "detail": "0 still waiting"
+      },
+      {
+        "check": "events delivered: every captured payment's webhook reached the merchant (at least once)",
+        "ok": true,
+        "detail": "0 of 35 missing"
+      }
+    ]
+  },
+  {
+    "scenario": "kafka-outage",
+    "passed": true,
+    "counts": {
+      "customers": 36,
+      "orders": 36,
+      "payments": 36,
+      "payment_states": {
+        "FAILED": "3",
+        "CAPTURED": "33"
+      },
+      "customers_that_retried": 0,
+      "webhooks_received": 108
+    },
+    "recovery": {
+      "component_back_after_fault_s": 26.5,
+      "first_payment_captured_s": 2.4,
+      "all_settled_and_drained_s": 21.3,
+      "normal_payment_capture_s": 4.0
+    },
+    "checks": [
+      {
+        "check": "every customer got through (the clients' retries were enough)",
+        "ok": true,
+        "detail": "{}"
+      },
+      {
+        "check": "no duplicates: one order per customer",
+        "ok": true,
+        "detail": "36 orders in the database, 36 acknowledged; duplicated: "
+      },
+      {
+        "check": "no duplicates: one payment per order",
+        "ok": true,
+        "detail": "36 payments over 36 orders, 36 acknowledged"
+      },
+      {
+        "check": "nothing lost: every payment a client was told about is in the database",
+        "ok": true,
+        "detail": "36 of 36"
+      },
+      {
+        "check": "nothing stuck: every payment reached CAPTURED or FAILED",
+        "ok": true,
+        "detail": "{'FAILED': '3', 'CAPTURED': '33'}"
+      },
+      {
+        "check": "money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
+        "ok": true,
+        "detail": "0 captured but unpaid, 0 paid without capture"
+      },
+      {
+        "check": "outbox drained: every event was published to Kafka",
+        "ok": true,
+        "detail": "0 still waiting"
+      },
+      {
+        "check": "events delivered: every captured payment's webhook reached the merchant (at least once)",
+        "ok": true,
+        "detail": "0 of 33 missing"
+      }
+    ]
+  },
+  {
+    "scenario": "redis-outage",
+    "passed": true,
+    "counts": {
+      "customers": 36,
+      "orders": 36,
+      "payments": 36,
+      "payment_states": {
+        "FAILED": "4",
+        "CAPTURED": "32"
+      },
+      "customers_that_retried": 21,
+      "webhooks_received": 108
+    },
+    "recovery": {
+      "component_back_after_fault_s": 26.0,
+      "first_payment_captured_s": 10.2,
+      "all_settled_and_drained_s": 16.9,
+      "normal_payment_capture_s": 3.0
+    },
+    "checks": [
+      {
+        "check": "every customer got through (the clients' retries were enough)",
+        "ok": true,
+        "detail": "{}"
+      },
+      {
+        "check": "no duplicates: one order per customer",
+        "ok": true,
+        "detail": "36 orders in the database, 36 acknowledged; duplicated: "
+      },
+      {
+        "check": "no duplicates: one payment per order",
+        "ok": true,
+        "detail": "36 payments over 36 orders, 36 acknowledged"
+      },
+      {
+        "check": "nothing lost: every payment a client was told about is in the database",
+        "ok": true,
+        "detail": "36 of 36"
+      },
+      {
+        "check": "nothing stuck: every payment reached CAPTURED or FAILED",
+        "ok": true,
+        "detail": "{'FAILED': '4', 'CAPTURED': '32'}"
+      },
+      {
+        "check": "money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
+        "ok": true,
+        "detail": "0 captured but unpaid, 0 paid without capture"
+      },
+      {
+        "check": "outbox drained: every event was published to Kafka",
+        "ok": true,
+        "detail": "0 still waiting"
+      },
+      {
+        "check": "events delivered: every captured payment's webhook reached the merchant (at least once)",
+        "ok": true,
+        "detail": "0 of 32 missing"
+      }
+    ]
+  },
+  {
+    "scenario": "postgres-outage",
+    "passed": true,
+    "counts": {
+      "customers": 36,
+      "orders": 36,
+      "payments": 36,
+      "payment_states": {
+        "CAPTURED": "36"
+      },
+      "customers_that_retried": 16,
+      "webhooks_received": 108
+    },
+    "recovery": {
+      "component_back_after_fault_s": 21.1,
+      "first_payment_captured_s": 12.8,
+      "all_settled_and_drained_s": 20.1,
+      "normal_payment_capture_s": 2.1
+    },
+    "checks": [
+      {
+        "check": "every customer got through (the clients' retries were enough)",
+        "ok": true,
+        "detail": "{}"
+      },
+      {
+        "check": "no duplicates: one order per customer",
+        "ok": true,
+        "detail": "36 orders in the database, 36 acknowledged; duplicated: "
+      },
+      {
+        "check": "no duplicates: one payment per order",
+        "ok": true,
+        "detail": "36 payments over 36 orders, 36 acknowledged"
+      },
+      {
+        "check": "nothing lost: every payment a client was told about is in the database",
+        "ok": true,
+        "detail": "36 of 36"
+      },
+      {
+        "check": "nothing stuck: every payment reached CAPTURED or FAILED",
+        "ok": true,
+        "detail": "{'CAPTURED': '36'}"
+      },
+      {
+        "check": "money is consistent: captured payments' orders are PAID, and nothing is PAID without a capture",
+        "ok": true,
+        "detail": "0 captured but unpaid, 0 paid without capture"
+      },
+      {
+        "check": "outbox drained: every event was published to Kafka",
+        "ok": true,
+        "detail": "0 still waiting"
+      },
+      {
+        "check": "events delivered: every captured payment's webhook reached the merchant (at least once)",
+        "ok": true,
+        "detail": "0 of 36 missing"
+      }
+    ]
+  }
+]

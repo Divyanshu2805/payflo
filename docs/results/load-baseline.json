@@ -1,0 +1,61 @@
+{
+  "run": "20260926-233154",
+  "overall": {
+    "requests": 29728,
+    "successful": 29728,
+    "error_rate": 0.0,
+    "throughput_rps": 250.2,
+    "successful_rps": 250.2,
+    "p50_ms": 372.0,
+    "p95_ms": 450.0,
+    "p99_ms": 495.0,
+    "max_ms": 552.0
+  },
+  "per_request": {
+    "Create order": {
+      "requests": 14838,
+      "successful": 14838,
+      "error_rate": 0.0,
+      "throughput_rps": 124.9,
+      "successful_rps": 124.9,
+      "p50_ms": 364.0,
+      "p95_ms": 440.0,
+      "p99_ms": 484.0,
+      "max_ms": 536.0
+    },
+    "Initiate payment": {
+      "requests": 14790,
+      "successful": 14790,
+      "error_rate": 0.0,
+      "throughput_rps": 125.0,
+      "successful_rps": 125.0,
+      "p50_ms": 379.0,
+      "p95_ms": 456.0,
+      "p99_ms": 502.0,
+      "max_ms": 552.0
+    },
+    "Tokenize card": {
+      "requests": 100,
+      "successful": 100,
+      "error_rate": 0.0,
+      "throughput_rps": 5.5,
+      "successful_rps": 5.5,
+      "p50_ms": 21.0,
+      "p95_ms": 36.0,
+      "p99_ms": 47.0,
+      "max_ms": 52.0
+    }
+  },
+  "targets": {
+    "p99_latency": {
+      "target": "< 1000 ms (every request type)",
+      "actual": 502.0,
+      "pass": true
+    },
+    "availability": {
+      "target": ">= 99.99%",
+      "actual": 1.0,
+      "pass": true
+    }
+  }
+}

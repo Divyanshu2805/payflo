@@ -1,0 +1,82 @@
+{
+  "run": "20261007-111108",
+  "overall": {
+    "requests": 183141,
+    "successful": 183141,
+    "error_rate": 0.0,
+    "throughput_rps": 1023.2,
+    "successful_rps": 1023.2,
+    "p50_ms": 87.0,
+    "p95_ms": 171.0,
+    "p99_ms": 227.0,
+    "max_ms": 772.0
+  },
+  "per_request": {
+    "Create order": {
+      "requests": 91535,
+      "successful": 91535,
+      "error_rate": 0.0,
+      "throughput_rps": 511.5,
+      "successful_rps": 511.5,
+      "p50_ms": 53.0,
+      "p95_ms": 89.0,
+      "p99_ms": 155.0,
+      "max_ms": 738.0
+    },
+    "Initiate payment": {
+      "requests": 91506,
+      "successful": 91506,
+      "error_rate": 0.0,
+      "throughput_rps": 514.4,
+      "successful_rps": 514.4,
+      "p50_ms": 120.0,
+      "p95_ms": 194.0,
+      "p99_ms": 245.0,
+      "max_ms": 772.0
+    },
+    "Tokenize card": {
+      "requests": 100,
+      "successful": 100,
+      "error_rate": 0.0,
+      "throughput_rps": 5.5,
+      "successful_rps": 5.5,
+      "p50_ms": 64.0,
+      "p95_ms": 241.0,
+      "p99_ms": 241.0,
+      "max_ms": 241.0
+    }
+  },
+  "targets": {
+    "p99_latency": {
+      "target": "< 1000 ms (every request type)",
+      "actual": 245.0,
+      "pass": true
+    },
+    "availability": {
+      "target": ">= 99.99%",
+      "actual": 1.0,
+      "pass": true
+    }
+  },
+  "capture": {
+    "payments_started": 88560,
+    "resolved_at_end_pct": 96.9,
+    "backlog_at_end": 2763,
+    "peak_backlog": 3588,
+    "seconds_to_drain_after_end": 16.7,
+    "captured_per_second_during_run": 411.4
+  },
+  "webhooks": {
+    "delivered": 91644,
+    "dead_lettered": 0,
+    "delivered_within_30s_pct": 99.85,
+    "sla_met": true,
+    "p50_seconds_at_most": 1.0,
+    "p99_seconds_at_most": 2.0,
+    "peak_pending": 610,
+    "peak_oldest_unattempted_age_seconds": 0.3,
+    "pending_at_end": 0,
+    "peak_consumer_lag": 0,
+    "consumer_lag_at_end": 0
+  }
+}

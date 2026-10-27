@@ -8,6 +8,7 @@ Measured on one laptop (32 logical cores, 16 GB for Docker) that also ran the lo
 - [Horizontal scaling](#horizontal-scaling)
 - [Failure testing](#failure-testing)
 - [Idempotency](#idempotency)
+- [Raw results](#raw-results)
 - [Reproducing](#reproducing)
 
 ## Headline
@@ -102,6 +103,21 @@ Settlement interrupted after any of its steps is covered by `SettlementIntegrati
 |---|---|---|---|
 | `POST /v1/payments` | 1,000 | 24,000 | **0** |
 | `POST /v1/orders` | 400 | 9,600 | **0** |
+
+## Raw results
+
+The summaries the scripts wrote for the runs above, with per-request-type percentiles, capture and webhook figures.
+
+| File | Run |
+|---|---|
+| [`load-baseline.json`](results/load-baseline.json) | The first build: 250 req/s |
+| [`load-final.json`](results/load-final.json) | 1,272 req/s, p99 171 ms, 0 errors, 96.3% captured |
+| [`webhooks-before.json`](results/webhooks-before.json) | Webhooks before batching: 5.4% within 30 s |
+| [`webhooks-after.json`](results/webhooks-after.json) | Webhooks after: 99.85% within 30 s |
+| [`webhooks-every-event.json`](results/webhooks-every-event.json) | Every event subscribed: 283,486 delivered, 100% within 30 s |
+| [`scale-1-replica.json`](results/scale-1-replica.json), [`scale-2-replicas.json`](results/scale-2-replicas.json), [`scale-3-replicas.json`](results/scale-3-replicas.json) | 338, 758 and 999 req/s on Kubernetes |
+| [`rolling-restart.json`](results/rolling-restart.json) | Rolling restart under load: 19 failed of 226,834 |
+| [`crash-and-outage.json`](results/crash-and-outage.json) | The seven crash and outage scenarios, every check and recovery time |
 
 ## Reproducing
 
