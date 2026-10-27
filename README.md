@@ -29,6 +29,10 @@ A business signs up, gets API keys, creates orders and takes payments by card, U
 
 **PayFlo** is that system: seven services and four databases, with tests and measurements showing it stays correct when a component fails and fast when traffic rises. The bank side (acquirer, authorization callback, payouts) is simulated, so every flow runs on one machine.
 
+<p align="center">
+  <img src="docs/assets/demo.webp" alt="A customer pays by card in the demo shop, PayFlo's signed webhook confirms the order, and the captured payment appears in the merchant's dashboard with its timeline" width="900" />
+</p>
+
 ## Try it
 
 With Docker, a JDK 25 and Python 3.10+:
