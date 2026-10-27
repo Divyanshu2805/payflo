@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>The backend behind a "Pay now" button.</b><br/>
-  A payment gateway on Spring Boot microservices: orders, payments, a card vault, signed webhooks and nightly payouts.
+  A payment gateway with a card vault, signed webhooks and payouts, built on Spring Boot microservices.
 </p>
 
 <p align="center">
@@ -12,10 +12,15 @@
   <img src="https://img.shields.io/badge/Java-25-0a0b0d?logo=openjdk" alt="Java 25" />
   <img src="https://img.shields.io/badge/Spring_Boot-4.1-0a0b0d?logo=springboot" alt="Spring Boot 4.1" />
   <img src="https://img.shields.io/badge/Spring_Cloud-2025.1-0a0b0d?logo=spring" alt="Spring Cloud 2025.1" />
-  <img src="https://img.shields.io/badge/PostgreSQL-per_service-0a0b0d?logo=postgresql" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Kafka-Outbox-0a0b0d?logo=apachekafka" alt="Apache Kafka" />
   <img src="https://img.shields.io/badge/Redis-7-0a0b0d?logo=redis" alt="Redis" />
+  <img src="https://img.shields.io/badge/PostgreSQL-per_service-0a0b0d?logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Resilience4j-Circuit_breakers-0a0b0d" alt="Resilience4j" />
+  <img src="https://img.shields.io/badge/Docker-Compose-0a0b0d?logo=docker" alt="Docker" />
   <img src="https://img.shields.io/badge/Kubernetes-kind-0a0b0d?logo=kubernetes" alt="Kubernetes" />
+  <img src="https://img.shields.io/badge/Prometheus-Metrics-0a0b0d?logo=prometheus" alt="Prometheus" />
+  <img src="https://img.shields.io/badge/Grafana-Dashboards-0a0b0d?logo=grafana" alt="Grafana" />
+  <img src="https://img.shields.io/badge/JMeter-Load_tests-0a0b0d?logo=apachejmeter" alt="Apache JMeter" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0a0b0d" alt="MIT License" /></a>
 </p>
 
